@@ -3,11 +3,11 @@
 use super::{util::decode_holocene_eip_1559_params, StatelessL2BlockExecutor};
 use crate::{constants::FEE_RECIPIENT, ExecutorError, ExecutorResult};
 use alloy_consensus::Header;
+use op_alloy_genesis::RollupConfig;
 use alloy_eips::eip1559::BaseFeeParams;
 use alloy_primitives::{TxKind, U256};
 use kona_mpt::{TrieHinter, TrieProvider};
 use op_alloy_consensus::OpTxEnvelope;
-use op_alloy_genesis::RollupConfig;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use revm::primitives::{
     BlobExcessGasAndPrice, BlockEnv, CfgEnv, CfgEnvWithHandlerCfg, OptimismFields, SpecId,
@@ -27,14 +27,8 @@ where
     /// ## Returns
     /// The active [SpecId] for the executor.
     pub(crate) fn revm_spec_id(&self, timestamp: u64) -> SpecId {
-        if self.config.is_holocene_active(timestamp) {
-            SpecId::HOLOCENE
-        } else if self.config.is_fjord_active(timestamp) {
-            SpecId::FJORD
-        } else if self.config.is_ecotone_active(timestamp) {
-            SpecId::ECOTONE
-        } else if self.config.is_canyon_active(timestamp) {
-            SpecId::CANYON
+        if self.config.is_cancun_active(timestamp) {
+            SpecId::CANCUN
         } else if self.config.is_regolith_active(timestamp) {
             SpecId::REGOLITH
         } else {
@@ -68,14 +62,12 @@ where
         spec_id: SpecId,
         parent_header: &Header,
         payload_attrs: &OpPayloadAttributes,
-        base_fee_params: &BaseFeeParams,
     ) -> ExecutorResult<BlockEnv> {
         let blob_excess_gas_and_price = parent_header
             .next_block_excess_blob_gas()
             .or_else(|| spec_id.is_enabled_in(SpecId::ECOTONE).then_some(0))
             .map(BlobExcessGasAndPrice::new);
-        let next_block_base_fee =
-            parent_header.next_block_base_fee(*base_fee_params).unwrap_or_default();
+        let next_block_base_fee = parent_header.base_fee_per_gas.unwrap_or_default();
 
         Ok(BlockEnv {
             number: U256::from(parent_header.number + 1),
@@ -89,39 +81,6 @@ where
         })
     }
 
-    /// Returns the active base fee parameters for the given payload attributes.
-    ///
-    /// ## Takes
-    /// - `config`: The rollup config to use for the computation.
-    /// - `parent_header`: The parent header of the block to be executed.
-    /// - `payload_attrs`: The payload attributes to use for the computation.
-    pub(crate) fn active_base_fee_params(
-        config: &RollupConfig,
-        parent_header: &Header,
-        payload_attrs: &OpPayloadAttributes,
-    ) -> ExecutorResult<BaseFeeParams> {
-        let base_fee_params =
-            if config.is_holocene_active(payload_attrs.payload_attributes.timestamp) {
-                // After Holocene activation, the base fee parameters are stored in the
-                // `extraData` field of the parent header. If Holocene wasn't active in the
-                // parent block, the default base fee parameters are used.
-                config
-                    .is_holocene_active(parent_header.timestamp)
-                    .then(|| decode_holocene_eip_1559_params(parent_header))
-                    .transpose()?
-                    .unwrap_or(config.canyon_base_fee_params)
-            } else if config.is_canyon_active(payload_attrs.payload_attributes.timestamp) {
-                // If the payload attribute timestamp is past canyon activation,
-                // use the canyon base fee params from the rollup config.
-                config.canyon_base_fee_params
-            } else {
-                // If the payload attribute timestamp is prior to canyon activation,
-                // use the default base fee params from the rollup config.
-                config.base_fee_params
-            };
-
-        Ok(base_fee_params)
-    }
 
     /// Prepares a [TxEnv] with the given [OpTxEnvelope].
     ///

@@ -9,3 +9,5 @@ monorepo/
 
 # Environment Variables
 .env
+
+.idea

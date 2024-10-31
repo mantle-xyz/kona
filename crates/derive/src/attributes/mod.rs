@@ -13,7 +13,6 @@ use alloy_primitives::{address, Address, Bytes, B256};
 use alloy_rlp::Encodable;
 use alloy_rpc_types_engine::PayloadAttributes;
 use async_trait::async_trait;
-use op_alloy_consensus::Hardforks;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::{decode_deposit, L1BlockInfoTx, L2BlockInfo, DEPOSIT_EVENT_ABI_HASH};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
@@ -100,7 +99,6 @@ where
                 .update_with_receipts(
                     &receipts,
                     self.rollup_cfg.l1_system_config_address,
-                    self.rollup_cfg.is_ecotone_active(header.timestamp),
                 )
                 .map_err(|e| PipelineError::SystemConfigUpdate(e).crit())?;
             l1_header = header;
@@ -139,17 +137,7 @@ where
             ));
         }
 
-        let mut upgrade_transactions: Vec<Bytes> = vec![];
-        if self.rollup_cfg.is_ecotone_active(next_l2_time) &&
-            !self.rollup_cfg.is_ecotone_active(l2_parent.block_info.timestamp)
-        {
-            upgrade_transactions = Hardforks::ecotone_txs();
-        }
-        if self.rollup_cfg.is_fjord_active(next_l2_time) &&
-            !self.rollup_cfg.is_fjord_active(l2_parent.block_info.timestamp)
-        {
-            upgrade_transactions.append(&mut Hardforks::fjord_txs());
-        }
+
 
         // Build and encode the L1 info transaction for the current payload.
         let (_, l1_info_tx_envelope) = L1BlockInfoTx::try_new_with_deposit_tx(
@@ -166,22 +154,12 @@ where
         l1_info_tx_envelope.encode_2718(&mut encoded_l1_info_tx);
 
         let mut txs =
-            Vec::with_capacity(1 + deposit_transactions.len() + upgrade_transactions.len());
+            Vec::with_capacity(1 + deposit_transactions.len());
         txs.push(encoded_l1_info_tx.into());
         txs.extend(deposit_transactions);
-        txs.extend(upgrade_transactions);
 
-        let mut withdrawals = None;
-        if self.rollup_cfg.is_canyon_active(next_l2_time) {
-            withdrawals = Some(Vec::default());
-        }
-
-        let mut parent_beacon_root = None;
-        if self.rollup_cfg.is_ecotone_active(next_l2_time) {
-            // if the parent beacon root is not available, default to zero hash
-            parent_beacon_root = Some(l1_header.parent_beacon_block_root.unwrap_or_default());
-        }
-
+        let withdrawals = None;
+        let parent_beacon_root = None;
         Ok(OpPayloadAttributes {
             payload_attributes: PayloadAttributes {
                 timestamp: next_l2_time,
