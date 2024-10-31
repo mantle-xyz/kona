@@ -4,7 +4,6 @@ use crate::{
     constants::{L2_TO_L1_BRIDGE, OUTPUT_ROOT_VERSION},
     db::TrieDB,
     errors::TrieDBError,
-    syscalls::{ensure_create2_deployer_canyon, pre_block_beacon_root_contract_call},
     ExecutorError, ExecutorResult, TrieDBProvider,
 };
 use alloc::vec::Vec;
@@ -77,16 +76,11 @@ where
     ///    block.
     pub fn execute_payload(&mut self, payload: OpPayloadAttributes) -> ExecutorResult<&Header> {
         // Prepare the `revm` environment.
-        let base_fee_params = Self::active_base_fee_params(
-            self.config,
-            self.trie_db.parent_block_header(),
-            &payload,
-        )?;
+
         let initialized_block_env = Self::prepare_block_env(
             self.revm_spec_id(payload.payload_attributes.timestamp),
             self.trie_db.parent_block_header(),
             &payload,
-            &base_fee_params,
         )?;
         let initialized_cfg = self.evm_cfg_env(payload.payload_attributes.timestamp);
         let block_number = initialized_block_env.number.to::<u64>();
@@ -106,22 +100,6 @@ where
         let mut state =
             State::builder().with_database(&mut self.trie_db).with_bundle_update().build();
 
-        // Apply the pre-block EIP-4788 contract call.
-        pre_block_beacon_root_contract_call(
-            &mut state,
-            self.config,
-            block_number,
-            &initialized_cfg,
-            &initialized_block_env,
-            &payload,
-        )?;
-
-        // Ensure that the create2 contract is deployed upon transition to the Canyon hardfork.
-        ensure_create2_deployer_canyon(
-            &mut state,
-            self.config,
-            payload.payload_attributes.timestamp,
-        )?;
 
         let mut cumulative_gas_used = 0u64;
         let mut receipts: Vec<OpReceiptEnvelope> = Vec::with_capacity(transactions.len());
@@ -212,14 +190,6 @@ where
                 depositor
                     .as_ref()
                     .map(|depositor| depositor.account_info().unwrap_or_default().nonce),
-                depositor
-                    .is_some()
-                    .then(|| {
-                        self.config
-                            .is_canyon_active(payload.payload_attributes.timestamp)
-                            .then_some(1)
-                    })
-                    .flatten(),
             );
             // Ensure the receipt is not an EIP-7702 receipt.
             if matches!(receipt, OpReceiptEnvelope::Eip7702(_)) {
@@ -262,42 +232,12 @@ where
         // root hash.
         let withdrawals_root = self
             .config
-            .is_canyon_active(payload.payload_attributes.timestamp)
+            .is_cancun_active(payload.payload_attributes.timestamp)
             .then_some(EMPTY_ROOT_HASH);
 
         // Compute logs bloom filter for the block.
         let logs_bloom = logs_bloom(receipts.iter().flat_map(|receipt| receipt.logs()));
 
-        // Compute Cancun fields, if active.
-        let (blob_gas_used, excess_blob_gas) = self
-            .config
-            .is_ecotone_active(payload.payload_attributes.timestamp)
-            .then(|| {
-                let parent_header = state.database.parent_block_header();
-                let excess_blob_gas = if self.config.is_ecotone_active(parent_header.timestamp) {
-                    let parent_excess_blob_gas = parent_header.excess_blob_gas.unwrap_or_default();
-                    let parent_blob_gas_used = parent_header.blob_gas_used.unwrap_or_default();
-                    calc_excess_blob_gas(parent_excess_blob_gas, parent_blob_gas_used)
-                } else {
-                    // For the first post-fork block, both blob gas fields are evaluated to 0.
-                    calc_excess_blob_gas(0, 0)
-                };
-
-                (Some(0), Some(excess_blob_gas as u128))
-            })
-            .unwrap_or_default();
-
-        // At holocene activation, the base fee parameters from the payload are placed
-        // into the Header's `extra_data` field.
-        //
-        // If the payload's `eip_1559_params` are equal to `0`, then the header's `extraData`
-        // field is set to the encoded canyon base fee parameters.
-        let encoded_base_fee_params = self
-            .config
-            .is_holocene_active(payload.payload_attributes.timestamp)
-            .then(|| encode_holocene_eip_1559_params(self.config, &payload))
-            .transpose()?
-            .unwrap_or_default();
 
         // Construct the new header.
         let header = Header {
@@ -308,7 +248,6 @@ where
             transactions_root,
             receipts_root,
             withdrawals_root,
-            requests_hash: None,
             logs_bloom,
             difficulty: U256::ZERO,
             number: block_number,
@@ -318,11 +257,11 @@ where
             mix_hash: payload.payload_attributes.prev_randao,
             nonce: Default::default(),
             base_fee_per_gas: base_fee.try_into().ok(),
-            blob_gas_used,
-            excess_blob_gas: excess_blob_gas.and_then(|x| x.try_into().ok()),
+            blob_gas_used: None,
+            excess_blob_gas: None,
             parent_beacon_block_root: payload.payload_attributes.parent_beacon_block_root,
-            extra_data: encoded_base_fee_params,
-            target_blobs_per_block: None,
+            requests_root: None,
+            extra_data: Default::default(),
         }
         .seal_slow();
 
@@ -412,7 +351,7 @@ where
         // the receipt root calculation does not inclide the deposit nonce in the
         // receipt encoding. In the Regolith hardfork, we must strip the deposit nonce
         // from the receipt encoding to match the receipt root calculation.
-        if config.is_regolith_active(timestamp) && !config.is_canyon_active(timestamp) {
+        if config.is_regolith_active(timestamp) {
             let receipts = receipts
                 .iter()
                 .cloned()
@@ -460,6 +399,9 @@ mod test {
     use op_alloy_genesis::OP_MAINNET_BASE_FEE_PARAMS;
     use serde::Deserialize;
     use std::collections::HashMap;
+    use ethers_providers::{Http, Middleware, Provider, ProviderError};
+    use anyhow::{anyhow, Result};
+
 
     /// A [TrieProvider] implementation that fetches trie nodes and bytecode from the local
     /// testdata folder.
@@ -520,13 +462,9 @@ mod test {
 
         // Make a mock rollup config, with Ecotone activated at timestamp = 0.
         let rollup_config = RollupConfig {
-            l2_chain_id: 10,
+            l2_chain_id: 5000,
             regolith_time: Some(0),
-            canyon_time: Some(0),
-            delta_time: Some(0),
-            ecotone_time: Some(0),
-            base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_base_fee_params(),
-            canyon_base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_canyon_base_fee_params(),
+            cancun_time: Some(0),
             ..Default::default()
         };
 
@@ -563,7 +501,7 @@ mod test {
             gas_limit: Some(0x1c9c380),
             transactions: Some(alloc::vec![raw_tx.into()]),
             no_tx_pool: None,
-            eip_1559_params: None,
+            base_fee: None,
         };
         let produced_header = l2_block_executor.execute_payload(payload_attrs).unwrap().clone();
 
@@ -581,13 +519,9 @@ mod test {
 
         // Make a mock rollup config, with Ecotone activated at timestamp = 0.
         let rollup_config = RollupConfig {
-            l2_chain_id: 10,
+            l2_chain_id: 5000,
             regolith_time: Some(0),
-            canyon_time: Some(0),
-            delta_time: Some(0),
-            ecotone_time: Some(0),
-            base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_base_fee_params(),
-            canyon_base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_canyon_base_fee_params(),
+            cancun_time: Some(0),
             ..Default::default()
         };
 
@@ -628,7 +562,7 @@ mod test {
             gas_limit: Some(30000000),
             transactions: Some(raw_txs),
             no_tx_pool: Some(false),
-            eip_1559_params: None,
+            base_fee: None,
         };
         let produced_header = l2_block_executor.execute_payload(payload_attrs).unwrap().clone();
 
@@ -646,13 +580,9 @@ mod test {
 
         // Make a mock rollup config, with Ecotone activated at timestamp = 0.
         let rollup_config = RollupConfig {
-            l2_chain_id: 10,
+            l2_chain_id: 5000,
             regolith_time: Some(0),
-            canyon_time: Some(0),
-            delta_time: Some(0),
-            ecotone_time: Some(0),
-            base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_base_fee_params(),
-            canyon_base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_canyon_base_fee_params(),
+            cancun_time: Some(0),
             ..Default::default()
         };
 
@@ -700,7 +630,7 @@ mod test {
             gas_limit: Some(0x1c9c380),
             transactions: Some(raw_txs),
             no_tx_pool: Some(false),
-            eip_1559_params: None,
+            base_fee: None,
         };
         let produced_header = l2_block_executor.execute_payload(payload_attrs).unwrap().clone();
 
@@ -718,13 +648,9 @@ mod test {
 
         // Make a mock rollup config, with Ecotone activated at timestamp = 0.
         let rollup_config = RollupConfig {
-            l2_chain_id: 10,
+            l2_chain_id: 5000,
             regolith_time: Some(0),
-            canyon_time: Some(0),
-            delta_time: Some(0),
-            ecotone_time: Some(0),
-            base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_base_fee_params(),
-            canyon_base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_canyon_base_fee_params(),
+            cancun_time: Some(0),
             ..Default::default()
         };
 
@@ -766,7 +692,7 @@ mod test {
             gas_limit: Some(30_000_000),
             transactions: Some(raw_txs),
             no_tx_pool: None,
-            eip_1559_params: None,
+            base_fee: None,
         };
         let produced_header = l2_block_executor.execute_payload(payload_attrs).unwrap().clone();
 
@@ -784,13 +710,9 @@ mod test {
 
         // Make a mock rollup config, with Ecotone activated at timestamp = 0.
         let rollup_config = RollupConfig {
-            l2_chain_id: 10,
+            l2_chain_id: 5000,
             regolith_time: Some(0),
-            canyon_time: Some(0),
-            delta_time: Some(0),
-            ecotone_time: Some(0),
-            base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_base_fee_params(),
-            canyon_base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_canyon_base_fee_params(),
+            cancun_time: Some(0),
             ..Default::default()
         };
 
@@ -841,7 +763,7 @@ mod test {
             gas_limit: Some(30_000_000),
             transactions: Some(raw_txs),
             no_tx_pool: Some(false),
-            eip_1559_params: None,
+            base_fee: None,
         };
         let produced_header = l2_block_executor.execute_payload(payload_attrs).unwrap().clone();
 
@@ -859,13 +781,9 @@ mod test {
 
         // Make a mock rollup config, with Ecotone activated at timestamp = 0.
         let rollup_config = RollupConfig {
-            l2_chain_id: 10,
+            l2_chain_id: 5000,
             regolith_time: Some(0),
-            canyon_time: Some(0),
-            delta_time: Some(0),
-            ecotone_time: Some(0),
-            base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_base_fee_params(),
-            canyon_base_fee_params: OP_MAINNET_BASE_FEE_PARAMS.as_canyon_base_fee_params(),
+            cancun_time: Some(0),
             ..Default::default()
         };
 
@@ -921,7 +839,7 @@ mod test {
             gas_limit: Some(30_000_000),
             transactions: Some(raw_txs),
             no_tx_pool: None,
-            eip_1559_params: None,
+            base_fee: None,
         };
         let produced_header = l2_block_executor.execute_payload(payload_attrs).unwrap().clone();
 

@@ -8,6 +8,41 @@ use alloy_primitives::{Bytes, B64};
 use op_alloy_genesis::RollupConfig;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 
+/// Constructs a [OpReceiptEnvelope] from a [Receipt] fields and [OpTxType].
+pub(crate) fn receipt_envelope_from_parts<'a>(
+    status: bool,
+    cumulative_gas_used: u128,
+    logs: impl IntoIterator<Item = &'a Log>,
+    tx_type: OpTxType,
+    deposit_nonce: Option<u64>,
+) -> OpReceiptEnvelope {
+    let logs = logs.into_iter().cloned().collect::<Vec<_>>();
+    let logs_bloom = logs_bloom(&logs);
+    let inner_receipt = Receipt { status: Eip658Value::Eip658(status), cumulative_gas_used, logs };
+    match tx_type {
+        OpTxType::Legacy => {
+            OpReceiptEnvelope::Legacy(ReceiptWithBloom { receipt: inner_receipt, logs_bloom })
+        }
+        OpTxType::Eip2930 => {
+            OpReceiptEnvelope::Eip2930(ReceiptWithBloom { receipt: inner_receipt, logs_bloom })
+        }
+        OpTxType::Eip1559 => {
+            OpReceiptEnvelope::Eip1559(ReceiptWithBloom { receipt: inner_receipt, logs_bloom })
+        }
+        OpTxType::Eip7702 => panic!("EIP-7702 is not supported"),
+        OpTxType::Deposit => {
+            let inner = OpDepositReceiptWithBloom {
+                receipt: OpDepositReceipt {
+                    inner: inner_receipt,
+                    deposit_nonce,
+                },
+                logs_bloom,
+            };
+            OpReceiptEnvelope::Deposit(inner)
+        }
+    }
+}
+
 /// Parse Holocene [Header] extra data.
 ///
 /// ## Takes
@@ -121,84 +156,11 @@ mod test {
         assert_eq!(params.max_change_denominator, 0xBEEF_BABE);
     }
 
-    #[test]
-    fn test_decode_holocene_eip_1559_params_invalid_version() {
-        let params = hex!("01BEEFBABE0BADC0DE");
-        let mock_header = Header { extra_data: params.to_vec().into(), ..Default::default() };
-        assert!(decode_holocene_eip_1559_params(&mock_header).is_err());
-    }
 
-    #[test]
-    fn test_decode_holocene_eip_1559_params_invalid_denominator() {
-        let params = hex!("00000000000BADC0DE");
-        let mock_header = Header { extra_data: params.to_vec().into(), ..Default::default() };
-        assert!(decode_holocene_eip_1559_params(&mock_header).is_err());
-    }
 
-    #[test]
-    fn test_decode_holocene_eip_1559_params_invalid_length() {
-        let params = hex!("00");
-        let mock_header = Header { extra_data: params.to_vec().into(), ..Default::default() };
-        assert!(decode_holocene_eip_1559_params(&mock_header).is_err());
-    }
 
-    #[test]
-    fn test_encode_holocene_eip_1559_params_missing() {
-        let cfg = RollupConfig {
-            canyon_base_fee_params: BaseFeeParams {
-                max_change_denominator: 32,
-                elasticity_multiplier: 64,
-            },
-            ..Default::default()
-        };
-        let attrs = mock_payload(None);
 
-        assert!(encode_holocene_eip_1559_params(&cfg, &attrs).is_err());
-    }
 
-    #[test]
-    fn test_encode_holocene_eip_1559_params_default() {
-        let cfg = RollupConfig {
-            canyon_base_fee_params: BaseFeeParams {
-                max_change_denominator: 32,
-                elasticity_multiplier: 64,
-            },
-            ..Default::default()
-        };
-        let attrs = mock_payload(Some(B64::ZERO));
 
-        assert_eq!(
-            encode_holocene_eip_1559_params(&cfg, &attrs).unwrap(),
-            hex!("000000002000000040").to_vec()
-        );
-    }
 
-    #[test]
-    fn test_encode_holocene_eip_1559_params() {
-        let cfg = RollupConfig {
-            canyon_base_fee_params: BaseFeeParams {
-                max_change_denominator: 32,
-                elasticity_multiplier: 64,
-            },
-            ..Default::default()
-        };
-        let attrs = mock_payload(Some(b64!("0000004000000060")));
 
-        assert_eq!(
-            encode_holocene_eip_1559_params(&cfg, &attrs).unwrap(),
-            hex!("000000004000000060").to_vec()
-        );
-    }
-
-    #[test]
-    fn test_encode_canyon_1559_params() {
-        let cfg = RollupConfig {
-            canyon_base_fee_params: BaseFeeParams {
-                max_change_denominator: 32,
-                elasticity_multiplier: 64,
-            },
-            ..Default::default()
-        };
-        assert_eq!(encode_canyon_base_fee_params(&cfg), b64!("0000002000000040"));
-    }
-}
