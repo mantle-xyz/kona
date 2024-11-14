@@ -139,3 +139,7 @@ revm = { git = "https://github.com/mantle-xyz/revm", branch = "mantle" }
 
 # K/V database
 rocksdb = { version = "0.22.0", default-features = false }
+
+# proto
+tonic = "0.12.3"
+protoc-rust = "2.28.0"
