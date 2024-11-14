@@ -397,7 +397,6 @@ mod test {
     use serde::Deserialize;
     use std::collections::HashMap;
     use ethers_providers::{Http, Middleware, Provider, ProviderError};
-    use anyhow::{anyhow, Result};
 
 
     /// A [TrieProvider] implementation that fetches trie nodes and bytecode from the local

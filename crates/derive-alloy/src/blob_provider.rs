@@ -118,7 +118,7 @@ impl<B: BeaconClient> OnlineBlobProvider<B> {
         Ok(filtered
             .into_iter()
             .map(|s| BlobTransactionSidecarItem {
-                index: s.index,
+                index: s.index as usize,
                 blob: s.blob,
                 kzg_commitment: s.kzg_commitment,
                 kzg_proof: s.kzg_proof,
@@ -265,7 +265,7 @@ impl<B: BeaconClient, F: BlobSidecarProvider> OnlineBlobProviderWithFallback<B, 
         Ok(filtered
             .into_iter()
             .map(|s| BlobTransactionSidecarItem {
-                index: s.index,
+                index: s.index as usize,
                 blob: s.blob,
                 kzg_commitment: s.kzg_commitment,
                 kzg_proof: s.kzg_proof,

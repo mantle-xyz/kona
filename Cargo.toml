@@ -72,13 +72,13 @@ alloy-serde = { version = "0.4.2", default-features = false }
 alloy-provider = { version = "0.4.2", default-features = false }
 alloy-primitives = { version = "0.8", default-features = false }
 alloy-consensus = { version = "0.4.2", default-features = false }
-alloy-transport = { version = "0.5.4", default-features = false }
+alloy-transport = { version = "0.4.2", default-features = false }
 alloy-rpc-types = { version = "0.4.2", default-features = false }
-alloy-rpc-client = { version = "0.5.4", default-features = false }
-alloy-node-bindings = { version = "0.5.4", default-features = false }
-alloy-transport-http = { version = "0.5.4", default-features = false }
+alloy-rpc-client = { version = "0.4.2", default-features = false }
+alloy-node-bindings = { version = "0.4.2", default-features = false }
+alloy-transport-http = { version = "0.4.2", default-features = false }
 alloy-rpc-types-engine = { version = "0.4.2", default-features = false }
-alloy-rpc-types-beacon = { version = "0.5.4", default-features = false }
+alloy-rpc-types-beacon = { version = "0.4.2", default-features = false }
 
 # OP Alloy
 #op-alloy-genesis = { version = "0.5.2", default-features = false }
@@ -138,3 +138,7 @@ revm = { git = "https://github.com/mantle-xyz/revm", branch = "mantle" }
 
 # K/V database
 rocksdb = { version = "0.22", default-features = false }
+
+# proto
+tonic = "0.12.3"
+protoc-rust = "2.28.0"

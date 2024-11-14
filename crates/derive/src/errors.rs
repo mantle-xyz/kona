@@ -1,10 +1,11 @@
 //! This module contains derivation errors thrown within the pipeline.
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloy_eips::BlockNumHash;
 use alloy_primitives::B256;
 use op_alloy_genesis::system::SystemConfigUpdateError;
 use op_alloy_protocol::{DepositError, SpanBatchError, MAX_SPAN_BATCH_ELEMENTS};
+use tonic::Status;
 
 /// Blob Decuding Error
 #[derive(derive_more::Display, Debug, PartialEq, Eq)]
@@ -314,6 +315,61 @@ impl From<BlobDecodingError> for BlobProviderError {
 }
 
 impl core::error::Error for BlobProviderError {}
+
+/// An error returned by the [EigenDAProxyError]
+#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+pub enum EigenDAProxyError {
+    /// Retrieve blob error.
+    #[display("Failed to retrieve blob, error: {_0}")]
+    RetrieveBlob(String),
+    /// Retrieve blob with commitment error.
+    #[display("Failed to retrieve blob with commitment, error: {_0}")]
+    RetrieveBlobWithCommitment(String),
+    /// Disperse blob error.
+    #[display("Failed to disperse blob, error: {_0}")]
+    DisperseBlob(String),
+    /// Get blob status error.
+    #[display("Failed to get blob status, error: {_0}")]
+    GetBlobStatus(String),
+    /// No fund blob from EigenDA.
+    #[display("Blob not fund from EigenDA")]
+    NotFound,
+    /// Invalid input data len.
+    #[display("Invalid input data len for disperse blob from EigenDA")]
+    InvalidInput,
+    /// Request timeout.
+    #[display("Request blob timeout, error: {_0}")]
+    TimeOut(String),
+}
+impl core::error::Error for EigenDAProxyError {}
+
+
+/// An error returned by the [EigenDAProviderError]
+#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+pub enum EigenDAProviderError {
+    /// Retrieve Frame from da indexer error.
+    #[display("Failed to retrieve blob from da indexer, error: {_0}")]
+    RetrieveFramesFromDaIndexer(String),
+    /// Request timeout.
+    #[display("Request blob timeout, error: {_0}")]
+    TimeOut(String),
+    #[display("Get blob from indexer da, status: {_0}")]
+    Status(String),
+    /// Error pertaining to the backend transport.
+    #[display("{_0}")]
+    Backend(String),
+    #[display("Failed to decode blob, error: {_0}")]
+    RLPDecodeError(String),
+    #[display("Failed to decode proto buf, error: {_0}")]
+    ProtoDecodeError(String),
+
+}
+impl From<Status> for EigenDAProviderError {
+    fn from(status: Status) -> Self {
+        EigenDAProviderError::Status(status.to_string())
+    }
+}
+impl core::error::Error for EigenDAProviderError {}
 
 #[cfg(test)]
 mod tests {

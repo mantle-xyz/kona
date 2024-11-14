@@ -23,6 +23,34 @@ pub trait BlobProvider {
     ) -> Result<Vec<Box<Blob>>, Self::Error>;
 }
 
+/// The EigenDA provider trait specifies the functionality of a data source that can provide EigenDA data
+#[async_trait]
+pub trait EigenDAProvider {
+    /// The error type for the [EigenDAProvider]
+    type Error: Display;
+
+    /// Fetches EigenDA data for a given batch_header_hash and blob_index and commitment
+    async fn retrieve_blob(
+        &mut self,
+        batch_header_hash: &[u8],
+        blob_index: u32,
+    ) -> Result<Vec<u8>, Self::Error>;
+
+    /// Fetches EigenDA data for a given commitment
+    async fn retrieve_blob_with_commitment(
+        &mut self,
+        commitment: &[u8],
+    ) -> Result<Vec<u8>, Self::Error>;
+
+    /// Fetches EigenDA data from mantle eigen_da indexer with a given tx_hash
+    async fn retrieval_frames_from_da_indexer(&mut self, tx_hash: &str) -> Result<Vec<u8>, Self::Error>;
+
+    /// Weather use mantle eigen_da indexer service
+    async fn da_indexer_enable(&mut self) -> Result<bool, Self::Error>;
+
+}
+
+
 /// Describes the functionality of a data source that can provide data availability information.
 #[async_trait]
 pub trait DataAvailabilityProvider {

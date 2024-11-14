@@ -4,44 +4,48 @@
 use crate::{
     errors::PipelineResult,
     sources::{BlobSource, CalldataSource, EthereumDataSourceVariant},
-    traits::{BlobProvider, ChainProvider, DataAvailabilityProvider},
+    traits::{BlobProvider, ChainProvider, EigenDAProvider, DataAvailabilityProvider},
 };
 use alloc::{boxed::Box, fmt::Debug};
 use alloy_primitives::{Address, Bytes};
 use async_trait::async_trait;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::BlockInfo;
+use crate::sources::eigen_da::EigenDaSource;
 
 /// A factory for creating an Ethereum data source provider.
 #[derive(Debug, Clone, Copy)]
-pub struct EthereumDataSource<C, B>
+pub struct EthereumDataSource<C, B, E>
 where
     C: ChainProvider + Send + Clone,
     B: BlobProvider + Clone,
+    E: EigenDAProvider + Clone,
 {
     /// The chain provider to use for the factory.
     pub chain_provider: C,
     /// The blob provider
     pub blob_provider: B,
-    /// The ecotone timestamp.
-    pub ecotone_timestamp: Option<u64>,
     /// The L1 Signer.
     pub signer: Address,
     /// The batch inbox address.
     pub batch_inbox_address: Address,
+    /// The eigen eigen_da data provider
+    pub eigen_da_provider: E,
+    /// The mantle da switch
+    pub mantle_da_switch: bool,
 }
 
-impl<C, B> EthereumDataSource<C, B>
+impl<C, B, E> EthereumDataSource<C, B, E>
 where
     C: ChainProvider + Send + Clone + Debug,
     B: BlobProvider + Clone + Debug,
+    E: EigenDAProvider + Clone + Debug,
 {
     /// Creates a new factory.
-    pub fn new(provider: C, blobs: B, cfg: &RollupConfig) -> Self {
+    pub fn new(provider: C, blobs: B, eigen_da: E, cfg: &RollupConfig) -> Self {
         Self {
             chain_provider: provider,
             blob_provider: blobs,
-            ecotone_timestamp: cfg.ecotone_time,
             signer: cfg
                 .genesis
                 .system_config
@@ -49,29 +53,33 @@ where
                 .map(|sc| sc.batcher_address)
                 .unwrap_or_default(),
             batch_inbox_address: cfg.batch_inbox_address,
+            eigen_da_provider: eigen_da,
+            mantle_da_switch: cfg.mantle_da_switch,
         }
     }
 }
 
 #[async_trait]
-impl<C, B> DataAvailabilityProvider for EthereumDataSource<C, B>
+impl<C, B, E> DataAvailabilityProvider for EthereumDataSource<C, B, E>
 where
     C: ChainProvider + Send + Sync + Clone + Debug,
     B: BlobProvider + Send + Sync + Clone + Debug,
+    E: EigenDAProvider + Send + Sync + Clone + Debug,
 {
     type Item = Bytes;
-    type DataIter = EthereumDataSourceVariant<C, B>;
+    type DataIter = EthereumDataSourceVariant<C, B, E>;
 
     async fn open_data(&self, block_ref: &BlockInfo) -> PipelineResult<Self::DataIter> {
-        let ecotone_enabled =
-            self.ecotone_timestamp.map(|e| block_ref.timestamp >= e).unwrap_or(false);
-        if ecotone_enabled {
-            Ok(EthereumDataSourceVariant::Blob(BlobSource::new(
+
+        if self.mantle_da_switch {
+            Ok(EthereumDataSourceVariant::EigenDA(EigenDaSource::new(
                 self.chain_provider.clone(),
                 self.blob_provider.clone(),
+                self.eigen_da_provider.clone(),
                 self.batch_inbox_address,
                 *block_ref,
                 self.signer,
+
             )))
         } else {
             Ok(EthereumDataSourceVariant::Calldata(CalldataSource::new(
@@ -81,6 +89,19 @@ where
                 self.signer,
             )))
         }
+
+
+        // if ecotone_enabled {
+        //     Ok(EthereumDataSourceVariant::Blob(BlobSource::new(
+        //         self.chain_provider.clone(),
+        //         self.blob_provider.clone(),
+        //         self.batch_inbox_address,
+        //         *block_ref,
+        //         self.signer,
+        //     )))
+        // } else {
+
+        
     }
 }
 
@@ -106,15 +127,15 @@ mod tests {
         let block_ref = BlockInfo::default();
 
         // If the ecotone_timestamp is not set, a Calldata source should be returned.
-        let cfg = RollupConfig { ecotone_time: None, ..Default::default() };
-        let data_source = EthereumDataSource::new(chain.clone(), blob.clone(), &cfg);
+        let cfg = RollupConfig { ..Default::default() };
+        let data_source = EthereumDataSource::new(chain.clone(), blob.clone(), &cfg, &Default::default());
         let data_iter = data_source.open_data(&block_ref).await.unwrap();
         assert!(matches!(data_iter, EthereumDataSourceVariant::Calldata(_)));
 
         // If the ecotone_timestamp is set, and the block_ref timestamp is prior to the
         // ecotone_timestamp, a calldata source is created.
-        let cfg = RollupConfig { ecotone_time: Some(100), ..Default::default() };
-        let data_source = EthereumDataSource::new(chain, blob, &cfg);
+        let cfg = RollupConfig { ..Default::default() };
+        let data_source = EthereumDataSource::new(chain, blob, &cfg, &Default::default());
         let data_iter = data_source.open_data(&block_ref).await.unwrap();
         assert!(matches!(data_iter, EthereumDataSourceVariant::Calldata(_)));
 
@@ -142,7 +163,7 @@ mod tests {
         let tx = TxEnvelope::decode_2718(&mut raw_batcher_tx.as_ref()).unwrap();
         chain.insert_block_with_transactions(10, block_ref, alloc::vec![tx]);
 
-        let data_source = EthereumDataSource::new(chain, blob, &cfg);
+        let data_source = EthereumDataSource::new(chain, blob, &cfg, &Default::default());
         let mut data_iter = data_source.open_data(&block_ref).await.unwrap();
         assert!(matches!(data_iter, EthereumDataSourceVariant::Calldata(_)));
 

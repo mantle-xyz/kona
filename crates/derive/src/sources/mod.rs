@@ -10,4 +10,6 @@ mod calldata;
 pub use calldata::CalldataSource;
 
 mod variant;
+mod eigen_da;
+
 pub use variant::EthereumDataSourceVariant;
