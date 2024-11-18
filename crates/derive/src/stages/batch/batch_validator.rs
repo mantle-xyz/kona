@@ -259,10 +259,6 @@ where
             }
         }
     }
-
-    fn is_last_in_span(&self) -> bool {
-        self.prev.span_buffer_size() == 0
-    }
 }
 
 impl<P> OriginProvider for BatchValidator<P>

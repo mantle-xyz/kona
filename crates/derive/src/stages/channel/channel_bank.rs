@@ -65,11 +65,8 @@ where
     pub fn prune(&mut self) -> PipelineResult<()> {
         let mut total_size = self.size();
         let origin = self.origin().ok_or(PipelineError::MissingOrigin.crit())?;
-        let max_channel_bank_size = if self.cfg.is_fjord_active(origin.timestamp) {
-            FJORD_MAX_CHANNEL_BANK_SIZE
-        } else {
-            MAX_CHANNEL_BANK_SIZE
-        };
+        let max_channel_bank_size = MAX_CHANNEL_BANK_SIZE;
+
         while total_size > max_channel_bank_size {
             let id =
                 self.channel_queue.pop_front().ok_or(PipelineError::ChannelProviderEmpty.crit())?;
@@ -148,13 +145,8 @@ where
         // If no channel is available, we return `PipelineError::Eof`.
         // Canyon is activated when the first L1 block whose time >= CanyonTime, not on the L2
         // timestamp.
-        if !self.cfg.is_canyon_active(origin.timestamp) {
-            return self.try_read_channel_at_index(0).map(Some);
-        }
 
-        let channel_data =
-            (0..self.channel_queue.len()).find_map(|i| self.try_read_channel_at_index(i).ok());
-        channel_data.map_or_else(|| Err(PipelineError::Eof.temp()), |data| Ok(Some(data)))
+        self.try_read_channel_at_index(0).map(Some)
     }
 
     /// Attempts to read the channel at the specified index. If the channel is not ready or timed
@@ -248,6 +240,7 @@ mod tests {
         types::ResetSignal,
     };
     use alloc::{vec, vec::Vec};
+    use op_alloy_genesis::{ MANTLE_MAINNET_CONFIG };
     use tracing::Level;
     use tracing_subscriber::layer::SubscriberExt;
 
@@ -358,7 +351,7 @@ mod tests {
     #[test]
     fn test_read_channel_active() {
         let mock = TestNextFrameProvider::new(vec![]);
-        let cfg = Arc::new(RollupConfig { canyon_time: Some(0), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut channel_bank = ChannelBank::new(cfg, mock);
         let id: ChannelId = [0xFF; 16];
         channel_bank.channel_queue.push_back(id);
@@ -467,7 +460,7 @@ mod tests {
     fn test_ingest_and_prune_channel_bank_fjord() {
         let mut frames = crate::frames!(0xFF, 0, vec![0xDD; 50], 100000);
         let mock = TestNextFrameProvider::new(vec![]);
-        let cfg = Arc::new(RollupConfig { fjord_time: Some(0), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut channel_bank = ChannelBank::new(cfg, mock);
         // Ingest frames until the channel bank is full and it stops increasing in size
         let mut current_size = 0;
@@ -507,12 +500,9 @@ mod tests {
         let subscriber = tracing_subscriber::Registry::default().with(layer);
         let _guard = tracing::subscriber::set_default(subscriber);
 
-        let configs: [RollupConfig; 2] = [
-            op_alloy_registry::ROLLUP_CONFIGS.get(&10).cloned().unwrap(),
-            op_alloy_registry::ROLLUP_CONFIGS.get(&8453).cloned().unwrap(),
-        ];
+        const ROLLUP_CONFIGS: [RollupConfig; 1] = [MANTLE_MAINNET_CONFIG];
 
-        for cfg in configs {
+        for cfg in ROLLUP_CONFIGS {
             let frames = [
                 crate::frame!(0xFF, 0, vec![0xDD; 50], false),
                 crate::frame!(0xFF, 1, vec![0xDD; 50], true),

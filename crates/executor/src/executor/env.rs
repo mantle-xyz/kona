@@ -119,6 +119,8 @@ where
                     mint: None,
                     is_system_transaction: Some(false),
                     enveloped_tx: Some(encoded_transaction.to_vec().into()),
+                    eth_value: None,
+                    eth_tx_value: None,
                 };
                 Ok(env)
             }
@@ -144,6 +146,8 @@ where
                     mint: None,
                     is_system_transaction: Some(false),
                     enveloped_tx: Some(encoded_transaction.to_vec().into()),
+                    eth_value: None,
+                    eth_tx_value: None,
                 };
                 Ok(env)
             }
@@ -169,6 +173,8 @@ where
                     mint: None,
                     is_system_transaction: Some(false),
                     enveloped_tx: Some(encoded_transaction.to_vec().into()),
+                    eth_value: None,
+                    eth_tx_value: None,
                 };
                 Ok(env)
             }
@@ -191,6 +197,8 @@ where
                     mint: tx.mint,
                     is_system_transaction: Some(tx.is_system_transaction),
                     enveloped_tx: Some(encoded_transaction.to_vec().into()),
+                    eth_value: None,
+                    eth_tx_value: None,
                 };
                 Ok(env)
             }

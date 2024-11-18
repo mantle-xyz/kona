@@ -41,11 +41,7 @@ where
     /// The batch queue stage of the provider.
     ///
     /// Must be [None] if `prev` or `batch_validator` is [Some].
-    batch_queue: Option<BatchQueue<P, F>>,
-    /// The batch validator stage of the provider.
-    ///
-    /// Must be [None] if `prev` or `batch_queue` is [Some].
-    batch_validator: Option<BatchValidator<P>>,
+    batch_queue: Option<BatchQueue<P>>,
 }
 
 impl<P, F> BatchProvider<P, F>
@@ -55,37 +51,16 @@ where
 {
     /// Creates a new [BatchProvider] with the given configuration and previous stage.
     pub const fn new(cfg: Arc<RollupConfig>, prev: P, provider: F) -> Self {
-        Self { cfg, provider, prev: Some(prev), batch_queue: None, batch_validator: None }
+        Self { cfg, provider, prev: Some(prev), batch_queue: None }
     }
 
     /// Attempts to update the active stage of the mux.
     pub(crate) fn attempt_update(&mut self) -> PipelineResult<()> {
-        let origin = self.origin().ok_or(PipelineError::MissingOrigin.crit())?;
         if let Some(prev) = self.prev.take() {
             // On the first call to `attempt_update`, we need to determine the active stage to
             // initialize the mux with.
-            if self.cfg.is_holocene_active(origin.timestamp) {
-                self.batch_validator = Some(BatchValidator::new(self.cfg.clone(), prev));
-            } else {
                 self.batch_queue =
-                    Some(BatchQueue::new(self.cfg.clone(), prev, self.provider.clone()));
-            }
-        } else if self.batch_queue.is_some() && self.cfg.is_holocene_active(origin.timestamp) {
-            // If the batch queue is active and Holocene is also active, transition to the batch
-            // validator.
-            let batch_queue = self.batch_queue.take().expect("Must have batch queue");
-            let mut bv = BatchValidator::new(self.cfg.clone(), batch_queue.prev);
-            bv.l1_blocks = batch_queue.l1_blocks;
-            self.batch_validator = Some(bv);
-        } else if self.batch_validator.is_some() && !self.cfg.is_holocene_active(origin.timestamp) {
-            // If the batch validator is active, and Holocene is not active, it indicates an L1
-            // reorg around Holocene activation. Transition back to the batch queue
-            // until Holocene re-activates.
-            let batch_validator = self.batch_validator.take().expect("Must have batch validator");
-            let mut bq =
-                BatchQueue::new(self.cfg.clone(), batch_validator.prev, self.provider.clone());
-            bq.l1_blocks = batch_validator.l1_blocks;
-            self.batch_queue = Some(bq);
+                    Some(BatchQueue::new(self.cfg.clone(), prev));
         }
         Ok(())
     }
@@ -100,9 +75,7 @@ where
     async fn advance_origin(&mut self) -> PipelineResult<()> {
         self.attempt_update()?;
 
-        if let Some(batch_validator) = self.batch_validator.as_mut() {
-            batch_validator.advance_origin().await
-        } else if let Some(batch_queue) = self.batch_queue.as_mut() {
+        if let Some(batch_queue) = self.batch_queue.as_mut() {
             batch_queue.advance_origin().await
         } else {
             Err(PipelineError::NotEnoughData.temp())
@@ -116,14 +89,9 @@ where
     F: L2ChainProvider + Clone + Debug,
 {
     fn origin(&self) -> Option<BlockInfo> {
-        self.batch_validator.as_ref().map_or_else(
-            || {
-                self.batch_queue.as_ref().map_or_else(
-                    || self.prev.as_ref().and_then(|prev| prev.origin()),
-                    |batch_queue| batch_queue.origin(),
-                )
-            },
-            |batch_validator| batch_validator.origin(),
+        self.batch_queue.as_ref().map_or_else(
+            || self.prev.as_ref().and_then(|prev| prev.origin()),
+            |batch_queue| batch_queue.origin(),
         )
     }
 }
@@ -137,9 +105,7 @@ where
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         self.attempt_update()?;
 
-        if let Some(batch_validator) = self.batch_validator.as_mut() {
-            batch_validator.signal(signal).await
-        } else if let Some(batch_queue) = self.batch_queue.as_mut() {
+         if let Some(batch_queue) = self.batch_queue.as_mut() {
             batch_queue.signal(signal).await
         } else {
             Err(PipelineError::NotEnoughData.temp())
@@ -153,19 +119,11 @@ where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug + Send,
     F: L2ChainProvider + Clone + Send + Debug,
 {
-    fn is_last_in_span(&self) -> bool {
-        self.batch_validator.as_ref().map_or_else(
-            || self.batch_queue.as_ref().is_some_and(|batch_queue| batch_queue.is_last_in_span()),
-            |batch_validator| batch_validator.is_last_in_span(),
-        )
-    }
 
     async fn next_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch> {
         self.attempt_update()?;
 
-        if let Some(batch_validator) = self.batch_validator.as_mut() {
-            batch_validator.next_batch(parent).await
-        } else if let Some(batch_queue) = self.batch_queue.as_mut() {
+        if let Some(batch_queue) = self.batch_queue.as_mut() {
             batch_queue.next_batch(parent).await
         } else {
             Err(PipelineError::NotEnoughData.temp())
@@ -189,13 +147,12 @@ mod test {
     fn test_batch_provider_validator_active() {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(0), ..Default::default() });
+        let cfg = Arc::new(RollupConfig {  ..Default::default() });
         let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
 
         assert!(batch_provider.attempt_update().is_ok());
         assert!(batch_provider.prev.is_none());
         assert!(batch_provider.batch_queue.is_none());
-        assert!(batch_provider.batch_validator.is_some());
     }
 
     #[test]
@@ -208,14 +165,13 @@ mod test {
         assert!(batch_provider.attempt_update().is_ok());
         assert!(batch_provider.prev.is_none());
         assert!(batch_provider.batch_queue.is_some());
-        assert!(batch_provider.batch_validator.is_none());
     }
 
     #[test]
     fn test_batch_provider_transition_stage() {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(2), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
 
         batch_provider.attempt_update().unwrap();
@@ -229,7 +185,6 @@ mod test {
         // Transition to the BatchValidator stage.
         batch_provider.attempt_update().unwrap();
         assert!(batch_provider.batch_queue.is_none());
-        assert!(batch_provider.batch_validator.is_some());
 
         assert_eq!(batch_provider.origin().unwrap().number, 1);
     }
@@ -238,7 +193,7 @@ mod test {
     fn test_batch_provider_transition_stage_backwards() {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(2), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
 
         batch_provider.attempt_update().unwrap();
@@ -252,17 +207,11 @@ mod test {
         // Transition to the BatchValidator stage.
         batch_provider.attempt_update().unwrap();
         assert!(batch_provider.batch_queue.is_none());
-        assert!(batch_provider.batch_validator.is_some());
 
-        // Update the L1 origin to before Holocene activation, to simulate a re-org.
-        let Some(ref mut stage) = batch_provider.batch_validator else {
-            panic!("Expected BatchValidator");
-        };
         stage.prev.origin = Some(BlockInfo::default());
 
         batch_provider.attempt_update().unwrap();
         assert!(batch_provider.batch_queue.is_some());
-        assert!(batch_provider.batch_validator.is_none());
     }
 
     #[tokio::test]
@@ -285,15 +234,11 @@ mod test {
     async fn test_batch_provider_reset_validator() {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(0), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
 
         // Reset the batch provider.
         batch_provider.signal(ResetSignal::default().signal()).await.unwrap();
 
-        let Some(bv) = batch_provider.batch_validator else {
-            panic!("Expected BatchValidator");
-        };
-        assert!(bv.l1_blocks.len() == 1);
     }
 }
