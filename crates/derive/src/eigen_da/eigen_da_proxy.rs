@@ -3,9 +3,10 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::time::Duration;
 use anyhow::anyhow;
+use async_trait::async_trait;
 use prost::Message;
 use reqwest::Client;
-use rlp::{decode, encode, RlpStream};
+use rlp::{decode, RlpStream};
 use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 use tonic::codegen::http::StatusCode;
@@ -16,7 +17,8 @@ use crate::eigen_da::config::EigenDaConfig;
 use crate::eigen_da::da::IEigenDA;
 use crate::eigen_da::grpc::{BlobInfo, BlobStatusReply, BlobStatusRequest, DisperserClient, RetrieveBlobRequest};
 use crate::errors::EigenDAProxyError;
-
+use alloc::boxed::Box;
+use bytes::Bytes;
 
 pub const CERT_V0: u8 = 0;
 pub const EIGEN_DA_COMMITMENT_TYPE: u8 = 0;
@@ -89,7 +91,7 @@ impl EigenDaProxy {
 
 }
 
-
+#[async_trait]
 impl IEigenDA for EigenDaProxy {
 
 
@@ -103,7 +105,7 @@ impl IEigenDA for EigenDaProxy {
             .tls_config(tls_config).map_err(|e|EigenDAProxyError::RetrieveBlob(e.to_string()))?
             .timeout(self.retrieve_blob_timeout)
             .connect()
-            .await?.map_err(|e|EigenDAProxyError::RetrieveBlob(e.to_string()))?;
+            .await.map_err(|e|EigenDAProxyError::RetrieveBlob(e.to_string()))?;
         let mut da_client = DisperserClient::new(channel);
         let ctx = timeout(self.retrieve_blob_timeout, async {
             let request = Request::new(RetrieveBlobRequest {
@@ -126,7 +128,9 @@ impl IEigenDA for EigenDaProxy {
         let blob_info = Self::decode_commitment(commitment).map_err(|e|EigenDAProxyError::RetrieveBlobWithCommitment(e.to_string()))?;
         let request_url = format!("{}/get/0x{}", self.proxy_url, hex::encode(&commitment));
         let req = self.retrieve_client.get(&request_url);
-        let response =  timeout(self.retrieve_blob_timeout, req.send()).await??.map_err(|e|EigenDAProxyError::RetrieveBlobWithCommitment(e.to_string()))?;
+        let response =  timeout(self.retrieve_blob_timeout, req.send())
+            .await.map_err(|e|EigenDAProxyError::RetrieveBlobWithCommitment(e.to_string()))?
+            .map_err(|e|EigenDAProxyError::RetrieveBlobWithCommitment(e.to_string()))?;
         if response.status() == StatusCode::NOT_FOUND {
             return Err(EigenDAProxyError::RetrieveBlobWithCommitment("Blob not found".into()));
         } else if response.status() != StatusCode::OK {
@@ -137,7 +141,7 @@ impl IEigenDA for EigenDaProxy {
         }
 
 
-        let body = response.bytes().await?.map_err(|e| EigenDAProxyError::RetrieveBlobWithCommitment(e.to_string()))?;
+        let body = response.bytes().await.map_err(|e| EigenDAProxyError::RetrieveBlobWithCommitment(e.to_string()))?;
         Ok(body.to_vec())
     }
 
@@ -150,9 +154,9 @@ impl IEigenDA for EigenDaProxy {
             .disperse_client
             .post(&url)
             .header("Content-Type", "application/octet-stream")
-            .body(tx_data);
+            .body(Bytes::from(tx_data.to_vec()));
 
-        let response = timeout(self.retrieve_blob_timeout, request.send()).await?
+        let response = timeout(self.retrieve_blob_timeout, request.send()).await
             .map_err(|e: Elapsed| EigenDAProxyError::TimeOut(e.to_string()))?
             .map_err(|e|EigenDAProxyError::DisperseBlob(e.to_string()))?;
 
@@ -163,7 +167,7 @@ impl IEigenDA for EigenDaProxy {
         }
 
 
-        let response_body = response.bytes().await?;
+        let response_body = response.bytes().await.map_err(|e| EigenDAProxyError::RetrieveBlob(e.to_string()))?;
 
         let comm = Self::decode_commitment(&response_body).map_err(|e| EigenDAProxyError::DisperseBlob(e.to_string()))?;
 
@@ -177,13 +181,14 @@ impl IEigenDA for EigenDaProxy {
             .tls_config(tls_config).map_err(|e|EigenDAProxyError::GetBlobStatus(e.to_string()))?
             .timeout(self.retrieve_blob_timeout)
             .connect()
-            .await?.map_err(|e|EigenDAProxyError::GetBlobStatus(e.to_string()))?;
+            .await.map_err(|e|EigenDAProxyError::GetBlobStatus(e.to_string()))?;
         let mut da_client = DisperserClient::new(channel);
         let request = Request::new(BlobStatusRequest {
-            request_id
+            request_id: request_id.to_vec()
         });
         let response = timeout(self.retrieve_blob_timeout, da_client.get_blob_status(request))
-            .await?.map_err(|e|EigenDAProxyError::GetBlobStatus(e.to_string()))?;
+            .await.map_err(|e| EigenDAProxyError::TimeOut(e.to_string()))?
+            .map_err(|e|EigenDAProxyError::GetBlobStatus(e.to_string()))?;
         Ok(response.into_inner())
     }
 

@@ -12,10 +12,11 @@ use kona_derive::{
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::BlockInfo;
 use std::sync::Arc;
-
+use kona_derive::eigen_da::{EigenDaProxy, IEigenDA};
 use crate::{
     AlloyChainProvider, AlloyL2ChainProvider, OnlineBeaconClient, OnlineBlobProviderWithFallback,
 };
+use crate::eigen_da_provider::OnlineEigenDaProvider;
 
 /// An online derivation pipeline.
 pub type OnlinePipeline =
@@ -24,7 +25,7 @@ pub type OnlinePipeline =
 /// An `online` Ethereum data source.
 pub type OnlineDataProvider = EthereumDataSource<
     AlloyChainProvider,
-    OnlineBlobProviderWithFallback<OnlineBeaconClient, OnlineBeaconClient>,
+    OnlineBlobProviderWithFallback<OnlineBeaconClient, OnlineBeaconClient>, OnlineEigenDaProvider<EigenDaProxy>,
 >;
 
 /// An `online` payload attributes builder for the `AttributesQueue` stage of the derivation
@@ -39,9 +40,7 @@ pub type OnlineAttributesQueue<DAP> = AttributesQueue<
             ChannelReader<
                 ChannelProvider<FrameQueue<L1Retrieval<DAP, L1Traversal<AlloyChainProvider>>>>,
             >,
-            AlloyL2ChainProvider,
         >,
-        AlloyL2ChainProvider,
     >,
     OnlineAttributesBuilder,
 >;
@@ -51,7 +50,7 @@ pub type OnlineAttributesQueue<DAP> = AttributesQueue<
 pub fn new_online_pipeline(
     rollup_config: Arc<RollupConfig>,
     chain_provider: AlloyChainProvider,
-    dap_source: OnlineDataProvider,
+    dap_source: EthereumDataSource<AlloyChainProvider, OnlineBlobProviderWithFallback<OnlineBeaconClient, OnlineBeaconClient>,OnlineEigenDaProvider<EigenDaProxy>>,
     l2_chain_provider: AlloyL2ChainProvider,
     builder: OnlineAttributesBuilder,
     origin: BlockInfo,
@@ -68,6 +67,7 @@ pub fn new_online_pipeline(
 
 #[cfg(test)]
 mod tests {
+    use kona_derive::eigen_da::EigenDaConfig;
     use super::*;
     use crate::OnlineBlobProvider;
     use kona_derive::prelude::OriginProvider;
@@ -84,8 +84,12 @@ mod tests {
         let beacon_client = OnlineBeaconClient::new_http("http://127.0.0.1:5555".into());
         let blob_provider = OnlineBlobProvider::new(beacon_client, None, None);
         let blob_provider = OnlineBlobProviderWithFallback::new(blob_provider, None);
+        let eigen_da_config = EigenDaConfig::default();
+        let eigen_da_provider =
+            EigenDaProxy::new(eigen_da_config);
+        let online_eigen_da_provider = OnlineEigenDaProvider::new(eigen_da_provider,"".to_string(),false);
         let dap_source =
-            EthereumDataSource::new(chain_provider.clone(), blob_provider, &rollup_config);
+            EthereumDataSource::new(chain_provider.clone(), blob_provider,online_eigen_da_provider, &rollup_config);
         let builder = StatefulAttributesBuilder::new(
             rollup_config.clone(),
             l2_chain_provider.clone(),

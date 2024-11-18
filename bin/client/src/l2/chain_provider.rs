@@ -107,11 +107,8 @@ impl<T: CommsClient + Send + Sync> BatchValidationProvider for OracleL2ChainProv
             body: BlockBody {
                 transactions,
                 ommers: Vec::new(),
-                withdrawals: self
-                    .boot_info
-                    .rollup_config
-                    .is_canyon_active(timestamp)
-                    .then(|| alloy_eips::eip4895::Withdrawals::new(Vec::new())),
+                withdrawals: None,
+                requests: None,
             },
         };
         Ok(optimism_block)

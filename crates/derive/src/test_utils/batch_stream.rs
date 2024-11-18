@@ -41,8 +41,6 @@ impl OriginProvider for TestBatchStreamProvider {
 
 #[async_trait]
 impl BatchStreamProvider for TestBatchStreamProvider {
-    fn flush(&mut self) {}
-
     async fn next_batch(&mut self) -> PipelineResult<Batch> {
         self.batches.pop().ok_or(PipelineError::Eof.temp())?
     }

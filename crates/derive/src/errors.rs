@@ -4,8 +4,7 @@ use alloc::string::{String, ToString};
 use alloy_eips::BlockNumHash;
 use alloy_primitives::B256;
 use op_alloy_genesis::system::SystemConfigUpdateError;
-use op_alloy_protocol::{DepositError, SpanBatchError, MAX_SPAN_BATCH_ELEMENTS};
-use tonic::Status;
+use op_alloy_protocol::{DepositError, SpanBatchError};
 
 /// Blob Decuding Error
 #[derive(derive_more::Display, Debug, PartialEq, Eq)]
@@ -259,7 +258,7 @@ impl From<DepositError> for PipelineEncodingError {
 #[derive(derive_more::Display, Debug, PartialEq, Eq)]
 pub enum BatchDecompressionError {
     /// The buffer exceeds the [MAX_SPAN_BATCH_ELEMENTS] protocol parameter.
-    #[display("The batch exceeds the maximum number of elements: {max_size}", max_size = MAX_SPAN_BATCH_ELEMENTS)]
+    #[display("The batch exceeds the maximum number of elements: {max_size}", max_size = 10000000)]
     BatchTooLarge,
 }
 
@@ -356,6 +355,9 @@ pub enum EigenDAProviderError {
     /// Request timeout.
     #[display("Request blob timeout, error: {_0}")]
     TimeOut(String),
+    /// Retrieve Frame from eigen da error.
+    #[display("Failed to retrieve blob from eigen da, error: {_0}")]
+    RetrieveBlob(String),
     #[display("Get blob from indexer da, status: {_0}")]
     Status(String),
     /// Error pertaining to the backend transport.
@@ -365,13 +367,15 @@ pub enum EigenDAProviderError {
     RLPDecodeError(String),
     #[display("Failed to decode proto buf, error: {_0}")]
     ProtoDecodeError(String),
+    /// Retrieve Frame from blob error.
+    #[display("Failed to retrieve blob from eth blob, error: {_0}")]
+    Blob(String),
+    #[display("Error: {_0}")]
+    String(String),
 
 }
-impl From<Status> for EigenDAProviderError {
-    fn from(status: Status) -> Self {
-        EigenDAProviderError::Status(status.to_string())
-    }
-}
+
+
 impl core::error::Error for EigenDAProviderError {}
 
 #[cfg(test)]

@@ -6,6 +6,7 @@
 use super::OracleL1ChainProvider;
 use crate::{l2::OracleL2ChainProvider, BootInfo, HintType};
 use alloc::{sync::Arc, vec::Vec};
+use alloc::string::ToString;
 use alloy_consensus::{Header, Sealed};
 use alloy_primitives::B256;
 use anyhow::{anyhow, Result};
@@ -32,15 +33,17 @@ use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::{BatchValidationProvider, BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::OpAttributesWithParent;
 use tracing::{error, info, warn};
+use kona_derive::eigen_da::{EigenDaConfig, EigenDaProxy};
+use kona_derive::traits::EigenDAProvider;
 
 /// An oracle-backed derivation pipeline.
-pub type OraclePipeline<O, B> = DerivationPipeline<
-    OracleAttributesQueue<OracleDataProvider<O, B>, O>,
+pub type OraclePipeline<O, B, E> = DerivationPipeline<
+    OracleAttributesQueue<OracleDataProvider<O, B, E>, O>,
     OracleL2ChainProvider<O>,
 >;
 
 /// An oracle-backed Ethereum data source.
-pub type OracleDataProvider<O, B> = EthereumDataSource<OracleL1ChainProvider<O>, B>;
+pub type OracleDataProvider<O, B, E> = EthereumDataSource<OracleL1ChainProvider<O>, B, E>;
 
 /// An oracle-backed payload attributes builder for the `AttributesQueue` stage of the derivation
 /// pipeline.
@@ -56,9 +59,7 @@ pub type OracleAttributesQueue<DAP, O> = AttributesQueue<
                     FrameQueue<L1Retrieval<DAP, L1Traversal<OracleL1ChainProvider<O>>>>,
                 >,
             >,
-            OracleL2ChainProvider<O>,
         >,
-        OracleL2ChainProvider<O>,
     >,
     OracleAttributesBuilder<O>,
 >;
@@ -71,23 +72,25 @@ pub type OracleAttributesQueue<DAP, O> = AttributesQueue<
 ///
 /// [OpPayloadAttributes]: op_alloy_rpc_types_engine::OpPayloadAttributes
 #[derive(Debug)]
-pub struct DerivationDriver<O, B>
+pub struct DerivationDriver<O, B, E>
 where
     O: CommsClient + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     /// The current L2 safe head.
     l2_safe_head: L2BlockInfo,
     /// The header of the L2 safe head.
     l2_safe_head_header: Sealed<Header>,
     /// The inner pipeline.
-    pipeline: OraclePipeline<O, B>,
+    pipeline: OraclePipeline<O, B, E>,
 }
 
-impl<O, B> DerivationDriver<O, B>
+impl<O, B, E> DerivationDriver<O, B, E>
 where
     O: CommsClient + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     /// Returns the current L2 safe head [L2BlockInfo].
     pub fn l2_safe_head(&self) -> &L2BlockInfo {
@@ -119,6 +122,7 @@ where
         boot_info: &BootInfo,
         caching_oracle: &O,
         blob_provider: B,
+        eigen_da_provider: E,
         mut chain_provider: OracleL1ChainProvider<O>,
         mut l2_chain_provider: OracleL2ChainProvider<O>,
     ) -> Result<Self> {
@@ -139,7 +143,8 @@ where
             l2_chain_provider.clone(),
             chain_provider.clone(),
         );
-        let dap = EthereumDataSource::new(chain_provider.clone(), blob_provider, &cfg);
+
+        let dap = EthereumDataSource::new(chain_provider.clone(), blob_provider,eigen_da_provider, &cfg);
 
         // Walk back the starting L1 block by `channel_timeout` to ensure that the full channel is
         // captured.
@@ -194,39 +199,7 @@ where
                 Ok(Header { number, .. }) => *number,
                 Err(e) => {
                     error!(target: "client", "Failed to execute L2 block: {}", e);
-
-                    if cfg.is_holocene_active(attributes.payload_attributes.timestamp) {
-                        // Retry with a deposit-only block.
-                        warn!(target: "client", "Flushing current channel and retrying deposit only block");
-
-                        // Flush the current batch and channel - if a block was replaced with a
-                        // deposit-only block due to execution failure, the
-                        // batch and channel it is contained in is forwards
-                        // invalidated.
-                        self.pipeline.signal(Signal::FlushChannel).await?;
-
-                        // Strip out all transactions that are not deposits.
-                        attributes.transactions = attributes.transactions.map(|txs| {
-                            txs.into_iter()
-                                .filter(|tx| (!tx.is_empty() && tx[0] == OpTxType::Deposit as u8))
-                                .collect::<Vec<_>>()
-                        });
-
-                        // Retry the execution.
-                        executor = self.new_executor(cfg, provider, hinter, handle_register);
-                        match executor.execute_payload(attributes) {
-                            Ok(Header { number, .. }) => *number,
-                            Err(e) => {
-                                error!(
-                                    target: "client",
-                                    "Critical - Failed to execute deposit-only block: {e}",
-                                );
-                                return Err(e.into());
-                            }
-                        }
-                    } else {
-                        continue;
-                    }
+                    continue;
                 }
             };
             let output_root = executor.compute_output_root()?;

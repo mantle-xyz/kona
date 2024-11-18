@@ -1,5 +1,6 @@
 //! Contains an online implementation of the `EigenDaProvider` trait.
 
+use async_trait::async_trait;
 use tokio::time::timeout;
 use tonic::{Request};
 use kona_derive::eigen_da::{ FramesAndDataRequest, IEigenDA};
@@ -35,6 +36,7 @@ impl<E: IEigenDA > OnlineEigenDaProvider<E> {
     }
 }
 
+#[async_trait]
 impl<E> EigenDAProvider for OnlineEigenDaProvider<E>
 where
     E: IEigenDA + Send + Sync,
@@ -43,10 +45,12 @@ where
 
     async fn retrieve_blob(&mut self, batch_header_hash: &[u8], blob_index: u32) -> Result<Vec<u8>, Self::Error> {
         self.eigen_da_proxy_client.retrieve_blob(batch_header_hash, blob_index).await
+            .map_err(|e|EigenDAProviderError::String(e.to_string()))
     }
 
     async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
         self.eigen_da_proxy_client.retrieve_blob_with_commitment(commitment).await
+            .map_err(|e|EigenDAProviderError::String(e.to_string()))
     }
 
     async fn retrieval_frames_from_da_indexer(&mut self, tx_hash: &str) -> Result<Vec<u8>, Self::Error> {
@@ -54,7 +58,7 @@ where
         let channel = Channel::from_shared(self.mantle_da_indexer_socket.clone())
             .map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?
             .connect()
-            .await?
+            .await
             .map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
 
 
@@ -77,7 +81,7 @@ where
 
     }
 
-    async fn da_indexer_enable(&mut self) -> Result<bool, Self::Error> {
-        Ok(self.mantle_da_indexer_enable)
+    fn da_indexer_enable(&mut self) -> bool {
+        self.mantle_da_indexer_enable
     }
 }

@@ -142,3 +142,11 @@ rocksdb = { version = "0.22", default-features = false }
 # proto
 tonic = "0.12.3"
 protoc-rust = "2.28.0"
+
+
+prost = "0.13.3"
+bytes = "1.8.0"
+hex = "0.4.3"
+rlp = "0.6.1"
+tokio-rustls = "0.26.0"
+protobuf = "2.28.0"

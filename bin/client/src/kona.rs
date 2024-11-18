@@ -46,55 +46,56 @@ fn main() -> Result<()> {
         ////////////////////////////////////////////////////////////////
         //                   DERIVATION & EXECUTION                   //
         ////////////////////////////////////////////////////////////////
-
+        //TODO
         // Create a new derivation driver with the given boot information and oracle.
-        let mut driver = DerivationDriver::new(
-            boot.as_ref(),
-            oracle.as_ref(),
-            beacon,
-            l1_provider,
-            l2_provider.clone(),
-        )
-        .await?;
+        // let mut driver = DerivationDriver::new(
+        //     boot.as_ref(),
+        //     oracle.as_ref(),
+        //     beacon,
+        //     l1_provider,
+        //     l2_provider.clone(),
+        // )
+        // .await?;
 
-        // Run the derivation pipeline until we are able to produce the output root of the claimed
-        // L2 block.
-        let (number, output_root) = driver
-            .produce_output(&boot.rollup_config, &l2_provider, &l2_provider, fpvm_handle_register)
-            .await?;
-
-        ////////////////////////////////////////////////////////////////
-        //                          EPILOGUE                          //
-        ////////////////////////////////////////////////////////////////
-
-        if number != boot.claimed_l2_block_number || output_root != boot.claimed_l2_output_root {
-            tracing::error!(
-                target: "client",
-                "Failed to validate L2 block #{number} with output root {output_root}",
-                number = number,
-                output_root = output_root
-            );
-            kona_common::io::print(&alloc::format!(
-                "Failed to validate L2 block #{} with output root {}\n",
-                number,
-                output_root
-            ));
-
-            kona_common::io::exit(1);
-        }
-
-        tracing::info!(
-            target: "client",
-            "Successfully validated L2 block #{number} with output root {output_root}",
-            number = number,
-            output_root = output_root
-        );
-
-        kona_common::io::print(&alloc::format!(
-            "Successfully validated L2 block #{} with output root {}\n",
-            number,
-            output_root
-        ));
+        // let driver = None;
+        // // Run the derivation pipeline until we are able to produce the output root of the claimed
+        // // L2 block.
+        // let (number, output_root) = driver
+        //     .produce_output(&boot.rollup_config, &l2_provider, &l2_provider, fpvm_handle_register)
+        //     .await?;
+        //
+        // ////////////////////////////////////////////////////////////////
+        // //                          EPILOGUE                          //
+        // ////////////////////////////////////////////////////////////////
+        //
+        // if number != boot.claimed_l2_block_number || output_root != boot.claimed_l2_output_root {
+        //     tracing::error!(
+        //         target: "client",
+        //         "Failed to validate L2 block #{number} with output root {output_root}",
+        //         number = number,
+        //         output_root = output_root
+        //     );
+        //     kona_common::io::print(&alloc::format!(
+        //         "Failed to validate L2 block #{} with output root {}\n",
+        //         number,
+        //         output_root
+        //     ));
+        //
+        //     kona_common::io::exit(1);
+        // }
+        //
+        // tracing::info!(
+        //     target: "client",
+        //     "Successfully validated L2 block #{number} with output root {output_root}",
+        //     number = number,
+        //     output_root = output_root
+        // );
+        //
+        // kona_common::io::print(&alloc::format!(
+        //     "Successfully validated L2 block #{} with output root {}\n",
+        //     number,
+        //     output_root
+        // ));
 
         Ok::<_, anyhow::Error>(())
     })
