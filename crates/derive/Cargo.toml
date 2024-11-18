@@ -33,21 +33,23 @@ thiserror.workspace = true
 # `test-utils` feature dependencies
 spin = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true, optional = true, features = ["fmt"] }
-prost = "0.13.3"
-tonic = { workspace = true, optional = true, features = ["tls"]}
-bytes = "1.8.0"
-reqwest = "0.12.9"
-hex = "0.4.3"
-anyhow = "1.0.92"
-rlp = "0.6.1"
-tokio-rustls = "0.26.0"
-protobuf = "2.28.0"
+
+prost = { workspace = true, features = ["std"]}
+tonic = { workspace = true, features = ["tls"]}
+bytes = { workspace = true}
+reqwest = {workspace = true}
+hex = {workspace = true}
+anyhow = {workspace = true}
+rlp = {workspace = true}
+tokio-rustls = {workspace = true}
+protobuf = {workspace = true}
+tokio = {workspace = true, features = ["full"]}
+
 
 [dev-dependencies]
 spin.workspace = true
 proptest.workspace = true
 serde_json.workspace = true
-op-alloy-registry.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tracing-subscriber = { workspace = true, features = ["fmt"] }
 alloy-primitives = { workspace = true, features = ["rlp", "k256", "map", "arbitrary"] }

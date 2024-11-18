@@ -22,15 +22,12 @@ use op_alloy_protocol::{BlockInfo, L2BlockInfo, SingleBatch};
 /// When transitioning between the two stages, the mux will reset the active stage, but
 /// retain `l1_blocks`.
 #[derive(Debug)]
-pub struct BatchProvider<P, F>
+pub struct BatchProvider<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
-    F: L2ChainProvider + Clone + Debug,
 {
     /// The rollup configuration.
     cfg: Arc<RollupConfig>,
-    /// The L2 chain provider.
-    provider: F,
     /// The previous stage of the derivation pipeline.
     ///
     /// If this is set to [None], the multiplexer has been activated and the active stage
@@ -44,14 +41,13 @@ where
     batch_queue: Option<BatchQueue<P>>,
 }
 
-impl<P, F> BatchProvider<P, F>
+impl<P> BatchProvider<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
-    F: L2ChainProvider + Clone + Debug,
 {
     /// Creates a new [BatchProvider] with the given configuration and previous stage.
-    pub const fn new(cfg: Arc<RollupConfig>, prev: P, provider: F) -> Self {
-        Self { cfg, provider, prev: Some(prev), batch_queue: None }
+    pub const fn new(cfg: Arc<RollupConfig>, prev: P) -> Self {
+        Self { cfg, prev: Some(prev), batch_queue: None }
     }
 
     /// Attempts to update the active stage of the mux.
@@ -59,7 +55,7 @@ where
         if let Some(prev) = self.prev.take() {
             // On the first call to `attempt_update`, we need to determine the active stage to
             // initialize the mux with.
-                self.batch_queue =
+            self.batch_queue =
                     Some(BatchQueue::new(self.cfg.clone(), prev));
         }
         Ok(())
@@ -67,10 +63,9 @@ where
 }
 
 #[async_trait]
-impl<P, F> OriginAdvancer for BatchProvider<P, F>
+impl<P> OriginAdvancer for BatchProvider<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
-    F: L2ChainProvider + Clone + Send + Debug,
 {
     async fn advance_origin(&mut self) -> PipelineResult<()> {
         self.attempt_update()?;
@@ -83,10 +78,9 @@ where
     }
 }
 
-impl<P, F> OriginProvider for BatchProvider<P, F>
+impl<P> OriginProvider for BatchProvider<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
-    F: L2ChainProvider + Clone + Debug,
 {
     fn origin(&self) -> Option<BlockInfo> {
         self.batch_queue.as_ref().map_or_else(
@@ -97,10 +91,9 @@ where
 }
 
 #[async_trait]
-impl<P, F> SignalReceiver for BatchProvider<P, F>
+impl<P> SignalReceiver for BatchProvider<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
-    F: L2ChainProvider + Clone + Send + Debug,
 {
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         self.attempt_update()?;
@@ -114,10 +107,9 @@ where
 }
 
 #[async_trait]
-impl<P, F> AttributesProvider for BatchProvider<P, F>
+impl<P> AttributesProvider for BatchProvider<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug + Send,
-    F: L2ChainProvider + Clone + Send + Debug,
 {
 
     async fn next_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch> {
@@ -148,7 +140,7 @@ mod test {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
         let cfg = Arc::new(RollupConfig {  ..Default::default() });
-        let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
+        let mut batch_provider = BatchProvider::new(cfg, provider);
 
         assert!(batch_provider.attempt_update().is_ok());
         assert!(batch_provider.prev.is_none());
@@ -160,7 +152,7 @@ mod test {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
         let cfg = Arc::new(RollupConfig::default());
-        let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
+        let mut batch_provider = BatchProvider::new(cfg, provider);
 
         assert!(batch_provider.attempt_update().is_ok());
         assert!(batch_provider.prev.is_none());
@@ -172,7 +164,7 @@ mod test {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
         let cfg = Arc::new(RollupConfig { ..Default::default() });
-        let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
+        let mut batch_provider = BatchProvider::new(cfg, provider);
 
         batch_provider.attempt_update().unwrap();
 
@@ -194,7 +186,7 @@ mod test {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
         let cfg = Arc::new(RollupConfig { ..Default::default() });
-        let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
+        let mut batch_provider = BatchProvider::new(cfg, provider);
 
         batch_provider.attempt_update().unwrap();
 
@@ -219,7 +211,7 @@ mod test {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
         let cfg = Arc::new(RollupConfig::default());
-        let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
+        let mut batch_provider = BatchProvider::new(cfg, provider);
 
         // Reset the batch provider.
         batch_provider.signal(ResetSignal::default().signal()).await.unwrap();
@@ -235,7 +227,7 @@ mod test {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
         let cfg = Arc::new(RollupConfig { ..Default::default() });
-        let mut batch_provider = BatchProvider::new(cfg, provider, l2_provider);
+        let mut batch_provider = BatchProvider::new(cfg, provider);
 
         // Reset the batch provider.
         batch_provider.signal(ResetSignal::default().signal()).await.unwrap();

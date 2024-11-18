@@ -1,12 +1,9 @@
 use alloc::vec::Vec;
 use core::fmt::Display;
 use async_trait::async_trait;
-
-use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
-use bytes::Bytes;
 use crate::eigen_da::grpc::{BlobInfo, BlobStatusReply};
 use crate::traits::BlobProvider;
+use alloc::boxed::Box;
 
 #[async_trait]
 pub trait IEigenDA {

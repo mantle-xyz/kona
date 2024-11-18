@@ -46,7 +46,7 @@ pub trait EigenDAProvider {
     async fn retrieval_frames_from_da_indexer(&mut self, tx_hash: &str) -> Result<Vec<u8>, Self::Error>;
 
     /// Weather use mantle eigen_da indexer service
-    async fn da_indexer_enable(&mut self) -> Result<bool, Self::Error>;
+    fn da_indexer_enable(&mut self) -> bool;
 
 }
 

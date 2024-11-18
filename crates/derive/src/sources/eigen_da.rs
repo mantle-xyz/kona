@@ -15,6 +15,8 @@ use crate::proto::{calldata_frame, CalldataFrame};
 use crate::sources::{BlobData, IndexedBlobHash};
 use crate::traits::{AsyncIterator, BlobProvider, EigenDAProvider};
 use prost::Message;
+use alloc::boxed::Box;
+
 
 
 /// Useful to dinstiguish between plain calldata and alt-da blob refs
@@ -97,7 +99,7 @@ where
                 },
                 _ => continue,
             };
-            let Some(to) = tx_kind else { continue };
+            let Some(to) = tx_kind.to().copied() else { continue };
 
             if to != self.batcher_address {
                 number += blob_hashes.map_or(0, |h| h.len() as u64);
@@ -109,10 +111,10 @@ where
             }
             if self.eigen_da_provider.da_indexer_enable() {
                 let data = self.eigen_da_provider
-                    .retrieval_frames_from_da_indexer(&*hex::encode(tx.tx_hash())).await?;
+                    .retrieval_frames_from_da_indexer(&*hex::encode(tx.tx_hash())).await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
 
                 let blob_data:Vec<u8> = decode(&*data).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
-                out.extend(Bytes::from(blob_data.clone()));
+                out.push(Bytes::from(blob_data.clone()));
                 continue;
             }
 
@@ -136,20 +138,25 @@ where
                 let blob_data = calldata.slice(1..);
                 let calldata_frame: CalldataFrame = CalldataFrame::decode(blob_data)
                     .map_err(|e|EigenDAProviderError::ProtoDecodeError(e.to_string()))?;
-                match calldata_frame.value {
-                    calldata_frame::Value::Frame(frame) => {
-                        out.push(Bytes::from(frame))
-                    }
-                    calldata_frame::Value::FrameRef(frame_ref) => {
-                        if frame_ref.quorum_ids.len() == 0 {
-                            warn!(target: "eigen-da-source", "decoded frame ref contains no quorum IDs");
-                            continue;
+                if let Some(value) = calldata_frame.value {
+                    match value {
+                        calldata_frame::Value::Frame(frame) => {
+                            out.push(Bytes::from(frame))
                         }
-                        let blob_data = self.eigen_da_provider.retrieve_blob(&*frame_ref.batch_header_hash, frame_ref.blob_index).await?;
-                        let blobs = &blob_data[..frame_ref.blob_length];
-                        let blob_data:Vec<u8> = decode(blobs).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
-                        out.extend(Bytes::from(blob_data.clone()));
+                        calldata_frame::Value::FrameRef(frame_ref) => {
+                            if frame_ref.quorum_ids.len() == 0 {
+                                warn!(target: "eigen-da-source", "decoded frame ref contains no quorum IDs");
+                                continue;
+                            }
+                            let blob_data = self.eigen_da_provider
+                                .retrieve_blob(&*frame_ref.batch_header_hash, frame_ref.blob_index)
+                                .await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
+                            let blobs = &blob_data[..frame_ref.blob_length as usize];
+                            let blob_data:Vec<u8> = decode(blobs).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
+                            out.push(Bytes::from(blob_data.clone()));
+                        }
                     }
+
                 }
             }
         }
@@ -171,17 +178,17 @@ where
             let blobs =
                 self.blob_provider.get_blobs(&self.block_ref, &blob_hashes).await.map_err(|e| {
                     warn!(target: "blob-source", "Failed to fetch blobs: {e}");
-                    BlobProviderError::Backend(e.to_string())
+                    EigenDAProviderError::Blob(BlobProviderError::Backend(e.to_string()).to_string())
                 })?;
             let mut whole_blob_data = Vec::new();
             for blob in blobs {
                 if blob.is_empty() {
-                    return Err(BlobDecodingError::MissingData);
+                    return Err(EigenDAProviderError::RLPDecodeError(BlobDecodingError::MissingData.to_string()));
                 }
                 whole_blob_data.extend(blob.to_vec().clone());
             }
-            let rlp_blob:Vec<u8> = decode(whole_blob_data).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
-            blob_data.extend(Bytes::from(rlp_blob.clone()));
+            let rlp_blob:Vec<u8> = decode(&whole_blob_data).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
+            blob_data.push(Bytes::from(rlp_blob.clone()));
         }
         self.open = true;
         self.data = blob_data;
@@ -222,7 +229,7 @@ where
             Err(e) => return e,
         };
 
-        Ok(next_data)
+         Ok(next_data)
 
     }
 }

@@ -210,10 +210,9 @@ mod tests {
                 transactions: None,
                 no_tx_pool: None,
                 gas_limit: None,
-                eip_1559_params: None,
+                base_fee: None,
             },
             parent: Default::default(),
-            is_last_in_span: false,
         }
     }
 

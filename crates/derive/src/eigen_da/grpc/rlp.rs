@@ -9,17 +9,18 @@ impl Encodable for BlobInfo {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(2);
         match &self.blob_header {
-            Some(blob_header) => s.append(blob_header),
-            None => s.append_empty_data()
+            Some(blob_header) => {s.append(blob_header);},
+            None => {s.append_empty_data();},
         }
         match &self.blob_verification_proof {
-            Some(blob_verification_proof) => s.append(blob_verification_proof),
-            None => s.append_empty_data()
+            Some(blob_verification_proof) => {s.append(blob_verification_proof);},
+            None => {s.append_empty_data();},
         }
         ;
     }
 }
 
+#[allow(elided_lifetimes_in_paths)]
 impl Decodable for BlobInfo {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 2 {
@@ -47,14 +48,15 @@ impl Encodable for BlobVerificationProof {
         s.append(&self.batch_id);
         s.append(&self.blob_index);
         match &self.batch_metadata {
-            Some(batch_metadata) => s.append(batch_metadata),
-            None => s.append_empty_data(),
+            Some(batch_metadata) => {s.append(batch_metadata);},
+            None => {s.append_empty_data();},
         }
         s.append(&self.inclusion_proof);
         s.append(&self.quorum_indexes);
     }
 }
 
+#[allow(elided_lifetimes_in_paths)]
 impl Decodable for BlobVerificationProof {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 5 {
@@ -81,8 +83,8 @@ impl Encodable for BatchMetadata {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(5);
         match &self.batch_header {
-            Some(batch_header) => s.append(batch_header),
-            None => s.append_empty_data(),
+            Some(batch_header) => {s.append(batch_header);},
+            None => {s.append_empty_data();},
         }
         s.append(&self.signatory_record_hash);
         s.append(&self.fee);
@@ -91,6 +93,7 @@ impl Encodable for BatchMetadata {
     }
 }
 
+#[allow(elided_lifetimes_in_paths)]
 impl Decodable for BatchMetadata {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 5 {
@@ -123,6 +126,7 @@ impl Encodable for BatchHeader {
     }
 }
 
+#[allow(elided_lifetimes_in_paths)]
 impl Decodable for BatchHeader {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 4 {
@@ -150,8 +154,8 @@ impl Encodable for BlobHeader {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(3);
         match &self.commitment {
-            Some(commitment) => s.append(commitment),
-            None => s.append_empty_data(),
+            Some(commitment) => {s.append(commitment);},
+            None => {s.append_empty_data();},
         }
         s.append(&self.data_length);
         s.begin_list(self.blob_quorum_params.len());
@@ -161,6 +165,7 @@ impl Encodable for BlobHeader {
     }
 }
 
+#[allow(elided_lifetimes_in_paths)]
 impl Decodable for BlobHeader {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 3 {
@@ -186,6 +191,7 @@ impl Encodable for G1Commitment {
     }
 }
 
+#[allow(elided_lifetimes_in_paths)]
 impl Decodable for G1Commitment {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 2 {
@@ -211,6 +217,7 @@ impl Encodable for BlobQuorumParam {
     }
 }
 
+#[allow(elided_lifetimes_in_paths)]
 impl Decodable for BlobQuorumParam {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
         if rlp.item_count()? != 4 {

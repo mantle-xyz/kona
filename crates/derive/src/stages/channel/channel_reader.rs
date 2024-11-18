@@ -201,8 +201,6 @@ impl BatchReader {
 
     /// Pulls out the next batch from the reader.
     pub(crate) fn next_batch(&mut self, cfg: &RollupConfig) -> Option<Batch> {
-        // If the data is not already decompressed, decompress it.
-        let mut brotli_used = false;
 
         if let Some(data) = self.data.take() {
             // Peek at the data to determine the compression type.
@@ -211,24 +209,13 @@ impl BatchReader {
                 return None;
             }
 
-            let compression_type = data[0];
-            if (compression_type & 0x0F) == ZLIB_DEFLATE_COMPRESSION_METHOD ||
-                (compression_type & 0x0F) == ZLIB_RESERVED_COMPRESSION_METHOD
-            {
-                self.decompressed = decompress_to_vec_zlib(&data).ok()?;
+            self.decompressed = decompress_to_vec_zlib(&data).ok()?;
 
-                // Check the size of the decompressed channel RLP.
-                if self.decompressed.len() > self.max_rlp_bytes_per_channel {
-                    return None;
-                }
-            } else if compression_type == CHANNEL_VERSION_BROTLI {
-                brotli_used = true;
-                self.decompressed =
-                    decompress_brotli(&data[1..], self.max_rlp_bytes_per_channel).ok()?;
-            } else {
-                error!(target: "batch-reader", "Unsupported compression type: {:x}, skipping batch", compression_type);
+            // Check the size of the decompressed channel RLP.
+            if self.decompressed.len() > self.max_rlp_bytes_per_channel {
                 return None;
             }
+
         }
 
         // Decompress and RLP decode the batch data, before finally decoding the batch itself.
@@ -238,12 +225,6 @@ impl BatchReader {
             error!(target: "batch-reader", "Failed to decode batch, skipping batch");
             return None;
         };
-
-        // Confirm that brotli decompression was performed *after* the Fjord hardfork.
-        if brotli_used && !cfg.is_fjord_active(batch.timestamp()) {
-            warn!(target: "batch-reader", "Brotli compression used before Fjord hardfork, skipping batch");
-            return None;
-        }
 
         // Advance the cursor on the reader.
         self.cursor = self.decompressed.len() - decompressed_reader.len();
