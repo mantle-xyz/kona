@@ -133,6 +133,9 @@ pub enum PipelineError {
     /// Provider error variant.
     #[display("Blob provider error: {_0}")]
     Provider(String),
+    /// Found future batch
+    #[display("Found batch with timestamp: {_0} marked as future batch, but expected timestamp: {_1}" )]
+    FutureBatch(u64, u64),
 }
 
 impl From<BuilderError> for PipelineError {

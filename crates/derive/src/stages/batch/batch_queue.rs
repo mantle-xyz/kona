@@ -32,10 +32,9 @@ use tracing::{error, info, warn};
 /// It is internally responsible for making sure that batches with L1 inclusions block outside it's
 /// working range are not considered or pruned.
 #[derive(Debug)]
-pub struct BatchQueue<P, BF>
+pub struct BatchQueue<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
-    BF: L2ChainProvider + Debug,
 {
     /// The rollup config.
     pub(crate) cfg: Arc<RollupConfig>,
@@ -52,44 +51,24 @@ where
     pub(crate) l1_blocks: Vec<BlockInfo>,
     /// A set of batches in order from when we've seen them.
     pub(crate) batches: Vec<BatchWithInclusionBlock>,
-    /// A set of cached [SingleBatch]es derived from [SpanBatch]es.
-    ///
-    /// [SpanBatch]: op_alloy_protocol::SpanBatch
-    pub(crate) next_spans: Vec<SingleBatch>,
-    /// Used to validate the batches.
-    pub(crate) fetcher: BF,
 }
 
-impl<P, BF> BatchQueue<P, BF>
+impl<P> BatchQueue<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
-    BF: L2ChainProvider + Debug,
 {
     /// Creates a new [BatchQueue] stage.
     #[allow(clippy::missing_const_for_fn)]
-    pub fn new(cfg: Arc<RollupConfig>, prev: P, fetcher: BF) -> Self {
+    pub fn new(cfg: Arc<RollupConfig>, prev: P) -> Self {
         Self {
             cfg,
             prev,
             origin: None,
             l1_blocks: Default::default(),
             batches: Default::default(),
-            next_spans: Default::default(),
-            fetcher,
         }
     }
 
-    /// Pops the next batch from the current queued up span-batch cache.
-    /// The parent is used to set the parent hash of the batch.
-    /// The parent is verified when the batch is later validated.
-    pub fn pop_next_batch(&mut self, parent: L2BlockInfo) -> Option<SingleBatch> {
-        if self.next_spans.is_empty() {
-            panic!("Invalid state: must have next spans to pop");
-        }
-        let mut next = self.next_spans.remove(0);
-        next.parent_hash = parent.block_info.hash;
-        Some(next)
-    }
 
     /// Derives the next batch to apply on top of the current L2 safe head.
     /// Follows the validity rules imposed on consecutive batches.
@@ -134,23 +113,12 @@ where
         for i in 0..self.batches.len() {
             let batch = &self.batches[i];
             let validity =
-                batch.check_batch(&self.cfg, &self.l1_blocks, parent, &mut self.fetcher).await;
+                batch.check_batch(&self.cfg, &self.l1_blocks, parent).await;
             match validity {
                 BatchValidity::Future => {
-                    // Drop Future batches post-holocene.
-                    //
-                    // See: <https://specs.optimism.io/protocol/holocene/derivation.html#batch-queue>
-                    if !self.cfg.is_holocene_active(origin.timestamp) {
-                        remaining.push(batch.clone());
-                    } else {
-                        self.prev.flush();
-                        warn!(target: "batch-queue", "[HOLOCENE] Dropping future batch with parent: {}", parent.block_info.number);
-                    }
+                    return Err(PipelineError::FutureBatch(batch.batch.timestamp(),next_timestamp).crit());
                 }
                 BatchValidity::Drop => {
-                    // If we drop a batch, flush previous batches buffered in the BatchStream
-                    // stage.
-                    self.prev.flush();
                     warn!(target: "batch-queue", "Dropping batch with parent: {}", parent.block_info);
                     continue;
                 }
@@ -167,13 +135,8 @@ where
                     return Err(PipelineError::Eof.temp());
                 }
                 BatchValidity::Past => {
-                    if !self.cfg.is_holocene_active(origin.timestamp) {
-                        error!(target: "batch-queue", "BatchValidity::Past is not allowed pre-holocene");
-                        return Err(PipelineError::InvalidBatchValidity.crit());
-                    }
-
-                    warn!(target: "batch-queue", "[HOLOCENE] Dropping outdated batch with parent: {}", parent.block_info.number);
-                    continue;
+                    error!(target: "batch-queue", "BatchValidity::Past is not allowed pre-holocene");
+                    return Err(PipelineError::InvalidBatchValidity.crit());
                 }
             }
         }
@@ -246,12 +209,11 @@ where
         let data = BatchWithInclusionBlock { inclusion_block: origin, batch };
         // If we drop the batch, validation logs the drop reason with WARN level.
         let validity =
-            data.check_batch(&self.cfg, &self.l1_blocks, parent, &mut self.fetcher).await;
+            data.check_batch(&self.cfg, &self.l1_blocks, parent).await;
         // Post-Holocene, future batches are dropped due to prevent gaps.
-        let drop = validity.is_drop() ||
-            (self.cfg.is_holocene_active(origin.timestamp) && validity.is_future());
+        let drop = validity.is_drop();
         if drop {
-            self.prev.flush();
+            // If we do drop the batch, CheckBatch will log the drop reason with WARN level.
             return Ok(());
         } else if validity.is_outdated() {
             // If the batch is outdated, we drop it without flushing the previous stage.
@@ -263,10 +225,9 @@ where
 }
 
 #[async_trait]
-impl<P, BF> OriginAdvancer for BatchQueue<P, BF>
+impl<P> OriginAdvancer for BatchQueue<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
-    BF: L2ChainProvider + Send + Debug,
 {
     async fn advance_origin(&mut self) -> PipelineResult<()> {
         self.prev.advance_origin().await
@@ -274,30 +235,14 @@ where
 }
 
 #[async_trait]
-impl<P, BF> AttributesProvider for BatchQueue<P, BF>
+impl<P> AttributesProvider for BatchQueue<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
-    BF: L2ChainProvider + Send + Debug,
 {
     /// Returns the next valid batch upon the given safe head.
     /// Also returns the boolean that indicates if the batch is the last block in the batch.
     async fn next_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch> {
-        if !self.next_spans.is_empty() {
-            // There are cached singular batches derived from the span batch.
-            // Check if the next cached batch matches the given parent block.
-            if self.next_spans[0].timestamp == parent.block_info.timestamp + self.cfg.block_time {
-                return self.pop_next_batch(parent).ok_or(PipelineError::BatchQueueEmpty.crit());
-            }
-            // Parent block does not match the next batch.
-            // Means the previously returned batch is invalid.
-            // Drop cached batches and find another batch.
-            warn!(
-                target: "batch-queue",
-                "Parent block does not match the next batch. Dropping {} cached batches.",
-                self.next_spans.len()
-            );
-            self.next_spans.clear();
-        }
+
 
         // If the epoch is advanced, update the l1 blocks.
         // Advancing epoch must be done after the pipeline successfully applies the entire span
@@ -347,7 +292,7 @@ where
 
         // Load more data into the batch queue.
         let mut out_of_data = false;
-        match self.prev.next_batch(parent, &self.l1_blocks).await {
+        match self.prev.next_batch().await {
             Ok(b) => {
                 if !origin_behind {
                     self.add_batch(b, parent).await.ok();
@@ -391,40 +336,13 @@ where
         // For singular batches, the span batch cache should be empty.
         match batch {
             Batch::Single(sb) => Ok(sb),
-            Batch::Span(sb) => {
-                let batches = match sb.get_singular_batches(&self.l1_blocks, parent).map_err(|e| {
-                    PipelineError::BadEncoding(PipelineEncodingError::SpanBatchError(e)).crit()
-                }) {
-                    Ok(b) => b,
-                    Err(e) => {
-                        return Err(e);
-                    }
-                };
-                self.next_spans = batches;
-                let nb = match self
-                    .pop_next_batch(parent)
-                    .ok_or(PipelineError::BatchQueueEmpty.crit())
-                {
-                    Ok(b) => b,
-                    Err(e) => {
-                        return Err(e);
-                    }
-                };
-                Ok(nb)
-            }
         }
-    }
-
-    /// Returns if the previous batch was the last in the span.
-    fn is_last_in_span(&self) -> bool {
-        self.next_spans.is_empty()
     }
 }
 
-impl<P, BF> OriginProvider for BatchQueue<P, BF>
+impl<P> OriginProvider for BatchQueue<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
-    BF: L2ChainProvider + Debug,
 {
     fn origin(&self) -> Option<BlockInfo> {
         self.prev.origin()
@@ -432,10 +350,9 @@ where
 }
 
 #[async_trait]
-impl<P, BF> SignalReceiver for BatchQueue<P, BF>
+impl<P> SignalReceiver for BatchQueue<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
-    BF: L2ChainProvider + Send + Debug,
 {
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         match signal {
@@ -448,12 +365,10 @@ where
                 // During normal resets we will later throw out this block.
                 self.l1_blocks.clear();
                 self.l1_blocks.push(l1_origin);
-                self.next_spans.clear();
             }
             s @ Signal::Activation(_) | s @ Signal::FlushChannel => {
                 self.prev.signal(s).await?;
                 self.batches.clear();
-                self.next_spans.clear();
             }
         }
         Ok(())
@@ -473,7 +388,7 @@ mod tests {
     use alloy_primitives::{address, b256, Address, Bytes, TxKind, B256, U256};
     use alloy_rlp::{BytesMut, Encodable};
     use op_alloy_consensus::{OpBlock, OpTxEnvelope, OpTxType, TxDeposit};
-    use op_alloy_genesis::{ChainGenesis, MAX_RLP_BYTES_PER_CHANNEL_FJORD};
+    use op_alloy_genesis::{ChainGenesis, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK};
     use op_alloy_protocol::{L1BlockInfoBedrock, L1BlockInfoTx};
     use tracing::Level;
     use tracing_subscriber::layer::SubscriberExt;
@@ -484,52 +399,17 @@ mod tests {
         let file_contents = &(&*file_contents)[..file_contents.len() - 1];
         let data = alloy_primitives::hex::decode(file_contents).unwrap();
         let bytes: alloy_primitives::Bytes = data.into();
-        BatchReader::new(bytes, MAX_RLP_BYTES_PER_CHANNEL_FJORD as usize)
+        BatchReader::new(bytes, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK as usize)
     }
 
-    #[test]
-    fn test_pop_next_batch() {
-        let cfg = Arc::new(RollupConfig::default());
-        let mock = TestNextBatchProvider::new(vec![]);
-        let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
-        let parent = L2BlockInfo::default();
-        let sb = SingleBatch::default();
-        bq.next_spans.push(sb.clone());
-        let next = bq.pop_next_batch(parent).unwrap();
-        assert_eq!(next, sb);
-        assert!(bq.next_spans.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_batch_queue_reset() {
-        let cfg = Arc::new(RollupConfig::default());
-        let mock = TestNextBatchProvider::new(vec![]);
-        let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg.clone(), mock, fetcher);
-        bq.l1_blocks.push(BlockInfo::default());
-        bq.next_spans.push(SingleBatch::default());
-        bq.batches.push(BatchWithInclusionBlock {
-            inclusion_block: BlockInfo::default(),
-            batch: Batch::Single(SingleBatch::default()),
-        });
-        assert!(!bq.prev.reset);
-        bq.signal(ResetSignal::default().signal()).await.unwrap();
-        assert!(bq.prev.reset);
-        assert_eq!(bq.origin, Some(BlockInfo::default()));
-        assert!(bq.batches.is_empty());
-        assert_eq!(bq.l1_blocks, vec![BlockInfo::default()]);
-        assert!(bq.next_spans.is_empty());
-    }
 
     #[tokio::test]
     async fn test_batch_queue_flush() {
         let cfg = Arc::new(RollupConfig::default());
         let mock = TestNextBatchProvider::new(vec![]);
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg.clone(), mock, fetcher);
+        let mut bq = BatchQueue::new(cfg.clone(), mock);
         bq.l1_blocks.push(BlockInfo::default());
-        bq.next_spans.push(SingleBatch::default());
         bq.batches.push(BatchWithInclusionBlock {
             inclusion_block: BlockInfo::default(),
             batch: Batch::Single(SingleBatch::default()),
@@ -538,83 +418,13 @@ mod tests {
         assert!(bq.prev.flushed);
         assert!(bq.batches.is_empty());
         assert!(!bq.l1_blocks.is_empty());
-        assert!(bq.next_spans.is_empty());
     }
 
-    #[tokio::test]
-    async fn test_holocene_add_batch_valid() {
-        // Construct a future single batch.
-        let cfg = Arc::new(RollupConfig {
-            max_sequencer_drift: 700,
-            holocene_time: Some(0),
-            ..Default::default()
-        });
-        assert!(cfg.is_holocene_active(0));
-        let batch = SingleBatch {
-            parent_hash: B256::default(),
-            epoch_num: 0,
-            epoch_hash: B256::default(),
-            timestamp: 100,
-            transactions: Vec::new(),
-        };
-        let parent = L2BlockInfo {
-            block_info: BlockInfo { timestamp: 100, ..Default::default() },
-            ..Default::default()
-        };
-
-        // Setup batch queue deps
-        let batch_vec = vec![PipelineResult::Ok(Batch::Single(batch.clone()))];
-        let mut mock = TestNextBatchProvider::new(batch_vec);
-        mock.origin = Some(BlockInfo::default());
-        let fetcher = TestL2ChainProvider::default();
-
-        // Configure batch queue
-        let mut bq = BatchQueue::new(cfg.clone(), mock, fetcher);
-        bq.origin = Some(BlockInfo::default()); // Set the origin
-        bq.l1_blocks.push(BlockInfo::default()); // Push the origin into the l1 blocks
-        bq.l1_blocks.push(BlockInfo::default()); // Push the next origin into the bq
-
-        // Add the batch to the batch queue
-        bq.add_batch(Batch::Single(batch), parent).await.unwrap();
-        assert_eq!(bq.batches.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_holocene_add_batch_future() {
-        // Construct a future single batch.
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(0), ..Default::default() });
-        assert!(cfg.is_holocene_active(0));
-        let batch = SingleBatch {
-            parent_hash: B256::default(),
-            epoch_num: 0,
-            epoch_hash: B256::default(),
-            timestamp: 100,
-            transactions: Vec::new(),
-        };
-        let parent = L2BlockInfo::default();
-
-        // Setup batch queue deps
-        let batch_vec = vec![PipelineResult::Ok(Batch::Single(batch.clone()))];
-        let mut mock = TestNextBatchProvider::new(batch_vec);
-        mock.origin = Some(BlockInfo::default());
-        let fetcher = TestL2ChainProvider::default();
-
-        // Configure batch queue
-        let mut bq = BatchQueue::new(cfg.clone(), mock, fetcher);
-        bq.origin = Some(BlockInfo::default()); // Set the origin
-        bq.l1_blocks.push(BlockInfo::default()); // Push the origin into the l1 blocks
-        bq.l1_blocks.push(BlockInfo::default()); // Push the next origin into the bq
-
-        // Add the batch to the batch queue
-        bq.add_batch(Batch::Single(batch), parent).await.unwrap();
-        assert!(bq.batches.is_empty());
-    }
 
     #[tokio::test]
     async fn test_add_batch_drop() {
         // Construct a single batch with BatchValidity::Drop.
         let cfg = Arc::new(RollupConfig::default());
-        assert!(!cfg.is_holocene_active(0));
         let batch = SingleBatch {
             parent_hash: B256::default(),
             epoch_num: 0,
@@ -634,42 +444,7 @@ mod tests {
         let fetcher = TestL2ChainProvider::default();
 
         // Configure batch queue
-        let mut bq = BatchQueue::new(cfg.clone(), mock, fetcher);
-        bq.origin = Some(BlockInfo::default()); // Set the origin
-        bq.l1_blocks.push(BlockInfo::default()); // Push the origin into the l1 blocks
-        bq.l1_blocks.push(BlockInfo::default()); // Push the next origin into the bq
-
-        // Add the batch to the batch queue
-        bq.add_batch(Batch::Single(batch), parent).await.unwrap();
-        assert!(bq.batches.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_add_old_batch_drop_holocene() {
-        // Construct a single batch with BatchValidity::Past.
-        let cfg =
-            Arc::new(RollupConfig { holocene_time: Some(0), block_time: 2, ..Default::default() });
-        assert!(cfg.is_holocene_active(0));
-        let batch = SingleBatch {
-            parent_hash: B256::default(),
-            epoch_num: 0,
-            epoch_hash: B256::default(),
-            timestamp: 100,
-            transactions: Vec::new(),
-        };
-        let parent = L2BlockInfo {
-            block_info: BlockInfo { timestamp: 101, ..Default::default() },
-            ..Default::default()
-        };
-
-        // Setup batch queue deps
-        let batch_vec = vec![PipelineResult::Ok(Batch::Single(batch.clone()))];
-        let mut mock = TestNextBatchProvider::new(batch_vec);
-        mock.origin = Some(BlockInfo::default());
-        let fetcher = TestL2ChainProvider::default();
-
-        // Configure batch queue
-        let mut bq = BatchQueue::new(cfg.clone(), mock, fetcher);
+        let mut bq = BatchQueue::new(cfg.clone(), mock);
         bq.origin = Some(BlockInfo::default()); // Set the origin
         bq.l1_blocks.push(BlockInfo::default()); // Push the origin into the l1 blocks
         bq.l1_blocks.push(BlockInfo::default()); // Push the next origin into the bq
@@ -685,7 +460,7 @@ mod tests {
         let cfg = Arc::new(RollupConfig::default());
         let mock = TestNextBatchProvider::new(data);
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         let parent = L2BlockInfo::default();
         let result = bq.derive_next_batch(false, parent).await.unwrap_err();
         assert_eq!(result, PipelineError::MissingOrigin.crit());
@@ -702,7 +477,7 @@ mod tests {
         let mut mock = TestNextBatchProvider::new(batch_vec);
         mock.origin = Some(BlockInfo::default());
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         let parent = L2BlockInfo {
             l1_origin: BlockNumHash { number: 10, ..Default::default() },
             ..Default::default()
@@ -723,7 +498,7 @@ mod tests {
         let mut mock = TestNextBatchProvider::new(batch_vec);
         mock.origin = Some(BlockInfo::default());
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         bq.origin = Some(BlockInfo::default());
         bq.l1_blocks.push(BlockInfo::default());
 
@@ -732,7 +507,6 @@ mod tests {
         assert_eq!(bq.l1_blocks.len(), 1);
         let result = bq.derive_next_batch(true, L2BlockInfo::default()).await.unwrap_err();
         assert_eq!(result, PipelineError::Eof.temp());
-        assert!(bq.is_last_in_span());
     }
 
     #[tokio::test]
@@ -747,7 +521,7 @@ mod tests {
         let mut mock = TestNextBatchProvider::new(batch_vec);
         mock.origin = Some(BlockInfo::default());
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         bq.origin = Some(BlockInfo::default());
         bq.l1_blocks.push(BlockInfo::default());
 
@@ -756,7 +530,6 @@ mod tests {
         assert_eq!(bq.l1_blocks.len(), 1);
         let result = bq.derive_next_batch(false, L2BlockInfo::default()).await.unwrap_err();
         assert_eq!(result, PipelineError::Eof.temp());
-        assert!(bq.is_last_in_span());
     }
 
     #[tokio::test]
@@ -771,7 +544,7 @@ mod tests {
         let mut mock = TestNextBatchProvider::new(batch_vec);
         mock.origin = Some(BlockInfo::default());
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         bq.origin = Some(BlockInfo::default());
         bq.l1_blocks.push(BlockInfo::default());
         bq.l1_blocks.push(BlockInfo::default());
@@ -781,7 +554,6 @@ mod tests {
         assert_eq!(bq.l1_blocks.len(), 2);
         let result = bq.derive_next_batch(true, L2BlockInfo::default()).await.unwrap_err();
         assert_eq!(result, PipelineError::Eof.temp());
-        assert!(bq.is_last_in_span());
         assert_eq!(bq.l1_blocks.len(), 1);
     }
 
@@ -789,7 +561,6 @@ mod tests {
     async fn test_derive_next_batch_future_batch() {
         // Construct a future single batch.
         let cfg = Arc::new(RollupConfig::default());
-        assert!(!cfg.is_holocene_active(0)); // Asserts holocene is not active.
         let batch = SingleBatch {
             parent_hash: B256::default(),
             epoch_num: 0,
@@ -806,7 +577,7 @@ mod tests {
         let fetcher = TestL2ChainProvider::default();
 
         // Configure batch queue
-        let mut bq = BatchQueue::new(cfg.clone(), mock, fetcher);
+        let mut bq = BatchQueue::new(cfg.clone(), mock);
         bq.origin = Some(BlockInfo::default()); // Set the origin
         bq.l1_blocks.push(BlockInfo::default()); // Push the origin into the l1 blocks
         bq.l1_blocks.push(BlockInfo::default()); // Push the next origin into the bq
@@ -818,7 +589,6 @@ mod tests {
         // Derive next batch
         let result = bq.derive_next_batch(true, L2BlockInfo::default()).await.unwrap_err();
         assert_eq!(result, PipelineError::Eof.temp());
-        assert!(bq.is_last_in_span());
         assert_eq!(bq.batches.len(), 1);
     }
 
@@ -830,8 +600,7 @@ mod tests {
         let _guard = tracing::subscriber::set_default(subscriber);
 
         // Construct a future single batch.
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(0), ..Default::default() });
-        assert!(cfg.is_holocene_active(0));
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let batch = SingleBatch {
             parent_hash: B256::default(),
             epoch_num: 0,
@@ -848,7 +617,7 @@ mod tests {
         let fetcher = TestL2ChainProvider::default();
 
         // Configure batch queue
-        let mut bq = BatchQueue::new(cfg.clone(), mock, fetcher);
+        let mut bq = BatchQueue::new(cfg.clone(), mock);
         bq.origin = Some(BlockInfo::default()); // Set the origin
         bq.l1_blocks.push(BlockInfo::default()); // Push the origin into the l1 blocks
         bq.l1_blocks.push(BlockInfo::default()); // Push the next origin into the bq
@@ -864,7 +633,6 @@ mod tests {
         // Derive next batch
         let result = bq.derive_next_batch(true, L2BlockInfo::default()).await.unwrap_err();
         assert_eq!(result, PipelineError::Eof.temp());
-        assert!(bq.is_last_in_span());
         assert!(bq.batches.is_empty());
 
         // Validate logs
@@ -874,24 +642,6 @@ mod tests {
         assert!(logs[0].contains(warn_str));
     }
 
-    #[tokio::test]
-    async fn test_next_batch_cached_single_batch() {
-        let mut reader = new_batch_reader();
-        let cfg = Arc::new(RollupConfig::default());
-        let mut batch_vec: Vec<PipelineResult<Batch>> = vec![];
-        while let Some(batch) = reader.next_batch(cfg.as_ref()) {
-            batch_vec.push(Ok(batch));
-        }
-        let mut mock = TestNextBatchProvider::new(batch_vec);
-        mock.origin = Some(BlockInfo::default());
-        let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
-        let sb = SingleBatch::default();
-        bq.next_spans.push(sb.clone());
-        let next = bq.next_batch(L2BlockInfo::default()).await.unwrap();
-        assert_eq!(next, sb);
-        assert!(bq.next_spans.is_empty());
-    }
 
     #[tokio::test]
     async fn test_next_batch_clear_next_spans() {
@@ -904,12 +654,10 @@ mod tests {
         let mut mock = TestNextBatchProvider::new(batch_vec);
         mock.origin = Some(BlockInfo::default());
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         let sb = SingleBatch::default();
-        bq.next_spans.push(sb.clone());
         let res = bq.next_batch(L2BlockInfo::default()).await.unwrap_err();
         assert_eq!(res, PipelineError::NotEnoughData.temp());
-        assert!(bq.is_last_in_span());
     }
 
     #[tokio::test]
@@ -919,10 +667,9 @@ mod tests {
         let batch = reader.next_batch(cfg.as_ref()).unwrap();
         let mock = TestNextBatchProvider::new(vec![Ok(batch)]);
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         let res = bq.next_batch(L2BlockInfo::default()).await.unwrap_err();
         assert_eq!(res, PipelineError::NotEnoughData.temp());
-        assert!(bq.is_last_in_span());
     }
 
     #[tokio::test]
@@ -936,7 +683,7 @@ mod tests {
         let mut mock = TestNextBatchProvider::new(batch_vec);
         mock.origin = Some(BlockInfo::default());
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         let parent = L2BlockInfo {
             l1_origin: BlockNumHash { number: 10, ..Default::default() },
             ..Default::default()
@@ -956,7 +703,6 @@ mod tests {
         let payload_block_hash =
             b256!("4444444444444444444444444444444444444444444444444444444444444444");
         let cfg = Arc::new(RollupConfig {
-            delta_time: Some(0),
             block_time: 100,
             max_sequencer_drift: 10000000,
             seq_window_size: 10000000,
@@ -972,9 +718,14 @@ mod tests {
         let mut batch_txs: Vec<Bytes> = vec![];
         let mut second_batch_txs: Vec<Bytes> = vec![];
         while let Some(batch) = reader.next_batch(cfg.as_ref()) {
-            if let Batch::Span(span) = &batch {
-                batch_txs.extend(span.batches[0].transactions.clone());
-                second_batch_txs.extend(span.batches[1].transactions.clone());
+            if let Batch::Single(span) = &batch {
+                SingleBatch {
+                    parent_hash: B256::default(),
+                    epoch_num: 0,
+                    epoch_hash: B256::default(),
+                    timestamp: 100,
+                    transactions: Vec::new(),
+                };
             }
             batch_vec.push(Ok(batch));
         }
@@ -999,6 +750,8 @@ mod tests {
             value: U256::from(4_u64),
             input: deposit_tx_calldata,
             is_system_transaction: false,
+            eth_value: None,
+            eth_tx_value: None,
         };
         let mut buf = BytesMut::new();
         tx.encode(&mut buf);
@@ -1049,6 +802,7 @@ mod tests {
                 transactions: batch_txs,
                 ommers: Vec::new(),
                 withdrawals: None,
+                requests: None,
             },
         };
         let second = OpBlock {
@@ -1057,6 +811,7 @@ mod tests {
                 transactions: second_batch_txs,
                 ommers: Vec::new(),
                 withdrawals: None,
+                requests: None,
             },
         };
         let fetcher = TestL2ChainProvider {
@@ -1064,7 +819,7 @@ mod tests {
             op_blocks: vec![block, second],
             ..Default::default()
         };
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         let parent = L2BlockInfo {
             block_info: BlockInfo {
                 number: 9,
@@ -1093,7 +848,7 @@ mod tests {
         let cfg = Arc::new(RollupConfig::default());
         let mock = TestNextBatchProvider::new(data);
         let fetcher = TestL2ChainProvider::default();
-        let mut bq = BatchQueue::new(cfg, mock, fetcher);
+        let mut bq = BatchQueue::new(cfg, mock);
         let parent = L2BlockInfo::default();
         let batch = bq.next_batch(parent).await.unwrap();
         assert_eq!(batch, SingleBatch::default());

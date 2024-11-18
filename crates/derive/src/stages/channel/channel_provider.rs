@@ -56,25 +56,8 @@ where
         if let Some(prev) = self.prev.take() {
             // On the first call to `attempt_update`, we need to determine the active stage to
             // initialize the mux with.
-            if self.cfg.is_holocene_active(origin.timestamp) {
-                self.channel_assembler = Some(ChannelAssembler::new(self.cfg.clone(), prev));
-            } else {
-                self.channel_bank = Some(ChannelBank::new(self.cfg.clone(), prev));
-            }
-        } else if self.channel_bank.is_some() && self.cfg.is_holocene_active(origin.timestamp) {
-            // If the channel bank is active and Holocene is also active, transition to the channel
-            // assembler.
-            let channel_bank = self.channel_bank.take().expect("Must have channel bank");
-            self.channel_assembler =
-                Some(ChannelAssembler::new(self.cfg.clone(), channel_bank.prev));
-        } else if self.channel_assembler.is_some() && !self.cfg.is_holocene_active(origin.timestamp)
-        {
-            // If the channel assembler is active, and Holocene is not active, it indicates an L1
-            // reorg around Holocene activation. Transition back to the channel bank
-            // until Holocene re-activates.
-            let channel_assembler =
-                self.channel_assembler.take().expect("Must have channel assembler");
-            self.channel_bank = Some(ChannelBank::new(self.cfg.clone(), channel_assembler.prev));
+            self.channel_bank = Some(ChannelBank::new(self.cfg.clone(), prev));
+
         }
         Ok(())
     }
@@ -167,7 +150,7 @@ mod test {
     #[test]
     fn test_channel_provider_assembler_active() {
         let provider = TestNextFrameProvider::new(vec![]);
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(0), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut channel_provider = ChannelProvider::new(cfg, provider);
 
         assert!(channel_provider.attempt_update().is_ok());
@@ -214,7 +197,7 @@ mod test {
     #[test]
     fn test_channel_provider_retain_current_assembler() {
         let provider = TestNextFrameProvider::new(vec![]);
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(0), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut channel_provider = ChannelProvider::new(cfg, provider);
 
         // Assert the multiplexer hasn't been initialized.
@@ -237,7 +220,7 @@ mod test {
     #[test]
     fn test_channel_provider_transition_stage() {
         let provider = TestNextFrameProvider::new(vec![]);
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(2), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut channel_provider = ChannelProvider::new(cfg, provider);
 
         channel_provider.attempt_update().unwrap();
@@ -259,7 +242,7 @@ mod test {
     #[test]
     fn test_channel_provider_transition_stage_backwards() {
         let provider = TestNextFrameProvider::new(vec![]);
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(2), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut channel_provider = ChannelProvider::new(cfg, provider);
 
         channel_provider.attempt_update().unwrap();
@@ -324,7 +307,7 @@ mod test {
             crate::frame!(0xFF, 1, vec![0xDD; 50], true),
         ];
         let provider = TestNextFrameProvider::new(frames.into_iter().rev().map(Ok).collect());
-        let cfg = Arc::new(RollupConfig { holocene_time: Some(0), ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut channel_provider = ChannelProvider::new(cfg.clone(), provider);
 
         // Load in the first frame.

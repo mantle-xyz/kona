@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 use miniz_oxide::inflate::decompress_to_vec_zlib;
 use op_alloy_genesis::{
-    RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, MAX_RLP_BYTES_PER_CHANNEL_FJORD,
+    RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK,
 };
 use op_alloy_protocol::{Batch, BlockInfo};
 use tracing::{debug, error, warn};
@@ -74,11 +74,8 @@ where
                 self.prev.next_data().await?.ok_or(PipelineError::ChannelReaderEmpty.temp())?;
 
             let origin = self.prev.origin().ok_or(PipelineError::MissingOrigin.crit())?;
-            let max_rlp_bytes_per_channel = if self.cfg.is_fjord_active(origin.timestamp) {
-                MAX_RLP_BYTES_PER_CHANNEL_FJORD
-            } else {
-                MAX_RLP_BYTES_PER_CHANNEL_BEDROCK
-            };
+            let max_rlp_bytes_per_channel = MAX_RLP_BYTES_PER_CHANNEL_BEDROCK;
+
 
             self.next_batch =
                 Some(BatchReader::new(&channel[..], max_rlp_bytes_per_channel as usize));
@@ -108,16 +105,6 @@ impl<P> BatchStreamProvider for ChannelReader<P>
 where
     P: ChannelReaderProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
 {
-    /// This method is called by the BatchStream if an invalid span batch is found.
-    /// In the case of an invalid span batch, the associated channel must be flushed.
-    ///
-    /// See: <https://specs.optimism.io/protocol/holocene/derivation.html#span-batches>
-    ///
-    /// SAFETY: Only called post-holocene activation.
-    fn flush(&mut self) {
-        debug!(target: "channel-reader", "[POST-HOLOCENE] Flushing channel");
-        self.next_channel();
-    }
 
     async fn next_batch(&mut self) -> PipelineResult<Batch> {
         if let Err(e) = self.set_batch_reader().await {
@@ -260,6 +247,7 @@ mod test {
         errors::PipelineErrorKind, test_utils::TestChannelReaderProvider, traits::ResetSignal,
     };
     use alloc::vec;
+    use op_alloy_protocol::MAX_RLP_BYTES_PER_CHANNEL;
 
     fn new_compressed_batch_data() -> Bytes {
         let file_contents =
@@ -275,7 +263,7 @@ mod test {
         let mut reader = ChannelReader::new(mock, Arc::new(RollupConfig::default()));
         reader.next_batch = Some(BatchReader::new(
             new_compressed_batch_data(),
-            MAX_RLP_BYTES_PER_CHANNEL_FJORD as usize,
+            MAX_RLP_BYTES_PER_CHANNEL as usize,
         ));
         reader.signal(Signal::FlushChannel).await.unwrap();
         assert!(reader.next_batch.is_none());
@@ -287,7 +275,7 @@ mod test {
         let mut reader = ChannelReader::new(mock, Arc::new(RollupConfig::default()));
         reader.next_batch = Some(BatchReader::new(
             vec![0x00, 0x01, 0x02],
-            MAX_RLP_BYTES_PER_CHANNEL_FJORD as usize,
+            MAX_RLP_BYTES_PER_CHANNEL as usize,
         ));
         assert!(!reader.prev.reset);
         reader.signal(ResetSignal::default().signal()).await.unwrap();
@@ -330,7 +318,6 @@ mod test {
         let mock = TestChannelReaderProvider::new(vec![Ok(Some(raw))]);
         let mut reader = ChannelReader::new(mock, Arc::new(RollupConfig::default()));
         let res = reader.next_batch().await.unwrap();
-        matches!(res, Batch::Span(_));
         assert!(reader.next_batch.is_some());
     }
 
@@ -347,21 +334,19 @@ mod test {
     fn test_batch_reader_fjord() {
         let raw = new_compressed_batch_data();
         let decompressed_len = decompress_to_vec_zlib(&raw).unwrap().len();
-        let mut reader = BatchReader::new(raw, MAX_RLP_BYTES_PER_CHANNEL_FJORD as usize);
-        reader.next_batch(&RollupConfig { fjord_time: Some(0), ..Default::default() }).unwrap();
+        let mut reader = BatchReader::new(raw, MAX_RLP_BYTES_PER_CHANNEL as usize);
+        reader.next_batch(&RollupConfig { ..Default::default() }).unwrap();
         assert_eq!(reader.cursor, decompressed_len);
     }
 
     #[tokio::test]
     async fn test_flush_post_holocene() {
         let raw = new_compressed_batch_data();
-        let config = Arc::new(RollupConfig { holocene_time: Some(0), ..RollupConfig::default() });
+        let config = Arc::new(RollupConfig { ..RollupConfig::default() });
         let mock = TestChannelReaderProvider::new(vec![Ok(Some(raw))]);
         let mut reader = ChannelReader::new(mock, config);
         let res = reader.next_batch().await.unwrap();
-        matches!(res, Batch::Span(_));
         assert!(reader.next_batch.is_some());
-        reader.flush();
         assert!(reader.next_batch.is_none());
     }
 }

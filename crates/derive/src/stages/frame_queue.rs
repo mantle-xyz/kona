@@ -53,10 +53,6 @@ where
         Self { prev, queue: VecDeque::new(), rollup_config: cfg }
     }
 
-    /// Returns if holocene is active.
-    pub fn is_holocene_active(&self, origin: BlockInfo) -> bool {
-        self.rollup_config.is_holocene_active(origin.timestamp)
-    }
 
     /// Prunes frames if Holocene is active.
     pub fn prune(&mut self, origin: BlockInfo) {
