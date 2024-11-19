@@ -3,11 +3,11 @@
 use super::{util::decode_holocene_eip_1559_params, StatelessL2BlockExecutor};
 use crate::{constants::FEE_RECIPIENT, ExecutorError, ExecutorResult};
 use alloy_consensus::Header;
-use op_alloy_genesis::RollupConfig;
 use alloy_eips::eip1559::BaseFeeParams;
 use alloy_primitives::{TxKind, U256};
 use kona_mpt::{TrieHinter, TrieProvider};
 use op_alloy_consensus::OpTxEnvelope;
+use op_alloy_genesis::RollupConfig;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use revm::primitives::{
     BlobExcessGasAndPrice, BlockEnv, CfgEnv, CfgEnvWithHandlerCfg, OptimismFields, SpecId,
@@ -27,8 +27,8 @@ where
     /// ## Returns
     /// The active [SpecId] for the executor.
     pub(crate) fn revm_spec_id(&self, timestamp: u64) -> SpecId {
-        if self.config.is_cancun_active(timestamp) {
-            SpecId::CANCUN
+        if self.config.is_shanghai_active(timestamp) {
+            SpecId::SHANGHAI
         } else if self.config.is_regolith_active(timestamp) {
             SpecId::REGOLITH
         } else {
@@ -80,7 +80,6 @@ where
             blob_excess_gas_and_price,
         })
     }
-
 
     /// Prepares a [TxEnv] with the given [OpTxEnvelope].
     ///
@@ -197,8 +196,8 @@ where
                     mint: tx.mint,
                     is_system_transaction: Some(tx.is_system_transaction),
                     enveloped_tx: Some(encoded_transaction.to_vec().into()),
-                    eth_value: None,
-                    eth_tx_value: None,
+                    eth_value: tx.eth_value,
+                    eth_tx_value: tx.eth_tx_value,
                 };
                 Ok(env)
             }
