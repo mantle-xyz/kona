@@ -8,7 +8,7 @@ use alloy_rlp::Rlp;
 use async_trait::async_trait;
 use op_alloy_protocol::BlockInfo;
 use rlp::{decode, Decodable, DecoderError};
-use tracing::warn;
+use tracing::{error, warn};
 use crate::errors::{BlobDecodingError, BlobProviderError, EigenDAProviderError, EigenDAProxyError, PipelineError, PipelineResult};
 use crate::prelude::ChainProvider;
 use crate::proto::{calldata_frame, CalldataFrame};
@@ -110,12 +110,8 @@ where
                 continue;
             }
             if self.eigen_da_provider.da_indexer_enable() {
-                let data = self.eigen_da_provider
-                    .retrieval_frames_from_da_indexer(&*hex::encode(tx.tx_hash())).await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
-
-                let blob_data:Vec<u8> = decode(&*data).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
-                out.push(Bytes::from(blob_data.clone()));
-                continue;
+                error!("eigen_da_provider.da_indexer_enable() not implemented");
+                break
             }
 
             if calldata.len() == 0 {
@@ -149,7 +145,7 @@ where
                                 continue;
                             }
                             let blob_data = self.eigen_da_provider
-                                .retrieve_blob(&*frame_ref.batch_header_hash, frame_ref.blob_index, &*frame_ref.commitment)
+                                .retrieve_blob_with_commitment( &*frame_ref.commitment)
                                 .await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
                             let blobs = &blob_data[..frame_ref.blob_length as usize];
                             let blob_data:Vec<u8> = decode(blobs).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
