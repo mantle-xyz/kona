@@ -21,4 +21,5 @@ message FrameRef {
 
   // defined by mantle
   bytes request_id = 100;
+  bytes commitment = 101;
 }

@@ -32,6 +32,8 @@ pub enum HintType {
     /// A hint that specifies the proof on the path to a storage slot in an account within in the
     /// L2 state trie.
     L2AccountStorageProof,
+    /// A hint that specifies a blob from eigen da.
+    EigenDa,
 }
 
 impl HintType {
@@ -59,6 +61,7 @@ impl TryFrom<&str> for HintType {
             "l2-state-node" => Ok(HintType::L2StateNode),
             "l2-account-proof" => Ok(HintType::L2AccountProof),
             "l2-account-storage-proof" => Ok(HintType::L2AccountStorageProof),
+            "eigen-da" => Ok(HintType::EigenDa),
             _ => anyhow::bail!("Invalid hint type: {value}"),
         }
     }
@@ -79,6 +82,7 @@ impl From<HintType> for &str {
             HintType::L2StateNode => "l2-state-node",
             HintType::L2AccountProof => "l2-account-proof",
             HintType::L2AccountStorageProof => "l2-account-storage-proof",
+            HintType::EigenDa => "eigen-da",
         }
     }
 }

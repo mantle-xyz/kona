@@ -35,4 +35,6 @@ pub struct FrameRef {
     /// defined by mantle
     #[prost(bytes = "vec", tag = "100")]
     pub request_id: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", tag = "101")]
+    pub commitment: ::prost::alloc::vec::Vec<u8>,
 }

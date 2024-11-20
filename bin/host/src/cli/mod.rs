@@ -10,15 +10,14 @@ use crate::{
 use alloy_primitives::B256;
 use alloy_provider::ReqwestProvider;
 use anyhow::{anyhow, Result};
-use clap::{
-    builder::styling::{AnsiColor, Color, Style},
-    ArgAction, Parser,
-};
-use kona_derive_alloy::{OnlineBeaconClient, OnlineBlobProvider};
+use clap::{builder::styling::{AnsiColor, Color, Style}, value_parser, ArgAction, Parser};
+use kona_derive_alloy::{OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDaProvider};
 use op_alloy_genesis::RollupConfig;
 use serde::Serialize;
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time};
+use std::time::Duration;
 use tokio::sync::RwLock;
+use kona_derive::eigen_da::{EigenDaConfig, EigenDaProxy, IEigenDA};
 
 mod parser;
 pub(crate) use parser::parse_b256;
@@ -118,6 +117,53 @@ pub struct HostCli {
         env
     )]
     pub rollup_config_path: Option<PathBuf>,
+    /// The url of Mantle da indexer.
+    #[clap(long,
+        alias = "da-indexer-url",
+        env)]
+    pub mantle_da_indexer_url: Option<String>,
+    /// The url of EigenDA Proxy service
+    #[clap(long,
+        alias = "proxy-url",
+        conflicts_with = "mantle_da_indexer_url",
+        required_unless_present = "mantle_da_indexer_url",
+        env
+    )]
+    pub proxy_url: Option<String>,
+    /// EigenDA Disperser RPC URL
+    /// does not need to be configured in derive.
+    #[clap(long,
+        alias = "disperse-url",
+        conflicts_with = "mantle_da_indexer_url",
+        env
+    )]
+    pub disperse_url: Option<String>,
+    /// The total amount of time that the batcher will spend waiting for EigenDA to disperse a blob
+    /// does not need to be configured in derive.
+    #[clap(long,
+        alias = "disperse-timeout",
+        conflicts_with = "mantle_da_indexer_url",
+        default_value = "120",
+        value_parser = parse_duration,
+        env
+    )]
+    pub disperse_timeout: Duration,
+    /// The total amount of time that the batcher will spend waiting for EigenDA to retrieve a blob
+    #[clap(long,
+        alias = "retrieve-timeout",
+        conflicts_with = "mantle_da_indexer_url",
+        default_value = "120",
+        value_parser = parse_duration,
+        env
+    )]
+    pub retrieve_timeout: Duration,
+
+}
+
+fn parse_duration(input: &str) -> Result<Duration, String> {
+    input.parse::<u64>()
+        .map(Duration::from_secs)
+        .map_err(|e| format!("Failed to parse duration: {}", e))
 }
 
 impl HostCli {
@@ -136,7 +182,7 @@ impl HostCli {
     /// - A [ReqwestProvider] for the L2 node.
     pub async fn create_providers(
         &self,
-    ) -> Result<(ReqwestProvider, OnlineBlobProvider<OnlineBeaconClient>, ReqwestProvider)> {
+    ) -> Result<(ReqwestProvider, OnlineBlobProvider<OnlineBeaconClient>, ReqwestProvider, OnlineEigenDaProvider<EigenDaProxy>)> {
         let beacon_client = OnlineBeaconClient::new_http(
             self.l1_beacon_address.clone().ok_or(anyhow!("Beacon API URL must be set"))?,
         );
@@ -151,8 +197,29 @@ impl HostCli {
         let l2_provider = util::http_provider(
             self.l2_node_address.as_ref().ok_or(anyhow!("L2 node address must be set"))?,
         );
+        let mut eigen_da_config = EigenDaConfig::default();
+        let mut eigen_proxy_url = "".to_string();
+        let mut da_indexer_url = "".to_string();
+        let mut mantle_da_switch = false;
+        match self.read_rollup_config().ok() {
+            Some(rollup_config) => {
+                if rollup_config.mantle_da_switch {
+                    mantle_da_switch = true;
+                    da_indexer_url = self.mantle_da_indexer_url.clone().ok_or(anyhow!("Mantle da indexer URL must be set"))?;
+                }
+            }
+            None => {}
+        }
 
-        Ok((l1_provider, blob_provider, l2_provider))
+        if da_indexer_url.is_empty() {
+            eigen_proxy_url = self.proxy_url.clone().ok_or(anyhow!("EigenDA Proxy URL must be set"))?;
+        }
+        eigen_da_config.proxy_url = eigen_proxy_url;
+        eigen_da_config.retrieve_blob_timeout = self.retrieve_timeout;
+        let eigen_da_provider = EigenDaProxy::new(eigen_da_config);
+        let mut eigen_da = OnlineEigenDaProvider::new(eigen_da_provider,da_indexer_url, mantle_da_switch);
+
+        Ok((l1_provider, blob_provider, l2_provider, eigen_da))
     }
 
     /// Parses the CLI arguments and returns a new instance of a [SharedKeyValueStore], as it is

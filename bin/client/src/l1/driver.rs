@@ -144,7 +144,7 @@ where
             chain_provider.clone(),
         );
 
-        let dap = EthereumDataSource::new(chain_provider.clone(), blob_provider,eigen_da_provider, &cfg);
+        let dap = EthereumDataSource::new(chain_provider.clone(), blob_provider, eigen_da_provider, &cfg);
 
         // Walk back the starting L1 block by `channel_timeout` to ensure that the full channel is
         // captured.

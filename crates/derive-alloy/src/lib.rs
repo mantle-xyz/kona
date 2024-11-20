@@ -42,3 +42,5 @@ pub use blob_provider::{
     BlobSidecarProvider, OnlineBlobProvider, OnlineBlobProviderBuilder,
     OnlineBlobProviderWithFallback,
 };
+
+pub use eigen_da_provider::{OnlineEigenDaProvider};

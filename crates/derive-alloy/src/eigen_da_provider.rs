@@ -34,6 +34,11 @@ impl<E: IEigenDA > OnlineEigenDaProvider<E> {
             mantle_da_indexer_enable,
         }
     }
+
+    pub async fn get_blob(&self,commitment: &[u8]) -> Result<Vec<u8>, EigenDAProviderError> {
+        self.eigen_da_proxy_client.retrieve_blob_with_commitment(commitment).await
+            .map_err(|e|EigenDAProviderError::String(e.to_string()))
+    }
 }
 
 #[async_trait]
@@ -43,9 +48,14 @@ where
 {
     type Error = EigenDAProviderError;
 
-    async fn retrieve_blob(&mut self, batch_header_hash: &[u8], blob_index: u32) -> Result<Vec<u8>, Self::Error> {
-        self.eigen_da_proxy_client.retrieve_blob(batch_header_hash, blob_index).await
-            .map_err(|e|EigenDAProviderError::String(e.to_string()))
+    async fn retrieve_blob(&mut self, batch_header_hash: &[u8], blob_index: u32, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        if commitment.is_empty() {
+            self.eigen_da_proxy_client.retrieve_blob(batch_header_hash, blob_index).await
+                .map_err(|e|EigenDAProviderError::String(e.to_string()))
+        } else {
+            self.eigen_da_proxy_client.retrieve_blob_with_commitment(commitment).await
+                .map_err(|e|EigenDAProviderError::String(e.to_string()))
+        }
     }
 
     async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {

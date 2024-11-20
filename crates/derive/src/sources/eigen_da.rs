@@ -149,7 +149,7 @@ where
                                 continue;
                             }
                             let blob_data = self.eigen_da_provider
-                                .retrieve_blob(&*frame_ref.batch_header_hash, frame_ref.blob_index)
+                                .retrieve_blob(&*frame_ref.batch_header_hash, frame_ref.blob_index, &*frame_ref.commitment)
                                 .await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
                             let blobs = &blob_data[..frame_ref.blob_length as usize];
                             let blob_data:Vec<u8> = decode(blobs).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;

@@ -34,6 +34,7 @@ pub trait EigenDAProvider {
         &mut self,
         batch_header_hash: &[u8],
         blob_index: u32,
+        commitment: &[u8],
     ) -> Result<Vec<u8>, Self::Error>;
 
     /// Fetches EigenDA data for a given commitment

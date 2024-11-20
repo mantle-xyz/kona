@@ -42,13 +42,14 @@ pub async fn start_server(cfg: HostCli) -> Result<()> {
     let kv_store = cfg.construct_kv_store();
 
     let fetcher = if !cfg.is_offline() {
-        let (l1_provider, blob_provider, l2_provider) = cfg.create_providers().await?;
+        let (l1_provider, blob_provider, l2_provider, eigen_da_provider) = cfg.create_providers().await?;
         Some(Arc::new(RwLock::new(Fetcher::new(
             kv_store.clone(),
             l1_provider,
             blob_provider,
             l2_provider,
             cfg.agreed_l2_head_hash,
+            eigen_da_provider,
         ))))
     } else {
         None
@@ -80,13 +81,14 @@ pub async fn start_server_and_native_client(cfg: HostCli) -> Result<i32> {
     let kv_store = cfg.construct_kv_store();
 
     let fetcher = if !cfg.is_offline() {
-        let (l1_provider, blob_provider, l2_provider) = cfg.create_providers().await?;
+        let (l1_provider, blob_provider, l2_provider, eigen_da_provider) = cfg.create_providers().await?;
         Some(Arc::new(RwLock::new(Fetcher::new(
             kv_store.clone(),
             l1_provider,
             blob_provider,
             l2_provider,
             cfg.agreed_l2_head_hash,
+            eigen_da_provider,
         ))))
     } else {
         None
