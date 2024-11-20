@@ -42,7 +42,6 @@ derive_more = { workspace = true, features = ["full"], optional = true }
 alloy-rpc-client = { workspace = true, optional = true }
 alloy-node-bindings = { workspace = true, optional = true }
 alloy-transport-http = { workspace = true, optional = true, features = ["reqwest"] }
-tonic = "0.12.3"
 tokio = { workspace = true, features = ["full"] }
 
 

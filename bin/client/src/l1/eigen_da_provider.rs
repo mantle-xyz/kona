@@ -44,22 +44,9 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
 impl<T: CommsClient + Sync + Send> EigenDAProvider for OracleEigenDaProvider<T> {
     type Error = anyhow::Error;
 
-    async fn retrieve_blob(&mut self, batch_header_hash: &[u8], blob_index: u32, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        if commitment.is_empty() {
-            Ok(Vec::new())
-        } else {
-            let out = self.get_blob(batch_header_hash).await?;
-            Ok(out)
-        }
-    }
-
     async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
         let out_data:Vec<u8> = self.get_blob(commitment).await?;
         Ok(out_data)
-    }
-
-    async fn retrieval_frames_from_da_indexer(&mut self, tx_hash: &str) -> Result<Vec<u8>, Self::Error> {
-        todo!()
     }
 
     fn da_indexer_enable(&mut self) -> bool {
