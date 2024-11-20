@@ -23,6 +23,8 @@ use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, trace, warn};
+use kona_derive::eigen_da::EigenDaProxy;
+use kona_derive::traits::EigenDAProvider;
 
 mod precompiles;
 
@@ -44,6 +46,8 @@ where
     l2_head: B256,
     /// The last hint that was received. [None] if no hint has been received yet.
     last_hint: Option<String>,
+    /// The EigenDA provider
+    eigen_da_provider: OnlineEigenDaProvider<EigenDaProxy>,
 }
 
 impl<KV> Fetcher<KV>
@@ -57,8 +61,9 @@ where
         blob_provider: OnlineBlobProvider,
         l2_provider: ReqwestProvider,
         l2_head: B256,
+        eigen_da_provider: OnlineEigenDaProvider<EigenDaProxy>,
     ) -> Self {
-        Self { kv_store, l1_provider, blob_provider, l2_provider, l2_head, last_hint: None }
+        Self { kv_store, l1_provider, blob_provider, l2_provider, l2_head, last_hint: None, eigen_da_provider }
     }
 
     /// Set the last hint to be received.
@@ -508,6 +513,23 @@ where
                     kv_write_lock.set(key.into(), node.into())?;
                     Ok::<(), anyhow::Error>(())
                 })?;
+            }
+            HintType::EigenDa => {
+                if hint_data.len() < 3 {
+                    anyhow::bail!("Invalid hint data length: {}", hint_data.len());
+                }
+                let commitment = hint_data.to_vec();
+                // Fetch the blob from the eigen da provider.
+                let blob = self
+                    .eigen_da_provider
+                    .get_blob(&commitment)
+                    .await
+                    .map_err(|e| anyhow!("Failed to fetch blob: {e}"))?;
+                let mut kv_write_lock = self.kv_store.write().await;
+                kv_write_lock.set(
+                    PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric).into(),
+                    blob.into(),
+                )?;
             }
             HintType::L2PayloadWitness => {
                 if hint_data.len() < 32 {
