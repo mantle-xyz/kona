@@ -1,9 +1,8 @@
-use alloc::vec::Vec;
+use Vec;
 use bytes::{Bytes, BytesMut};
 use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
-use crate::eigen_da::grpc::BlobInfo;
-use crate::eigen_da::grpc::common::G1Commitment;
-use crate::eigen_da::grpc::disperser::{BatchHeader, BatchMetadata, BlobHeader, BlobQuorumParam, BlobVerificationProof};
+use crate::eigen_da::common::G1Commitment;
+use crate::eigen_da::{BlobInfo, BatchHeader, BatchMetadata, BlobHeader, BlobQuorumParam, BlobVerificationProof};
 
 impl Encodable for BlobInfo {
     fn rlp_append(&self, s: &mut RlpStream) {
@@ -27,10 +26,10 @@ impl Decodable for BlobInfo {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         let blob_header = if !rlp.at(0)?.is_empty() {
-            Some(BlobHeader::decode(rlp)?)
+            Some(rlp.val_at(0)?)
         } else { None };
         let blob_verification_proof = if !rlp.at(1)?.is_empty() {
-            Some(BlobVerificationProof::decode(rlp)?)
+            Some(rlp.val_at(1)?)
         }else { None };
         Ok( BlobInfo{
             blob_header,
@@ -100,12 +99,12 @@ impl Decodable for BatchMetadata {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         let batch_header = if !rlp.at(0)?.is_empty() {
-            Some(rlp.at(1)?.as_val()?)
+            Some(rlp.at(0)?.as_val()?)
         } else { None };
-        let signatory_record_hash = rlp.at(2)?.as_val()?;
-        let fee = rlp.at(3)?.as_val()?;
-        let confirmation_block_number = rlp.at(4)?.as_val()?;
-        let batch_header_hash = rlp.at(5)?.as_val()?;
+        let signatory_record_hash = rlp.at(1)?.as_val()?;
+        let fee = rlp.at(2)?.as_val()?;
+        let confirmation_block_number = rlp.at(3)?.as_val()?;
+        let batch_header_hash = rlp.at(4)?.as_val()?;
         Ok( BatchMetadata{
             batch_header,
             signatory_record_hash,
@@ -168,11 +167,11 @@ impl Encodable for BlobHeader {
 #[allow(elided_lifetimes_in_paths)]
 impl Decodable for BlobHeader {
     fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
-        if rlp.item_count()? != 3 {
+        if rlp.item_count()? < 3 {
             return Err(DecoderError::RlpIncorrectListLen);
         }
         let commitment = if !rlp.at(0)?.is_empty() {
-            Some(rlp.at(1)?.as_val()?)
+            Some(rlp.at(0)?.as_val()?)
         } else { None };
 
         let data_length = rlp.val_at(1)?;
@@ -236,4 +235,5 @@ impl Decodable for BlobQuorumParam {
         })
     }
 }
+
 

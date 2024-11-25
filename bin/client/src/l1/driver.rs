@@ -33,7 +33,6 @@ use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::{BatchValidationProvider, BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::OpAttributesWithParent;
 use tracing::{error, info, warn};
-use kona_derive::eigen_da::{EigenDaConfig, EigenDaProxy};
 use kona_derive::traits::EigenDAProvider;
 
 /// An oracle-backed derivation pipeline.

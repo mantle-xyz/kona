@@ -190,17 +190,23 @@ mod test {
 
         batch_provider.attempt_update().unwrap();
 
+
         // Update the L1 origin to Holocene activation.
-        let Some(ref mut stage) = batch_provider.batch_queue else {
+        if let Some(ref mut stage) = batch_provider.batch_queue {
+            stage.prev.origin = Some(BlockInfo { number: 1, timestamp: 2, ..Default::default() });
+        } else {
             panic!("Expected BatchQueue");
         };
-        stage.prev.origin = Some(BlockInfo { number: 1, timestamp: 2, ..Default::default() });
 
         // Transition to the BatchValidator stage.
         batch_provider.attempt_update().unwrap();
         assert!(batch_provider.batch_queue.is_none());
 
-        stage.prev.origin = Some(BlockInfo::default());
+        if let Some(ref mut stage) = batch_provider.batch_queue {
+            stage.prev.origin = Some(BlockInfo::default());
+        } else {
+            panic!("BatchQueue is unexpectedly None");
+        }
 
         batch_provider.attempt_update().unwrap();
         assert!(batch_provider.batch_queue.is_some());

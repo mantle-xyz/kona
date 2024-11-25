@@ -33,6 +33,8 @@ reqwest.workspace = true
 tracing.workspace = true
 alloy-serde.workspace = true
 async-trait.workspace = true
+alloc-no-stdlib = { workspace = true, optional = true}
+
 
 # Workspace
 kona-derive = { workspace = true, features = ["serde"] }
@@ -43,6 +45,11 @@ alloy-rpc-client = { workspace = true, optional = true }
 alloy-node-bindings = { workspace = true, optional = true }
 alloy-transport-http = { workspace = true, optional = true, features = ["reqwest"] }
 tokio = { workspace = true, features = ["full"] }
+prost = { workspace = true, features = ["std"]}
+rlp = {workspace = true}
+anyhow = {workspace = true}
+bytes = { workspace = true}
+hex = {workspace = true}
 
 
 [dev-dependencies]
@@ -56,6 +63,7 @@ kona-derive = { workspace = true, features = ["serde", "test-utils"] }
 
 [features]
 default = []
+
 test-utils = [
   "dep:derive_more",
   "dep:alloy-rpc-client",

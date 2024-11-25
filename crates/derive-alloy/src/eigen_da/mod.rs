@@ -2,8 +2,6 @@ mod config;
 pub use config::*;
 mod codec;
 pub use codec::*;
-mod da;
-pub use da::*;
 
 mod grpc;
 pub use grpc::*;

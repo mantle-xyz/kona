@@ -10,6 +10,9 @@ pub use pipeline::{
 mod blob_provider;
 pub use blob_provider::TestBlobProvider;
 
+mod eigen_da_provider;
+pub use eigen_da_provider::TestEigenDaProvider;
+
 mod chain_providers;
 pub use chain_providers::{TestChainProvider, TestL2ChainProvider, TestProviderError};
 

@@ -1,5 +1,5 @@
-use alloc::vec;
-use alloc::vec::Vec;
+use vec;
+use Vec;
 
 const BYTES_PER_SYMBOL: usize = 32;
 
@@ -8,7 +8,7 @@ const BYTES_PER_SYMBOL: usize = 32;
 /// This ensure every 32 bytes are within the valid range of a field element for bn254 curve.
 /// If the input data is not a multiple of 31, the reminder is added to the output by
 /// inserting a 0 and the reminder. The output does not necessarily be a multipler of 32
-pub(crate) fn convert_by_padding_empty_byte(data: &[u8]) -> Vec<u8> {
+pub fn convert_by_padding_empty_byte(data: &[u8]) -> Vec<u8> {
     let data_size = data.len();
     let parse_size = BYTES_PER_SYMBOL - 1;
     let put_size = BYTES_PER_SYMBOL;
@@ -42,7 +42,7 @@ pub(crate) fn convert_by_padding_empty_byte(data: &[u8]) -> Vec<u8> {
 /// The function does not assume the input is a multiple of BYTES_PER_SYMBOL(32 bytes).
 /// For the reminder of the input, the first byte is taken out, and the rest is appended to
 /// the output.
-pub(crate) fn remove_empty_byte_from_padded_bytes(data: &[u8]) -> Vec<u8> {
+pub fn remove_empty_byte_from_padded_bytes(data: &[u8]) -> Vec<u8> {
     let data_size = data.len();
     let parse_size = BYTES_PER_SYMBOL;
     let data_len = (data_size + parse_size - 1) / parse_size;

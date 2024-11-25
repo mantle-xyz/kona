@@ -37,10 +37,11 @@ pub use beacon_client::{APIConfigResponse, APIGenesisResponse, BeaconClient, Onl
 pub mod blob_provider;
 mod eigen_da_provider;
 mod mantle_upgrade;
+pub mod eigen_da;
 
 pub use blob_provider::{
     BlobSidecarProvider, OnlineBlobProvider, OnlineBlobProviderBuilder,
     OnlineBlobProviderWithFallback,
 };
 
-pub use eigen_da_provider::{OnlineEigenDaProvider};
+pub use eigen_da_provider::OnlineEigenDaProvider;

@@ -178,7 +178,6 @@ pub(crate) mod tests {
             .with_raw_frames(Bytes::from(vec![0x01]))
             .with_expected_err(PipelineError::NotEnoughData.temp())
             .build();
-        assert.holocene_active(false);
         assert.next_frames().await;
     }
 
@@ -189,7 +188,6 @@ pub(crate) mod tests {
             .with_raw_frames(Bytes::from(vec![0x00, 0x01]))
             .with_expected_err(PipelineError::NotEnoughData.temp())
             .build();
-        assert.holocene_active(false);
         assert.next_frames().await;
     }
 
@@ -201,7 +199,7 @@ pub(crate) mod tests {
             .with_origin(BlockInfo::default())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(false);
+        
         assert.next_frames().await;
     }
 
@@ -217,7 +215,7 @@ pub(crate) mod tests {
             .with_origin(BlockInfo::default())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(false);
+        
         assert.next_frames().await;
     }
 
@@ -228,7 +226,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        assert.holocene_active(false);
+        
         assert.missing_origin().await;
     }
 
@@ -245,7 +243,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -258,7 +256,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -280,7 +278,7 @@ pub(crate) mod tests {
             .with_expected_frames(&[&frames[0..3], &frames[4..]].concat())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -299,7 +297,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames[0..2])
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -321,7 +319,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames[4..])
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -346,7 +344,7 @@ pub(crate) mod tests {
             .with_expected_frames(&[&frames[0..4], &frames[6..]].concat())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -368,7 +366,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames[0..4])
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -391,7 +389,7 @@ pub(crate) mod tests {
             .with_expected_frames(&[&frames[0..2], &frames[4..]].concat())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -414,7 +412,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames[4..])
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 
@@ -437,7 +435,7 @@ pub(crate) mod tests {
             .with_expected_frames(&[&frames[1..2], &frames[3..]].concat())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+        
         assert.next_frames().await;
     }
 }

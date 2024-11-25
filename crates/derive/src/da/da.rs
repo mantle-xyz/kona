@@ -1,8 +1,6 @@
 use alloc::vec::Vec;
 use core::fmt::Display;
 use async_trait::async_trait;
-use crate::eigen_da::grpc::{BlobInfo, BlobStatusReply};
-use crate::traits::BlobProvider;
 use alloc::boxed::Box;
 
 #[async_trait]

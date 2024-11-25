@@ -1,4 +1,4 @@
-use alloc::string::{String, ToString};
+use {String, ToString};
 use core::time::Duration;
 
 /// The EigenDa configuration
@@ -17,10 +17,10 @@ pub struct EigenDaConfig {
 impl Default for EigenDaConfig {
     fn default() -> Self {
         Self {
-            proxy_url: "".to_string(),
+            proxy_url: "http://127.0.0.1:3100".to_string(),
             disperse_url: "".to_string(),
-            disperse_blob_timeout: Default::default(),
-            retrieve_blob_timeout: Default::default(),
+            disperse_blob_timeout: Duration::from_secs(120),
+            retrieve_blob_timeout: Duration::from_secs(120),
         }
     }
 }

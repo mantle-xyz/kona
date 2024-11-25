@@ -12,10 +12,11 @@ use kona_derive::{
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::BlockInfo;
 use std::sync::Arc;
-use kona_derive::eigen_da::{EigenDaProxy, IEigenDA};
+use kona_derive::da::{IEigenDA};
 use crate::{
     AlloyChainProvider, AlloyL2ChainProvider, OnlineBeaconClient, OnlineBlobProviderWithFallback,
 };
+use crate::eigen_da::EigenDaProxy;
 use crate::eigen_da_provider::OnlineEigenDaProvider;
 
 /// An online derivation pipeline.
@@ -67,7 +68,7 @@ pub fn new_online_pipeline(
 
 #[cfg(test)]
 mod tests {
-    use kona_derive::eigen_da::EigenDaConfig;
+    use crate::eigen_da::EigenDaConfig;
     use super::*;
     use crate::OnlineBlobProvider;
     use kona_derive::prelude::OriginProvider;
