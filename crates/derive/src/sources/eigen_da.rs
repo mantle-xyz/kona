@@ -17,11 +17,19 @@ use crate::traits::{AsyncIterator, BlobProvider, EigenDAProvider};
 use prost::Message;
 use alloc::boxed::Box;
 
-
-
 /// Useful to dinstiguish between plain calldata and alt-da blob refs
 /// Support seamless migration of existing rollups using ETH DA
 pub const DERIVATION_VERSION_EIGEN_DA:u8 = 0xed;
+
+
+pub struct VecOfBytes(pub Vec<Vec<u8>>);
+
+impl Decodable for VecOfBytes {
+    fn decode(rlp: &rlp::Rlp<'_>) -> Result<Self, DecoderError> {
+        let inner = rlp.as_list::<Vec<u8>>()?;
+        Ok(VecOfBytes(inner))
+    }
+}
 
 
 /// A data iterator that reads from eigen da.
@@ -145,11 +153,13 @@ where
                                 continue;
                             }
                             let blob_data = self.eigen_da_provider
-                                .retrieve_blob_with_commitment( &*frame_ref.commitment)
+                                .retrieve_blob_with_commitment( &frame_ref.commitment)
                                 .await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
                             let blobs = &blob_data[..frame_ref.blob_length as usize];
-                            let blob_data:Vec<u8> = decode(blobs).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
-                            out.push(Bytes::from(blob_data.clone()));
+                            let blob_data:VecOfBytes = decode(blobs).map_err(|e|EigenDAProviderError::RLPDecodeError(e.to_string()))?;
+                            for blob in blob_data.0 {
+                                out.push(Bytes::from(blob));
+                            }
                         }
                     }
 
@@ -183,8 +193,10 @@ where
                 }
                 whole_blob_data.extend(blob.to_vec().clone());
             }
-            let rlp_blob:Vec<u8> = decode(&whole_blob_data).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
-            blob_data.push(Bytes::from(rlp_blob.clone()));
+            let rlp_blob:VecOfBytes = decode(&whole_blob_data).map_err(|e|EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
+            for blob in rlp_blob.0 {
+                blob_data.push(Bytes::from(blob));
+            }
         }
         self.open = true;
         self.data = blob_data;
@@ -227,5 +239,73 @@ where
 
          Ok(next_data)
 
+    }
+}
+
+
+
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use alloc::vec;
+    use alloy_primitives::keccak256;
+    use alloy_rlp::Decodable;
+    use crate::test_utils::TestEigenDaProvider;
+    use super::*;
+
+    #[tokio::test]
+    async  fn test_calldata_frame_decode() {
+        let txs = valid_eigen_da_txs();
+        let mut eigen_da_provider = TestEigenDaProvider::default();
+        for tx in txs {
+            let (tx_kind, calldata, blob_hashes) = match &tx {
+                TxEnvelope::Legacy(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
+                TxEnvelope::Eip2930(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
+                TxEnvelope::Eip1559(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
+                TxEnvelope::Eip4844(blob_tx_wrapper) => match blob_tx_wrapper.tx() {
+                    TxEip4844Variant::TxEip4844(tx) => {
+                        (tx.to(), tx.input.clone(), Some(tx.blob_versioned_hashes.clone()))
+                    }
+                    TxEip4844Variant::TxEip4844WithSidecar(tx) => {
+                        let tx = tx.tx();
+                        (tx.to(), tx.input.clone(), Some(tx.blob_versioned_hashes.clone()))
+                    }
+                },
+                _ => continue,
+            };
+            assert_eq!(calldata[0],DERIVATION_VERSION_EIGEN_DA);
+
+            let blob_data = calldata.slice(1..);
+            let calldata_frame: CalldataFrame = CalldataFrame::decode(blob_data).unwrap();
+            if let Some(value) = calldata_frame.value {
+                match value {
+                    calldata_frame::Value::Frame(frame) => {
+
+                    }
+                    calldata_frame::Value::FrameRef(frame_ref) => {
+                        if frame_ref.quorum_ids.len() == 0 {
+                            warn!(target: "eigen-da-source", "decoded frame ref contains no quorum IDs");
+                            continue;
+                        }
+                        let commitment = hex::encode(frame_ref.commitment.as_slice()).to_string();
+
+                        assert_eq!(commitment, "010000f901d8f852f842a00dbbd22149b419a9a751c25065b58745f4216dc3ae4e9ad583306c395387b6a3a02673dfa25dd3095246eeffb639d3e11108a1ba75dd29b86c3a4200ed00210e4e820200cac480213701c401213710f90181830148ae81a5f873eba0c42bcd27bcd22ba55c4189a25d362343838cb75f57979baa0686ec5381a944c3820001826362832a79cba07263089b84cbb2963e4f50a930243c081ab14b01c0c92d57c3029590bd9dfc9200832a7a20a05419bc29ac025512311c14f23d9613e408448e47bb31f71614e1f82b6c63966cb9010074b13a3acaba35d3749063c19806c9a2f2004b318d55edd6cb5129d958807ea7ac09584a2c6ea029ed34c72f849862e4189928e90931e07093209016f5fc70a6c4a8c3237c25c4f236bb25c105fd7dbd6e4a00153c69c0757d8cbf02f966167ccae243412c20de1c3a38a50818dc7f9f3e02dcb3bc4e54800f2224b8c1eaa9955e41792fa0e401f2814ee209331126149c630c34e1b8e2f804955582022676e232d24d7784b496fc997d98db2849b1bfa8443b362723fc603da8de11704a1ef50414e11234496cfac67aebdd2faa24840ffe7f04506652b8a11a534b024a40bc7e99fee042336f425eb16e40e4267593415860204c9069723dbaca8cf2e596dc820001".to_string());
+                        let blob_data = eigen_da_provider.retrieve_blob_with_commitment( &frame_ref.commitment)
+                            .await.map_err(|e|EigenDAProviderError::String(e.to_string())).unwrap();
+                        let blobs = &blob_data[..frame_ref.blob_length as usize];
+                        let blob_data:VecOfBytes = decode(blobs).map_err(|e|EigenDAProviderError::RLPDecodeError(e.to_string())).unwrap();
+                    }
+                }
+
+            }
+        }
+    }
+
+    pub(crate) fn valid_eigen_da_txs() -> Vec<TxEnvelope> {
+        // https://sepolia.etherscan.io/getRawTx?tx=0xfd10d26ace7eec30487bdad54ef5348dfdff48061129cf6e2adf6182a950d5a9
+        let raw_tx =
+            alloy_primitives::hex::decode("0x02f9026483aa36a7830107f1830f424085083f58abbe8271f49454da4d1124b2310757562b8ee9cea69b25bb46a180b901f2ed12ee0318cbf3a9012202000128a15baa06de03010000f901d8f852f842a00dbbd22149b419a9a751c25065b58745f4216dc3ae4e9ad583306c395387b6a3a02673dfa25dd3095246eeffb639d3e11108a1ba75dd29b86c3a4200ed00210e4e820200cac480213701c401213710f90181830148ae81a5f873eba0c42bcd27bcd22ba55c4189a25d362343838cb75f57979baa0686ec5381a944c3820001826362832a79cba07263089b84cbb2963e4f50a930243c081ab14b01c0c92d57c3029590bd9dfc9200832a7a20a05419bc29ac025512311c14f23d9613e408448e47bb31f71614e1f82b6c63966cb9010074b13a3acaba35d3749063c19806c9a2f2004b318d55edd6cb5129d958807ea7ac09584a2c6ea029ed34c72f849862e4189928e90931e07093209016f5fc70a6c4a8c3237c25c4f236bb25c105fd7dbd6e4a00153c69c0757d8cbf02f966167ccae243412c20de1c3a38a50818dc7f9f3e02dcb3bc4e54800f2224b8c1eaa9955e41792fa0e401f2814ee209331126149c630c34e1b8e2f804955582022676e232d24d7784b496fc997d98db2849b1bfa8443b362723fc603da8de11704a1ef50414e11234496cfac67aebdd2faa24840ffe7f04506652b8a11a534b024a40bc7e99fee042336f425eb16e40e4267593415860204c9069723dbaca8cf2e596dc820001c001a0f421ccc336435722bdf41ef041a278b0851790dae1946be7033c2e057ffede46a027493ede5c5e490f14fc2b06cc444433b3f2d6e1079451d519311c1f4ab8f4b0").unwrap();
+        let eoa = TxEnvelope::decode(&mut raw_tx.as_slice()).unwrap();
+        vec![eoa]
     }
 }

@@ -23,7 +23,7 @@ use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{error, trace, warn};
-use kona_derive::eigen_da::EigenDaProxy;
+use kona_derive_alloy::eigen_da::EigenDaProxy;
 use kona_derive::traits::EigenDAProvider;
 
 mod precompiles;

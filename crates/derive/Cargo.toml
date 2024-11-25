@@ -34,13 +34,10 @@ thiserror.workspace = true
 spin = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true, optional = true, features = ["fmt"] }
 
-prost = { workspace = true, features = ["std"]}
 bytes = { workspace = true}
-reqwest = {workspace = true}
 hex = {workspace = true}
-anyhow = {workspace = true}
-rlp = {workspace = true}
-tokio = {workspace = true, features = ["full"]}
+prost = { workspace = true, default-features = false}
+rlp = {workspace = true, default-features = false}
 
 
 [dev-dependencies]

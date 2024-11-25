@@ -24,7 +24,7 @@ use serde::Serialize;
 use std::{path::PathBuf, sync::Arc, time};
 use std::time::Duration;
 use tokio::sync::RwLock;
-use kona_derive::eigen_da::{EigenDaConfig, EigenDaProxy, IEigenDA};
+use kona_derive_alloy::eigen_da::{EigenDaConfig, EigenDaProxy};
 
 mod parser;
 pub(crate) use parser::parse_b256;

@@ -49,7 +49,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::TestChainProvider;
+    use crate::test_utils::{TestChainProvider, TestEigenDaProvider};
     use op_alloy_protocol::BlockInfo;
 
     use crate::{
@@ -65,7 +65,7 @@ mod tests {
             CalldataSource::new(chain, Default::default(), block_ref, Default::default());
         source.open = true;
         source.calldata.push_back(Default::default());
-        let mut variant: EthereumDataSourceVariant<TestChainProvider, TestBlobProvider> =
+        let mut variant: EthereumDataSourceVariant<TestChainProvider, TestBlobProvider, TestEigenDaProvider> =
             EthereumDataSourceVariant::Calldata(source);
         assert!(variant.next().await.is_ok());
     }
@@ -79,7 +79,7 @@ mod tests {
             BlobSource::new(chain, blob, Default::default(), block_ref, Default::default());
         source.open = true;
         source.data.push(BlobData { calldata: Some(Default::default()), ..Default::default() });
-        let mut variant: EthereumDataSourceVariant<TestChainProvider, TestBlobProvider> =
+        let mut variant: EthereumDataSourceVariant<TestChainProvider, TestBlobProvider, TestEigenDaProvider> =
             EthereumDataSourceVariant::Blob(source);
         assert!(variant.next().await.is_ok());
     }
