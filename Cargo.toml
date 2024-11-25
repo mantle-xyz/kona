@@ -29,7 +29,7 @@ unnameable-types = "warn"
 all = "warn"
 
 [workspace.lints.clippy]
-needless-return = "allow" # Temporary fix since this is breaking in nightly clippy
+needless-return = "allow"               # Temporary fix since this is breaking in nightly clippy
 all = { level = "warn", priority = -1 }
 missing-const-for-fn = "warn"
 use-self = "warn"
@@ -87,10 +87,10 @@ alloy-rpc-types-beacon = { version = "0.4.2", default-features = false }
 #op-alloy-rpc-types-engine = { version = "0.5.2", default-features = false }
 
 # Mantle Alloy
-op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy"}
-op-alloy-protocol = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy"}
-op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy"}
-op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy"}
+op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy" }
+op-alloy-protocol = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy" }
+op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy" }
+op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy" }
 
 # General
 lru = "0.12.4"
@@ -134,7 +134,7 @@ serde_json = { version = "1.0.132", default-features = false }
 
 # Ethereum
 unsigned-varint = "0.8.0"
-revm = { git = "https://github.com/mantle-xyz/revm", branch = "kona" }
+revm = { git = "https://github.com/mantle-xyz/revm", branch = "kona", default-features = false }
 
 # K/V database
 rocksdb = { version = "0.22", default-features = false }
