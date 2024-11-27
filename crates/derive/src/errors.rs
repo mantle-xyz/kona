@@ -135,6 +135,9 @@ pub enum PipelineError {
     /// Found future batch
     #[display("Found batch with timestamp: {_0} marked as future batch, but expected timestamp: {_1}" )]
     FutureBatch(u64, u64),
+    /// The data source can no longer provide any more data.
+    #[display("Data source exhausted")]
+    EndOfSource,
 }
 
 impl From<BuilderError> for PipelineError {

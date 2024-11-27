@@ -17,4 +17,6 @@ pub mod boot;
 pub use boot::BootInfo;
 
 mod caching_oracle;
+mod errors;
+
 pub use caching_oracle::CachingOracle;
