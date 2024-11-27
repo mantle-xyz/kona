@@ -3,7 +3,7 @@
 /// Re-export trait arguments.
 pub use crate::traits::{
     AttributesBuilder, DataAvailabilityProvider, NextAttributes, OriginAdvancer, OriginProvider,
-    Pipeline, ResetProvider, Signal, SignalReceiver, StepResult,
+    Pipeline, ResetProvider,ResetSignal, Signal, SignalReceiver, StepResult,
 };
 
 /// Re-export error types.
