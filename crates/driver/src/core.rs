@@ -113,40 +113,8 @@ where
                 Ok(header) => header,
                 Err(e) => {
                     error!(target: "client", "Failed to execute L2 block: {}", e);
-
-                    if cfg.is_holocene_active(attributes.payload_attributes.timestamp) {
-                        // Retry with a deposit-only block.
-                        warn!(target: "client", "Flushing current channel and retrying deposit only block");
-
-                        // Flush the current batch and channel - if a block was replaced with a
-                        // deposit-only block due to execution failure, the
-                        // batch and channel it is contained in is forwards
-                        // invalidated.
-                        self.pipeline.signal(Signal::FlushChannel).await?;
-
-                        // Strip out all transactions that are not deposits.
-                        attributes.transactions = attributes.transactions.map(|txs| {
-                            txs.into_iter()
-                                .filter(|tx| (!tx.is_empty() && tx[0] == OpTxType::Deposit as u8))
-                                .collect::<Vec<_>>()
-                        });
-
-                        // Retry the execution.
-                        self.executor.update_safe_head(self.cursor.l2_safe_head_header().clone());
-                        match self.executor.execute_payload(attributes.clone()).await {
-                            Ok(header) => header,
-                            Err(e) => {
-                                error!(
-                                    target: "client",
-                                    "Critical - Failed to execute deposit-only block: {e}",
-                                );
-                                return Err(DriverError::Executor(e));
-                            }
-                        }
-                    } else {
-                        // Pre-Holocene, discard the block if execution fails.
-                        continue;
-                    }
+                    // Pre-Holocene, discard the block if execution fails.
+                    continue;
                 }
             };
 

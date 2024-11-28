@@ -6,6 +6,8 @@ use crate::{
         DiskKeyValueStore, LocalKeyValueStore, MemoryKeyValueStore, SharedKeyValueStore,
         SplitKeyValueStore,
     },
+    providers::{OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDaProvider},
+    util,
 };
 use alloy_primitives::B256;
 use alloy_provider::ReqwestProvider;
@@ -17,14 +19,13 @@ use clap::{
     ArgAction, Parser,
 };
 use clap::{builder::styling::{AnsiColor, Color, Style}, value_parser, ArgAction, Parser};
-use kona_derive_alloy::{OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDaProvider};
 use op_alloy_genesis::RollupConfig;
 use reqwest::Client;
 use serde::Serialize;
 use std::{path::PathBuf, sync::Arc, time};
 use std::time::Duration;
 use tokio::sync::RwLock;
-use kona_derive_alloy::eigen_da::{EigenDaConfig, EigenDaProxy};
+use eigen_da::{EigenDaConfig, EigenDaProxy};
 
 mod parser;
 pub(crate) use parser::parse_b256;

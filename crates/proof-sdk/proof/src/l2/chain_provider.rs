@@ -114,7 +114,6 @@ impl<T: CommsClient + Send + Sync> BatchValidationProvider for OracleL2ChainProv
                 transactions,
                 ommers: Vec::new(),
                 withdrawals: None,
-                requests: None,
             },
         };
         Ok(optimism_block)

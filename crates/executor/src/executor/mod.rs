@@ -259,7 +259,7 @@ where
             blob_gas_used: None,
             excess_blob_gas: None,
             parent_beacon_block_root: payload.payload_attributes.parent_beacon_block_root,
-            requests_root: None,
+            requests_hash: None,
             extra_data: Default::default(),
         }
         .seal_slow();
@@ -460,7 +460,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -515,7 +515,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -574,7 +574,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -640,7 +640,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -700,7 +700,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -769,7 +769,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 

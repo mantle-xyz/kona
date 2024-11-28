@@ -35,7 +35,7 @@ pub trait EigenDAProvider {
         commitment: &[u8],
     ) -> Result<Vec<u8>, Self::Error>;
 
-    /// Weather use mantle eigen_da indexer service
+    /// Weather use mantle eigen-da indexer service
     fn da_indexer_enable(&mut self) -> bool;
 
 }

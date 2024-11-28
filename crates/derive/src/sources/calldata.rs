@@ -53,7 +53,7 @@ impl<CP: ChainProvider + Send> CalldataSource<CP> {
                     TxEnvelope::Eip1559(tx) => (tx.tx().to(), tx.tx().input()),
                     _ => return None,
                 };
-                let to = tx_kind.to().copied()?;
+                let to = tx_kind?;
 
                 if to != self.batch_inbox_address {
                     return None;

@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use kona_derive::traits::EigenDAProvider;
 use kona_preimage::{CommsClient, PreimageKey, PreimageKeyType};
 use kona_preimage::PreimageKeyType::Precompile;
+use crate::errors::OracleProviderError;
 use crate::HintType;
 
 #[derive(Debug,Clone)]
@@ -29,11 +30,14 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
     /// ## Returns
     /// - `Ok(blob)`: The blob.
     /// - `Err(e)`: The blob could not be retrieved.
-    async fn get_blob(&self, commitment: &[u8]) -> Result<Vec<u8>, anyhow::Error> {
-        self.oracle.write(&HintType::EigenDa.encode_with(&[commitment.as_ref()])).await?;
+    async fn get_blob(&self, commitment: &[u8]) -> Result<Vec<u8>, OracleProviderError> {
+        self.oracle.write(&HintType::EigenDa.encode_with(&[commitment.as_ref()]))
+            .await
+            .map_err(OracleProviderError::Preimage)?;
         let mut out_data:Vec<u8> = Vec::new();
         self.oracle.get_exact(PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric), &mut out_data)
-            .await?;
+            .await
+            .map_err(OracleProviderError::Preimage)?;
         tracing::info!(target: "client_oracle", "Retrieved blob from eigen da with commitment {commitment:?} from the oracle.");
         Ok(out_data)
     }
@@ -42,7 +46,7 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
 
 #[async_trait]
 impl<T: CommsClient + Sync + Send> EigenDAProvider for OracleEigenDaProvider<T> {
-    type Error = anyhow::Error;
+    type Error = OracleProviderError;
 
     async fn retrieve_blob(&mut self, batch_header_hash: &[u8], blob_index: u32, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
         if commitment.is_empty() {

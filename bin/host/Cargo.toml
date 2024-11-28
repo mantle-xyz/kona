@@ -19,6 +19,8 @@ kona-std-fpvm.workspace = true
 kona-preimage = { workspace = true, features = ["std"] }
 kona-proof = { workspace = true, features = ["std"] }
 kona-client.workspace = true
+eigen-da.workspace = true
+
 
 # Alloy
 alloy-rlp.workspace = true

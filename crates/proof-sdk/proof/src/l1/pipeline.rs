@@ -21,15 +21,16 @@ use kona_preimage::CommsClient;
 use op_alloy_genesis::{RollupConfig, SystemConfig};
 use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::OpAttributesWithParent;
+use kona_derive::traits::EigenDAProvider;
 
 /// An oracle-backed derivation pipeline.
-pub type OracleDerivationPipeline<O, B> = DerivationPipeline<
-    OracleAttributesQueue<OracleDataProvider<O, B>, O>,
+pub type OracleDerivationPipeline<O, B, E> = DerivationPipeline<
+    OracleAttributesQueue<OracleDataProvider<O, B, E>, O>,
     OracleL2ChainProvider<O>,
 >;
 
 /// An oracle-backed Ethereum data source.
-pub type OracleDataProvider<O, B> = EthereumDataSource<OracleL1ChainProvider<O>, B>;
+pub type OracleDataProvider<O, B, E> = EthereumDataSource<OracleL1ChainProvider<O>, B, E>;
 
 /// An oracle-backed payload attributes builder for the `AttributesQueue` stage of the derivation
 /// pipeline.
@@ -45,30 +46,30 @@ pub type OracleAttributesQueue<DAP, O> = AttributesQueue<
                     FrameQueue<L1Retrieval<DAP, L1Traversal<OracleL1ChainProvider<O>>>>,
                 >,
             >,
-            OracleL2ChainProvider<O>,
         >,
-        OracleL2ChainProvider<O>,
     >,
     OracleAttributesBuilder<O>,
 >;
 
 /// An oracle-backed derivation pipeline.
 #[derive(Debug)]
-pub struct OraclePipeline<O, B>
+pub struct OraclePipeline<O, B, E>
 where
     O: CommsClient + FlushableCache + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     /// The internal derivation pipeline.
-    pub pipeline: OracleDerivationPipeline<O, B>,
+    pub pipeline: OracleDerivationPipeline<O, B, E>,
     /// The caching oracle.
     pub caching_oracle: Arc<O>,
 }
 
-impl<O, B> OraclePipeline<O, B>
+impl<O, B, E> OraclePipeline<O, B, E>
 where
     O: CommsClient + FlushableCache + FlushableCache + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     /// Constructs a new oracle-backed derivation pipeline.
     pub fn new(
@@ -76,6 +77,7 @@ where
         sync_start: PipelineCursor,
         caching_oracle: Arc<O>,
         blob_provider: B,
+        eigen_da_provider: E,
         chain_provider: OracleL1ChainProvider<O>,
         l2_chain_provider: OracleL2ChainProvider<O>,
     ) -> Self {
@@ -84,7 +86,7 @@ where
             l2_chain_provider.clone(),
             chain_provider.clone(),
         );
-        let dap = EthereumDataSource::new_from_parts(chain_provider.clone(), blob_provider, &cfg);
+        let dap = EthereumDataSource::new(chain_provider.clone(), blob_provider,eigen_da_provider, &cfg);
 
         let pipeline = PipelineBuilder::new()
             .rollup_config(cfg)
@@ -98,10 +100,11 @@ where
     }
 }
 
-impl<O, B> DriverPipeline<OracleDerivationPipeline<O, B>> for OraclePipeline<O, B>
+impl<O, B, E> DriverPipeline<OracleDerivationPipeline<O, B, E>> for OraclePipeline<O, B, E>
 where
     O: CommsClient + FlushableCache + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     /// Flushes the cache on re-org.
     fn flush(&mut self) {
@@ -110,10 +113,11 @@ where
 }
 
 #[async_trait]
-impl<O, B> SignalReceiver for OraclePipeline<O, B>
+impl<O, B, E> SignalReceiver for OraclePipeline<O, B, E>
 where
     O: CommsClient + FlushableCache + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     /// Receives a signal from the driver.
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
@@ -121,10 +125,11 @@ where
     }
 }
 
-impl<O, B> OriginProvider for OraclePipeline<O, B>
+impl<O, B, E> OriginProvider for OraclePipeline<O, B, E>
 where
     O: CommsClient + FlushableCache + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     /// Returns the optional L1 [BlockInfo] origin.
     fn origin(&self) -> Option<BlockInfo> {
@@ -132,10 +137,11 @@ where
     }
 }
 
-impl<O, B> Iterator for OraclePipeline<O, B>
+impl<O, B, E> Iterator for OraclePipeline<O, B, E>
 where
     O: CommsClient + FlushableCache + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     type Item = OpAttributesWithParent;
 
@@ -145,10 +151,11 @@ where
 }
 
 #[async_trait]
-impl<O, B> Pipeline for OraclePipeline<O, B>
+impl<O, B, E> Pipeline for OraclePipeline<O, B, E>
 where
     O: CommsClient + FlushableCache + Send + Sync + Debug,
     B: BlobProvider + Send + Sync + Debug + Clone,
+    E: EigenDAProvider + Send + Sync + Debug + Clone,
 {
     /// Peeks at the next [OpAttributesWithParent] from the pipeline.
     fn peek(&self) -> Option<&OpAttributesWithParent> {

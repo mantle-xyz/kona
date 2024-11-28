@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - *(derive)* remove indexed blob hash ([#847](https://github.com/anton-rs/kona/pull/847))
 - L2ExecutePayloadProof Hint Type ([#832](https://github.com/anton-rs/kona/pull/832))
 
+
 ## [0.0.1](https://github.com/anton-rs/kona/releases/tag/kona-proof-v0.0.1) - 2024-11-20
 
 ### Added
