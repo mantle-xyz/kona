@@ -1,10 +1,11 @@
 //! Testing utilities for `kona-mpt`
 
-use crate::{ordered_trie_with_encoder, TrieProvider};
+use crate::{ordered_trie_with_encoder, TrieNode, TrieProvider};
 use alloc::{collections::BTreeMap, vec::Vec};
 use alloy_consensus::{Receipt, ReceiptEnvelope, ReceiptWithBloom, TxEnvelope, TxType};
 use alloy_primitives::{keccak256, Bytes, Log, B256};
 use alloy_provider::{network::eip2718::Encodable2718, Provider, ProviderBuilder};
+use alloy_rlp::Decodable;
 use alloy_rpc_types::{BlockTransactions, BlockTransactionsKind};
 use anyhow::{anyhow, Result};
 use reqwest::Url;
@@ -95,10 +96,7 @@ pub(crate) async fn get_live_derivable_transactions_list(
     let BlockTransactions::Full(txs) = block.transactions else {
         anyhow::bail!("Did not fetch full block");
     };
-    let consensus_txs = txs
-        .into_iter()
-        .map(|tx| TxEnvelope::try_from(tx).map_err(anyhow::Error::from))
-        .collect::<Result<Vec<_>>>()?;
+    let consensus_txs = txs.into_iter().map(TxEnvelope::from).collect::<Vec<_>>();
 
     // Compute the derivable list
     let mut list = ordered_trie_with_encoder(consensus_txs.as_ref(), |rlp: &TxEnvelope, buf| {
@@ -124,32 +122,26 @@ pub(crate) async fn get_live_derivable_transactions_list(
 /// A mock [TrieProvider] for testing that serves in-memory preimages.
 pub(crate) struct TrieNodeProvider {
     preimages: BTreeMap<B256, Bytes>,
-    bytecode: BTreeMap<B256, Bytes>,
-    headers: BTreeMap<B256, alloy_consensus::Header>,
 }
 
 impl TrieNodeProvider {
-    pub(crate) const fn new(
-        preimages: BTreeMap<B256, Bytes>,
-        bytecode: BTreeMap<B256, Bytes>,
-        headers: BTreeMap<B256, alloy_consensus::Header>,
-    ) -> Self {
-        Self { preimages, bytecode, headers }
+    pub(crate) const fn new(preimages: BTreeMap<B256, Bytes>) -> Self {
+        Self { preimages }
     }
 }
 
 impl TrieProvider for TrieNodeProvider {
     type Error = anyhow::Error;
 
-    fn trie_node_preimage(&self, key: B256) -> Result<Bytes> {
-        self.preimages.get(&key).cloned().ok_or_else(|| anyhow!("Key not found"))
-    }
-
-    fn bytecode_by_hash(&self, hash: B256) -> Result<Bytes> {
-        self.bytecode.get(&hash).cloned().ok_or_else(|| anyhow!("Key not found"))
-    }
-
-    fn header_by_hash(&self, hash: B256) -> Result<alloy_consensus::Header> {
-        self.headers.get(&hash).cloned().ok_or_else(|| anyhow!("Key not found"))
+    fn trie_node_by_hash(&self, key: B256) -> Result<TrieNode> {
+        TrieNode::decode(
+            &mut self
+                .preimages
+                .get(&key)
+                .cloned()
+                .ok_or_else(|| anyhow!("Key not found"))?
+                .as_ref(),
+        )
+            .map_err(Into::into)
     }
 }

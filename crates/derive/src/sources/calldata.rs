@@ -66,7 +66,7 @@ impl<CP: ChainProvider + Send> CalldataSource<CP> {
                     TxEnvelope::Eip1559(tx) => (tx.tx().to(), tx.tx().input()),
                     _ => return None,
                 };
-                let to = tx_kind.to().copied()?;
+                let to = tx_kind?;
 
                 if to != self.batch_inbox_address {
                     return None;
@@ -106,7 +106,7 @@ mod tests {
     use crate::{errors::PipelineErrorKind, test_utils::TestChainProvider};
     use alloc::{vec, vec::Vec};
     use alloy_consensus::{Signed, TxEip2930, TxEip4844, TxEip4844Variant, TxLegacy};
-    use alloy_primitives::{address, Address, Signature, TxKind};
+    use alloy_primitives::{address, Address, PrimitiveSignature as Signature, TxKind};
 
     pub(crate) fn test_legacy_tx(to: Address) -> TxEnvelope {
         let sig = Signature::test_signature();

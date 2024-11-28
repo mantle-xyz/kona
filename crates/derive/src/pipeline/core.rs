@@ -11,7 +11,7 @@ use crate::{
 use alloc::{boxed::Box, collections::VecDeque, string::ToString, sync::Arc};
 use async_trait::async_trait;
 use core::fmt::Debug;
-use op_alloy_genesis::RollupConfig;
+use op_alloy_genesis::{RollupConfig, SystemConfig};
 use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::OpAttributesWithParent;
 use tracing::{error, trace, warn};
@@ -168,6 +168,17 @@ where
                 }
             },
         }
+    }
+
+    fn rollup_config(&self) -> &RollupConfig {
+        &self.rollup_config
+    }
+
+    async fn system_config_by_number(&mut self, number: u64) -> Result<SystemConfig, PipelineErrorKind> {
+        self.l2_chain_provider
+            .system_config_by_number(number, self.rollup_config.clone())
+            .await
+            .map_err(|e|PipelineErrorKind::Temporary(PipelineError::Provider(e.to_string())))
     }
 }
 

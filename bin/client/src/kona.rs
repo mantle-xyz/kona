@@ -7,96 +7,35 @@
 
 extern crate alloc;
 
-use alloc::sync::Arc;
-use kona_client::{
-    l1::{DerivationDriver, OracleBlobProvider, OracleL1ChainProvider},
-    l2::OracleL2ChainProvider,
-    BootInfo, CachingOracle,
-};
-use kona_common_proc::client_entry;
+use alloc::string::String;
+use kona_preimage::{HintWriter, OracleReader};
+use kona_std_fpvm::{FileChannel, FileDescriptor};
+use kona_std_fpvm_proc::client_entry;
 
-pub(crate) mod fault;
-use fault::{fpvm_handle_register, HINT_WRITER, ORACLE_READER};
+/// The global preimage oracle reader pipe.
+static ORACLE_READER_PIPE: FileChannel =
+    FileChannel::new(FileDescriptor::PreimageRead, FileDescriptor::PreimageWrite);
 
-/// The size of the LRU cache in the oracle.
-const ORACLE_LRU_SIZE: usize = 1024;
+/// The global hint writer pipe.
+static HINT_WRITER_PIPE: FileChannel =
+    FileChannel::new(FileDescriptor::HintRead, FileDescriptor::HintWrite);
+
+/// The global preimage oracle reader.
+static ORACLE_READER: OracleReader<FileChannel> = OracleReader::new(ORACLE_READER_PIPE);
+
+/// The global hint writer.
+static HINT_WRITER: HintWriter<FileChannel> = HintWriter::new(HINT_WRITER_PIPE);
 
 #[client_entry(100_000_000)]
-fn main() -> Result<()> {
-    #[cfg(feature = "tracing-subscriber")]
+fn main() -> Result<(), String> {
+    #[cfg(feature = "client-tracing")]
     {
-        use anyhow::anyhow;
-        use tracing::Level;
+        use kona_std_fpvm::tracing::FpvmTracingSubscriber;
 
-        let subscriber = tracing_subscriber::fmt().with_max_level(Level::DEBUG).finish();
-        tracing::subscriber::set_global_default(subscriber).map_err(|e| anyhow!(e))?;
+        let subscriber = FpvmTracingSubscriber::new(tracing::Level::INFO);
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("Failed to set tracing subscriber");
     }
 
-    kona_common::block_on(async move {
-        ////////////////////////////////////////////////////////////////
-        //                          PROLOGUE                          //
-        ////////////////////////////////////////////////////////////////
-
-        let oracle = Arc::new(CachingOracle::new(ORACLE_LRU_SIZE, ORACLE_READER, HINT_WRITER));
-        let boot = Arc::new(BootInfo::load(oracle.as_ref()).await?);
-        let l1_provider = OracleL1ChainProvider::new(boot.clone(), oracle.clone());
-        let l2_provider = OracleL2ChainProvider::new(boot.clone(), oracle.clone());
-        let beacon = OracleBlobProvider::new(oracle.clone());
-
-        ////////////////////////////////////////////////////////////////
-        //                   DERIVATION & EXECUTION                   //
-        ////////////////////////////////////////////////////////////////
-        //TODO
-        // Create a new derivation driver with the given boot information and oracle.
-        // let mut driver = DerivationDriver::new(
-        //     boot.as_ref(),
-        //     oracle.as_ref(),
-        //     beacon,
-        //     l1_provider,
-        //     l2_provider.clone(),
-        // )
-        // .await?;
-
-        // let driver = None;
-        // // Run the derivation pipeline until we are able to produce the output root of the claimed
-        // // L2 block.
-        // let (number, output_root) = driver
-        //     .produce_output(&boot.rollup_config, &l2_provider, &l2_provider, fpvm_handle_register)
-        //     .await?;
-        //
-        // ////////////////////////////////////////////////////////////////
-        // //                          EPILOGUE                          //
-        // ////////////////////////////////////////////////////////////////
-        //
-        // if number != boot.claimed_l2_block_number || output_root != boot.claimed_l2_output_root {
-        //     tracing::error!(
-        //         target: "client",
-        //         "Failed to validate L2 block #{number} with output root {output_root}",
-        //         number = number,
-        //         output_root = output_root
-        //     );
-        //     kona_common::io::print(&alloc::format!(
-        //         "Failed to validate L2 block #{} with output root {}\n",
-        //         number,
-        //         output_root
-        //     ));
-        //
-        //     kona_common::io::exit(1);
-        // }
-        //
-        // tracing::info!(
-        //     target: "client",
-        //     "Successfully validated L2 block #{number} with output root {output_root}",
-        //     number = number,
-        //     output_root = output_root
-        // );
-        //
-        // kona_common::io::print(&alloc::format!(
-        //     "Successfully validated L2 block #{} with output root {}\n",
-        //     number,
-        //     output_root
-        // ));
-
-        Ok::<_, anyhow::Error>(())
-    })
+    kona_proof::block_on(kona_client::run(ORACLE_READER, HINT_WRITER))
 }

@@ -29,7 +29,7 @@ where
     pub signer: Address,
     /// The batch inbox address.
     pub batch_inbox_address: Address,
-    /// The eigen eigen_da data provider
+    /// The eigen eigen-da data provider
     pub eigen_da_provider: E,
     /// The mantle da switch
     pub mantle_da_switch: bool,

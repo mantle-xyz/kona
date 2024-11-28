@@ -5,25 +5,24 @@ use alloy_eips::BlockNumHash;
 use alloy_primitives::B256;
 use op_alloy_genesis::system::SystemConfigUpdateError;
 use op_alloy_protocol::{DepositError, SpanBatchError};
+use thiserror::Error;
 
 /// Blob Decuding Error
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum BlobDecodingError {
     /// Invalid field element
-    #[display("Invalid field element")]
+    #[error("Invalid field element")]
     InvalidFieldElement,
     /// Invalid encoding version
-    #[display("Invalid encoding version")]
+    #[error("Invalid encoding version")]
     InvalidEncodingVersion,
     /// Invalid length
-    #[display("Invalid length")]
+    #[error("Invalid length")]
     InvalidLength,
     /// Missing Data
-    #[display("Missing data")]
+    #[error("Missing data")]
     MissingData,
 }
-
-impl core::error::Error for BlobDecodingError {}
 
 /// A result type for the derivation pipeline stages.
 pub type PipelineResult<T> = Result<T, PipelineErrorKind>;
@@ -39,127 +38,89 @@ macro_rules! ensure {
 }
 
 /// A top level filter for [PipelineError] that sorts by severity.
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum PipelineErrorKind {
     /// A temporary error.
-    #[display("Temporary error: {_0}")]
-    Temporary(PipelineError),
+    #[error("Temporary error: {0}")]
+    Temporary(#[source] PipelineError),
     /// A critical error.
-    #[display("Critical error: {_0}")]
-    Critical(PipelineError),
+    #[error("Critical error: {0}")]
+    Critical(#[source] PipelineError),
     /// A reset error.
-    #[display("Pipeline reset: {_0}")]
-    Reset(ResetError),
-}
-
-impl From<ResetError> for PipelineErrorKind {
-    fn from(err: ResetError) -> Self {
-        Self::Reset(err)
-    }
-}
-
-impl core::error::Error for PipelineErrorKind {
-    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-        match self {
-            Self::Temporary(err) => Some(err),
-            Self::Critical(err) => Some(err),
-            Self::Reset(err) => Some(err),
-        }
-    }
+    #[error("Pipeline reset: {0}")]
+    Reset(#[from] ResetError),
 }
 
 /// An error encountered during the processing.
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum PipelineError {
     /// There is no data to read from the channel bank.
-    #[display("EOF")]
+    #[error("EOF")]
     Eof,
     /// There is not enough data to complete the processing of the stage. If the operation is
     /// re-tried, more data will come in allowing the pipeline to progress, or eventually a
     /// [PipelineError::Eof] will be encountered.
-    #[display("Not enough data")]
+    #[error("Not enough data")]
     NotEnoughData,
     /// No channels are available in the [ChannelProvider].
     ///
     /// [ChannelProvider]: crate::stages::ChannelProvider
-    #[display("The channel provider is empty")]
+    #[error("The channel provider is empty")]
     ChannelProviderEmpty,
     /// The channel has already been built by the [ChannelAssembler] stage.
     ///
     /// [ChannelAssembler]: crate::stages::ChannelAssembler
-    #[display("Channel already built")]
+    #[error("Channel already built")]
     ChannelAlreadyBuilt,
     /// Failed to find channel in the [ChannelProvider].
     ///
     /// [ChannelProvider]: crate::stages::ChannelProvider
-    #[display("Channel not found in channel provider")]
+    #[error("Channel not found in channel provider")]
     ChannelNotFound,
     /// No channel returned by the [ChannelReader] stage.
     ///
     /// [ChannelReader]: crate::stages::ChannelReader
-    #[display("The channel reader has no channel available")]
+    #[error("The channel reader has no channel available")]
     ChannelReaderEmpty,
     /// The [BatchQueue] is empty.
     ///
     /// [BatchQueue]: crate::stages::BatchQueue
-    #[display("The batch queue has no batches available")]
+    #[error("The batch queue has no batches available")]
     BatchQueueEmpty,
     /// Missing L1 origin.
-    #[display("Missing L1 origin from previous stage")]
+    #[error("Missing L1 origin from previous stage")]
     MissingOrigin,
     /// Missing data from [L1Retrieval].
     ///
     /// [L1Retrieval]: crate::stages::L1Retrieval
-    #[display("L1 Retrieval missing data")]
+    #[error("L1 Retrieval missing data")]
     MissingL1Data,
     /// Invalid batch type passed.
-    #[display("Invalid batch type passed to stage")]
+    #[error("Invalid batch type passed to stage")]
     InvalidBatchType,
     /// Invalid batch validity variant.
-    #[display("Invalid batch validity")]
+    #[error("Invalid batch validity")]
     InvalidBatchValidity,
     /// [SystemConfig] update error.
     ///
     /// [SystemConfig]: op_alloy_genesis::SystemConfig
-    #[display("Error updating system config: {_0}")]
+    #[error("Error updating system config: {0}")]
     SystemConfigUpdate(SystemConfigUpdateError),
     /// Attributes builder error variant, with [BuilderError].
-    #[display("Attributes builder error: {_0}")]
-    AttributesBuilder(BuilderError),
+    #[error("Attributes builder error: {0}")]
+    AttributesBuilder(#[from] BuilderError),
     /// [PipelineEncodingError] variant.
-    #[display("Decode error: {_0}")]
-    BadEncoding(PipelineEncodingError),
+    #[error("Decode error: {0}")]
+    BadEncoding(#[from] PipelineEncodingError),
     /// Provider error variant.
-    #[display("Blob provider error: {_0}")]
+    #[error("Blob provider error: {0}")]
     Provider(String),
     /// Found future batch
-    #[display("Found batch with timestamp: {_0} marked as future batch, but expected timestamp: {_1}" )]
+    #[error("Found batch with timestamp: {0} marked as future batch, but expected timestamp: {1}" )]
     FutureBatch(u64, u64),
     /// The data source can no longer provide any more data.
-    #[display("Data source exhausted")]
+    #[error("Data source exhausted")]
     EndOfSource,
-}
-
-impl From<BuilderError> for PipelineError {
-    fn from(err: BuilderError) -> Self {
-        Self::AttributesBuilder(err)
-    }
-}
-
-impl From<PipelineEncodingError> for PipelineError {
-    fn from(err: PipelineEncodingError) -> Self {
-        Self::BadEncoding(err)
-    }
-}
-
-impl core::error::Error for PipelineError {
-    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-        match self {
-            Self::AttributesBuilder(err) => Some(err),
-            Self::BadEncoding(err) => Some(err),
-            _ => None,
-        }
-    }
 }
 
 impl PipelineError {
@@ -175,41 +136,33 @@ impl PipelineError {
 }
 
 /// A reset error
-#[derive(derive_more::Display, Clone, Debug, Eq, PartialEq)]
+#[derive(Error, Clone, Debug, Eq, PartialEq)]
 pub enum ResetError {
     /// The batch has a bad parent hash.
     /// The first argument is the expected parent hash, and the second argument is the actual
     /// parent hash.
-    #[display("Bad parent hash: expected {_0}, got {_1}")]
+    #[error("Bad parent hash: expected {0}, got {1}")]
     BadParentHash(B256, B256),
     /// The batch has a bad timestamp.
     /// The first argument is the expected timestamp, and the second argument is the actual
     /// timestamp.
-    #[display("Bad timestamp: expected {_0}, got {_1}")]
+    #[error("Bad timestamp: expected {0}, got {1}")]
     BadTimestamp(u64, u64),
     /// L1 origin mismatch.
-    #[display("L1 origin mismatch. Expected {_0:?}, got {_1:?}")]
+    #[error("L1 origin mismatch. Expected {0:?}, got {1:?}")]
     L1OriginMismatch(u64, u64),
     /// The stage detected a block reorg.
     /// The first argument is the expected block hash.
     /// The second argument is the parent_hash of the next l1 origin block.
-    #[display("L1 reorg detected: expected {_0}, got {_1}")]
+    #[error("L1 reorg detected: expected {0}, got {1}")]
     ReorgDetected(B256, B256),
     /// Attributes builder error variant, with [BuilderError].
-    #[display("Attributes builder error: {_0}")]
-    AttributesBuilder(BuilderError),
+    #[error("Attributes builder error: {0}")]
+    AttributesBuilder(#[from] BuilderError),
     /// A Holocene activation temporary error.
-    #[display("Holocene activation reset")]
+    #[error("Holocene activation reset")]
     HoloceneActivation,
 }
-
-impl From<BuilderError> for ResetError {
-    fn from(err: BuilderError) -> Self {
-        Self::AttributesBuilder(err)
-    }
-}
-
-impl core::error::Error for ResetError {}
 
 impl ResetError {
     /// Wrap [self] as a [PipelineErrorKind::Reset].
@@ -219,167 +172,143 @@ impl ResetError {
 }
 
 /// A decoding error.
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum PipelineEncodingError {
     /// The buffer is empty.
-    #[display("Empty buffer")]
+    #[error("Empty buffer")]
     EmptyBuffer,
     /// Deposit decoding error.
-    #[display("Error decoding deposit: {_0}")]
-    DepositError(DepositError),
+    #[error("Error decoding deposit: {0}")]
+    DepositError(#[from] DepositError),
     /// Alloy RLP Encoding Error.
-    #[display("RLP error: {_0}")]
+    #[error("RLP error: {0}")]
     AlloyRlpError(alloy_rlp::Error),
     /// Span Batch Error.
-    #[display("{_0}")]
-    SpanBatchError(SpanBatchError),
-}
-
-impl core::error::Error for PipelineEncodingError {
-    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-        match self {
-            Self::DepositError(err) => Some(err),
-            Self::SpanBatchError(err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl From<SpanBatchError> for PipelineEncodingError {
-    fn from(err: SpanBatchError) -> Self {
-        Self::SpanBatchError(err)
-    }
-}
-
-impl From<DepositError> for PipelineEncodingError {
-    fn from(err: DepositError) -> Self {
-        Self::DepositError(err)
-    }
+    #[error("{_0}")]
+    SpanBatchError(#[from] SpanBatchError),
 }
 
 /// A frame decompression error.
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum BatchDecompressionError {
     /// The buffer exceeds the [MAX_SPAN_BATCH_ELEMENTS] protocol parameter.
-    #[display("The batch exceeds the maximum number of elements: {max_size}", max_size = 10000000)]
+    #[error("The batch exceeds the maximum number of elements: {max_size}", max_size = 10000000)]
     BatchTooLarge,
 }
-
-impl core::error::Error for BatchDecompressionError {}
 
 /// An [AttributesBuilder] Error.
 ///
 /// [AttributesBuilder]: crate::traits::AttributesBuilder
-#[derive(derive_more::Display, Clone, Debug, PartialEq, Eq)]
+#[derive(Error, Clone, Debug, PartialEq, Eq)]
 pub enum BuilderError {
     /// Mismatched blocks.
-    #[display("Block mismatch. Expected {_0:?}, got {_1:?}")]
+    #[error("Block mismatch. Expected {_0:?}, got {_1:?}")]
     BlockMismatch(BlockNumHash, BlockNumHash),
     /// Mismatched blocks for the start of an Epoch.
-    #[display("Block mismatch on epoch reset. Expected {_0:?}, got {_1:?}")]
+    #[error("Block mismatch on epoch reset. Expected {_0:?}, got {_1:?}")]
     BlockMismatchEpochReset(BlockNumHash, BlockNumHash, B256),
     /// [SystemConfig] update failed.
     ///
     /// [SystemConfig]: op_alloy_genesis::SystemConfig
-    #[display("System config update failed")]
+    #[error("System config update failed")]
     SystemConfigUpdate,
     /// Broken time invariant between L2 and L1.
-    #[display("Time invariant broken. L1 origin: {_0:?} | Next L2 time: {_1} | L1 block: {_2:?} | L1 timestamp {_3:?}")]
+    #[error("Time invariant broken. L1 origin: {_0:?} | Next L2 time: {_1} | L1 block: {_2:?} | L1 timestamp {_3:?}")]
     BrokenTimeInvariant(BlockNumHash, u64, BlockNumHash, u64),
     /// Attributes unavailable.
-    #[display("Attributes unavailable")]
+    #[error("Attributes unavailable")]
     AttributesUnavailable,
     /// A custom error.
-    #[display("Error in attributes builder: {_0}")]
+    #[error("Error in attributes builder: {_0}")]
     Custom(String),
 }
 
-impl core::error::Error for BuilderError {}
-
 /// An error returned by the [BlobProviderError].
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum BlobProviderError {
     /// The number of specified blob hashes did not match the number of returned sidecars.
-    #[display("Blob sidecar length mismatch: expected {_0}, got {_1}")]
+    #[error("Blob sidecar length mismatch: expected {0}, got {1}")]
     SidecarLengthMismatch(usize, usize),
     /// Slot derivation error.
-    #[display("Failed to derive slot")]
+    #[error("Failed to derive slot")]
     SlotDerivation,
     /// Blob decoding error.
-    #[display("Blob decoding error: {_0}")]
-    BlobDecoding(BlobDecodingError),
+    #[error("Blob decoding error: {0}")]
+    BlobDecoding(#[from] BlobDecodingError),
     /// Error pertaining to the backend transport.
-    #[display("{_0}")]
+    #[error("{0}")]
     Backend(String),
 }
 
-impl From<BlobDecodingError> for BlobProviderError {
-    fn from(err: BlobDecodingError) -> Self {
-        Self::BlobDecoding(err)
+impl From<BlobProviderError> for PipelineErrorKind {
+    fn from(val: BlobProviderError) -> Self {
+        match val {
+            BlobProviderError::SidecarLengthMismatch(_, _) => {
+                PipelineError::Provider(val.to_string()).crit()
+            }
+            BlobProviderError::SlotDerivation => PipelineError::Provider(val.to_string()).crit(),
+            BlobProviderError::BlobDecoding(_) => PipelineError::Provider(val.to_string()).crit(),
+            BlobProviderError::Backend(_) => PipelineError::Provider(val.to_string()).temp(),
+        }
     }
 }
 
-impl core::error::Error for BlobProviderError {}
 
 /// An error returned by the [EigenDAProxyError]
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum EigenDAProxyError {
     /// Retrieve blob error.
-    #[display("Failed to retrieve blob, error: {_0}")]
+    #[error("Failed to retrieve blob, error: {_0}")]
     RetrieveBlob(String),
     /// Retrieve blob with commitment error.
-    #[display("Failed to retrieve blob with commitment, error: {_0}")]
+    #[error("Failed to retrieve blob with commitment, error: {_0}")]
     RetrieveBlobWithCommitment(String),
     /// Disperse blob error.
-    #[display("Failed to disperse blob, error: {_0}")]
+    #[error("Failed to disperse blob, error: {_0}")]
     DisperseBlob(String),
     /// Get blob status error.
-    #[display("Failed to get blob status, error: {_0}")]
+    #[error("Failed to get blob status, error: {_0}")]
     GetBlobStatus(String),
     /// No fund blob from EigenDA.
-    #[display("Blob not fund from EigenDA")]
+    #[error("Blob not fund from EigenDA")]
     NotFound,
     /// Invalid input data len.
-    #[display("Invalid input data len for disperse blob from EigenDA")]
+    #[error("Invalid input data len for disperse blob from EigenDA")]
     InvalidInput,
     /// Request timeout.
-    #[display("Request blob timeout, error: {_0}")]
+    #[error("Request blob timeout, error: {_0}")]
     TimeOut(String),
 }
-impl core::error::Error for EigenDAProxyError {}
 
 
 /// An error returned by the [EigenDAProviderError]
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum EigenDAProviderError {
     /// Retrieve Frame from da indexer error.
-    #[display("Failed to retrieve blob from da indexer, error: {_0}")]
+    #[error("Failed to retrieve blob from da indexer, error: {_0}")]
     RetrieveFramesFromDaIndexer(String),
     /// Request timeout.
-    #[display("Request blob timeout, error: {_0}")]
+    #[error("Request blob timeout, error: {_0}")]
     TimeOut(String),
     /// Retrieve Frame from eigen da error.
-    #[display("Failed to retrieve blob from eigen da, error: {_0}")]
+    #[error("Failed to retrieve blob from eigen da, error: {_0}")]
     RetrieveBlob(String),
-    #[display("Get blob from indexer da, status: {_0}")]
+    #[error("Get blob from indexer da, status: {_0}")]
     Status(String),
     /// Error pertaining to the backend transport.
-    #[display("{_0}")]
+    #[error("{_0}")]
     Backend(String),
-    #[display("Failed to decode blob, error: {_0}")]
+    #[error("Failed to decode blob, error: {_0}")]
     RLPDecodeError(String),
-    #[display("Failed to decode proto buf, error: {_0}")]
+    #[error("Failed to decode proto buf, error: {_0}")]
     ProtoDecodeError(String),
     /// Retrieve Frame from blob error.
-    #[display("Failed to retrieve blob from eth blob, error: {_0}")]
+    #[error("Failed to retrieve blob from eth blob, error: {_0}")]
     Blob(String),
-    #[display("Error: {_0}")]
+    #[error("Error: {_0}")]
     String(String),
 
 }
-
-
-impl core::error::Error for EigenDAProviderError {}
 
 #[cfg(test)]
 mod tests {

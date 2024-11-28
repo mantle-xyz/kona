@@ -2,7 +2,7 @@
 
 use crate::{
     constants::{L2_TO_L1_BRIDGE, OUTPUT_ROOT_VERSION},
-    db::TrieDB,
+    db::{TrieDB, TrieDBProvider},
     errors::TrieDBError,
     ExecutorError, ExecutorResult,
 };
@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use alloy_consensus::{Header, Sealable, Transaction, EMPTY_OMMER_ROOT_HASH, EMPTY_ROOT_HASH};
 use alloy_eips::eip2718::{Decodable2718, Encodable2718};
 use alloy_primitives::{keccak256, logs_bloom, Bytes, B256, U256};
-use kona_mpt::{ordered_trie_with_encoder, TrieHinter, TrieProvider};
+use kona_mpt::{ordered_trie_with_encoder, TrieHinter};
 use op_alloy_consensus::{OpReceiptEnvelope, OpTxEnvelope};
 use op_alloy_genesis::RollupConfig;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
@@ -34,7 +34,7 @@ use util::receipt_envelope_from_parts;
 #[derive(Debug)]
 pub struct StatelessL2BlockExecutor<'a, F, H>
 where
-    F: TrieProvider,
+    F: TrieDBProvider,
     H: TrieHinter,
 {
     /// The [RollupConfig].
@@ -47,7 +47,7 @@ where
 
 impl<'a, F, H> StatelessL2BlockExecutor<'a, F, H>
 where
-    F: TrieProvider,
+    F: TrieDBProvider,
     H: TrieHinter,
 {
     /// Constructs a new [StatelessL2BlockExecutorBuilder] with the given [RollupConfig].
@@ -256,7 +256,7 @@ where
             blob_gas_used: None,
             excess_blob_gas: None,
             parent_beacon_block_root: payload.payload_attributes.parent_beacon_block_root,
-            requests_root: None,
+            requests_hash: None,
             extra_data: Default::default(),
         }
         .seal_slow();
@@ -391,9 +391,7 @@ mod test {
     use alloy_rlp::Decodable;
     use alloy_rpc_types_engine::PayloadAttributes;
     use anyhow::{anyhow, Result};
-    use ethers_providers::{Http, Middleware, Provider, ProviderError};
-    use kona_mpt::NoopTrieHinter;
-    use op_alloy_genesis::OP_MAINNET_BASE_FEE_PARAMS;
+    use kona_mpt::{NoopTrieHinter, TrieNode, TrieProvider};
     use serde::Deserialize;
     use std::collections::HashMap;
 
@@ -419,13 +417,20 @@ mod test {
     impl TrieProvider for TestdataTrieProvider {
         type Error = anyhow::Error;
 
-        fn trie_node_preimage(&self, key: B256) -> Result<Bytes> {
-            self.preimages
-                .get(&key)
-                .cloned()
-                .ok_or_else(|| anyhow!("Preimage not found for key: {}", key))
+        fn trie_node_by_hash(&self, key: B256) -> Result<TrieNode> {
+            TrieNode::decode(
+                &mut self
+                    .preimages
+                    .get(&key)
+                    .cloned()
+                    .ok_or_else(|| anyhow!("Preimage not found for key: {}", key))?
+                    .as_ref(),
+            )
+                .map_err(Into::into)
         }
+    }
 
+    impl TrieDBProvider for TestdataTrieProvider {
         fn bytecode_by_hash(&self, code_hash: B256) -> Result<Bytes> {
             self.preimages
                 .get(&code_hash)
@@ -451,7 +456,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -506,7 +511,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -565,7 +570,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -631,7 +636,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -691,7 +696,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 
@@ -760,7 +765,7 @@ mod test {
         let rollup_config = RollupConfig {
             l2_chain_id: 5000,
             regolith_time: Some(0),
-            cancun_time: Some(0),
+            shanghai_time: Some(0),
             ..Default::default()
         };
 

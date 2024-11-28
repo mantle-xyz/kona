@@ -73,7 +73,7 @@ impl TestChainProvider {
 }
 
 /// An error for the [TestChainProvider] and [TestL2ChainProvider].
-#[derive(Debug, derive_more::Display)]
+#[derive(Debug, Error)]
 pub enum TestProviderError {
     /// The block was not found.
     #[display("Block not found")]

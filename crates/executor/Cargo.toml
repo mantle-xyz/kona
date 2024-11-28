@@ -30,7 +30,7 @@ op-alloy-rpc-types-engine.workspace = true
 revm = { workspace = true, features = ["optimism"] }
 
 # General
-derive_more = { workspace = true, features = ["full"] }
+thiserror.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
@@ -42,7 +42,6 @@ alloy-rpc-types-engine.workspace = true
 serde = { workspace = true, features = ["derive"] }
 criterion = { workspace = true, features = ["html_reports"] }
 pprof = { workspace = true, features = ["criterion", "flamegraph", "frame-pointer"] }
-ethers-providers = { version = "2.0", features = ["default", "optimism"] }
 
 
 [[bench]]

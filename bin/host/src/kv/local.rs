@@ -4,7 +4,7 @@ use super::KeyValueStore;
 use crate::cli::HostCli;
 use alloy_primitives::B256;
 use anyhow::Result;
-use kona_client::boot::{
+use kona_proof::boot::{
     L1_HEAD_KEY, L2_CHAIN_ID_KEY, L2_CLAIM_BLOCK_NUMBER_KEY, L2_CLAIM_KEY, L2_OUTPUT_ROOT_KEY,
     L2_ROLLUP_CONFIG_KEY,
 };

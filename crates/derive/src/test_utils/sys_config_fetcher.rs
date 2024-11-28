@@ -28,7 +28,7 @@ impl TestSystemConfigL2Fetcher {
 }
 
 /// An error returned by the [TestSystemConfigL2Fetcher].
-#[derive(derive_more::Display, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum TestSystemConfigL2FetcherError {
     /// The system config was not found.
     #[display("system config not found: {_0}")]
