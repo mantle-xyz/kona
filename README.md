@@ -57,8 +57,8 @@ see the [SDK section of the book](https://anton-rs.github.io/kona/sdk/intro.html
 
 **`client` / `host` SDK**
 
-- [`common`](./crates/common): A suite of utilities for developing `client` programs to be run on top of Fault Proof VMs.
-- [`common-proc`](./crates/common-proc): Proc macro for the `client` program entrypoint.
+- [`common`](crates/proof-sdk/common): A suite of utilities for developing `client` programs to be run on top of Fault Proof VMs.
+- [`common-proc`](crates/proof-sdk/common-proc): Proc macro for the `client` program entrypoint.
 - [`preimage`](./crates/preimage): High level interfaces to the [`PreimageOracle`][fpp-specs] ABI
 
 **Protocol**
