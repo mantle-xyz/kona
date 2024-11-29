@@ -1,10 +1,10 @@
 //! This module contains an implementation of a basic memory allocator for client programs in
-//! running on an embedded device.
+//! running on top of various FPVMs.
 //!
 //! The allocator is a linked list allocator based on the `dlmalloc` algorithm, which is a
 //! well-known and widely used allocator software such as OS Kernels.
 
-/// The global allocator for the program in embedded environments.
+/// The global allocator for the program in FPVM environments.
 #[cfg(any(target_arch = "mips", target_arch = "riscv64"))]
 pub mod global_allocator {
     use linked_list_allocator::LockedHeap;
@@ -44,7 +44,7 @@ macro_rules! alloc_heap {
     ($size:expr) => {{
         #[cfg(any(target_arch = "mips", target_arch = "riscv64"))]
         {
-            use $crate::malloc::global_allocator::init_allocator;
+            use kona_common::malloc::global_allocator::init_allocator;
 
             static mut HEAP: [u8; $size] = [0u8; $size];
             unsafe { init_allocator(HEAP.as_mut_ptr(), $size) }

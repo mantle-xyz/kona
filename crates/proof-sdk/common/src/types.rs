@@ -1,4 +1,4 @@
-//! This module contains the local types for the `kona-std-fpvm` crate.
+//! This module contains the local types for the `kona-common` crate.
 
 /// File descriptors available to the `client` within the FPVM kernel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,6 +17,8 @@ pub enum FileDescriptor {
     PreimageRead,
     /// Write-only. Used to request pre-images.
     PreimageWrite,
+    /// Other file descriptor.
+    Wildcard(usize),
 }
 
 impl From<FileDescriptor> for usize {
@@ -29,6 +31,7 @@ impl From<FileDescriptor> for usize {
             FileDescriptor::HintWrite => 4,
             FileDescriptor::PreimageRead => 5,
             FileDescriptor::PreimageWrite => 6,
+            FileDescriptor::Wildcard(value) => value,
         }
     }
 }
@@ -52,6 +55,7 @@ mod tests {
         assert_eq!(usize::from(FileDescriptor::HintWrite), 4);
         assert_eq!(usize::from(FileDescriptor::PreimageRead), 5);
         assert_eq!(usize::from(FileDescriptor::PreimageWrite), 6);
+        assert_eq!(usize::from(FileDescriptor::Wildcard(7)), 7);
     }
 
     #[test]
@@ -63,5 +67,6 @@ mod tests {
         assert_eq!(i32::from(FileDescriptor::HintWrite), 4);
         assert_eq!(i32::from(FileDescriptor::PreimageRead), 5);
         assert_eq!(i32::from(FileDescriptor::PreimageWrite), 6);
+        assert_eq!(i32::from(FileDescriptor::Wildcard(7)), 7);
     }
 }
