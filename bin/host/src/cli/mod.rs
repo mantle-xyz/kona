@@ -217,7 +217,7 @@ impl HostCli {
             Some(rollup_config) => {
                 if rollup_config.mantle_da_switch {
                     mantle_da_switch = true;
-                    da_indexer_url = self.mantle_da_indexer_url.clone().ok_or(anyhow!("Mantle da indexer URL must be set"))?;
+                    // da_indexer_url = self.mantle_da_indexer_url.clone().ok_or(anyhow!("Mantle da indexer URL must be set"))?;
                 }
             }
             None => {}
