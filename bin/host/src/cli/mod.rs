@@ -200,16 +200,16 @@ impl HostCli {
         let mut eigen_da_config = EigenDaConfig::default();
         let mut eigen_proxy_url = "".to_string();
         let mut da_indexer_url = "".to_string();
-        let mut mantle_da_switch = false;
-        match self.read_rollup_config().ok() {
-            Some(rollup_config) => {
-                if rollup_config.mantle_da_switch {
-                    mantle_da_switch = true;
-                    // da_indexer_url = self.mantle_da_indexer_url.clone().ok_or(anyhow!("Mantle da indexer URL must be set"))?;
-                }
-            }
-            None => {}
-        }
+        let mantle_da_indexer = false;
+        // match self.read_rollup_config().ok() {
+        //     Some(rollup_config) => {
+        //         if rollup_config.mantle_da_switch {
+        //             mantle_da_switch = true;
+        //             // da_indexer_url = self.mantle_da_indexer_url.clone().ok_or(anyhow!("Mantle da indexer URL must be set"))?;
+        //         }
+        //     }
+        //     None => {}
+        // }
 
         if da_indexer_url.is_empty() {
             eigen_proxy_url = self.proxy_url.clone().ok_or(anyhow!("EigenDA Proxy URL must be set"))?;
@@ -217,7 +217,7 @@ impl HostCli {
         eigen_da_config.proxy_url = eigen_proxy_url;
         eigen_da_config.retrieve_blob_timeout = self.retrieve_timeout;
         let eigen_da_provider = EigenDaProxy::new(eigen_da_config);
-        let mut eigen_da = OnlineEigenDaProvider::new(eigen_da_provider,da_indexer_url, mantle_da_switch);
+        let mut eigen_da = OnlineEigenDaProvider::new(eigen_da_provider,da_indexer_url, mantle_da_indexer);
 
         Ok((l1_provider, blob_provider, l2_provider, eigen_da))
     }
