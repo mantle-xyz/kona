@@ -67,6 +67,6 @@ impl<T: CommsClient + Sync + Send> EigenDAProvider for OracleEigenDaProvider<T> 
     }
 
     fn da_indexer_enable(&mut self) -> bool {
-        todo!()
+        false
     }
 }
