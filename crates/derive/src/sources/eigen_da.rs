@@ -183,7 +183,7 @@ where
         if blob_hashes.len() > 0 {
             let blobs =
                 self.blob_provider.get_blobs(&self.block_ref, &blob_hashes).await.map_err(|e| {
-                    warn!(target: "blob-source", "Failed to fetch blobs: {e}");
+                    warn!(target: "eigen-da-source", "Failed to fetch blobs: {e}");
                     EigenDAProviderError::Blob(BlobProviderError::Backend(e.to_string()).to_string())
                 })?;
             let mut whole_blob_data = Vec::new();
@@ -226,7 +226,7 @@ where
     async fn next(&mut self) -> PipelineResult<Self::Item> {
         if self.load_blobs().await.is_err() {
             return Err(PipelineError::Provider(format!(
-                "Failed to load blobs from stream: {}",
+                "Failed to load eigen_da blobs from stream: {}",
                 self.block_ref.hash
             ))
                 .temp());
