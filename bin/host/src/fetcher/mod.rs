@@ -553,12 +553,14 @@ where
                     anyhow::bail!("Invalid hint data length: {}", hint_data.len());
                 }
                 let commitment = hint_data.to_vec();
+                trace!("Trying to get blob from eigen da");
                 // Fetch the blob from the eigen da provider.
                 let blob = self
                     .eigen_da_provider
                     .get_blob(&commitment)
                     .await
                     .map_err(|e| anyhow!("Failed to fetch blob: {e}"))?;
+                trace!("Successfully get blob from eigen da");
                 let mut kv_write_lock = self.kv_store.write().await;
                 kv_write_lock.set(
                     PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric).into(),
