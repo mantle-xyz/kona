@@ -516,23 +516,6 @@ where
                     Ok::<(), anyhow::Error>(())
                 })?;
             }
-            HintType::EigenDa => {
-                if hint_data.len() < 3 {
-                    anyhow::bail!("Invalid hint data length: {}", hint_data.len());
-                }
-                let commitment = hint_data.to_vec();
-                // Fetch the blob from the eigen da provider.
-                let blob = self
-                    .eigen_da_provider
-                    .get_blob(&commitment)
-                    .await
-                    .map_err(|e| anyhow!("Failed to fetch blob: {e}"))?;
-                let mut kv_write_lock = self.kv_store.write().await;
-                kv_write_lock.set(
-                    PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric).into(),
-                    blob.into(),
-                )?;
-            }
             HintType::L2PayloadWitness => {
                 if hint_data.len() < 32 {
                     anyhow::bail!("Invalid hint data length: {}", hint_data.len());
@@ -564,6 +547,23 @@ where
                     let key = PreimageKey::new(*hash, PreimageKeyType::Keccak256);
                     kv_write_lock.set(key.into(), preimage.into())?;
                 }
+            }
+            HintType::EigenDa => {
+                if hint_data.len() < 3 {
+                    anyhow::bail!("Invalid hint data length: {}", hint_data.len());
+                }
+                let commitment = hint_data.to_vec();
+                // Fetch the blob from the eigen da provider.
+                let blob = self
+                    .eigen_da_provider
+                    .get_blob(&commitment)
+                    .await
+                    .map_err(|e| anyhow!("Failed to fetch blob: {e}"))?;
+                let mut kv_write_lock = self.kv_store.write().await;
+                kv_write_lock.set(
+                    PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric).into(),
+                    blob.into(),
+                )?;
             }
         }
 
