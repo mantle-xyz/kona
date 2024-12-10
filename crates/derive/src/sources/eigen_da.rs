@@ -226,12 +226,17 @@ where
     type Item = Bytes;
 
     async fn next(&mut self) -> PipelineResult<Self::Item> {
-        if self.load_blobs().await.is_err() {
-            return Err(PipelineError::Provider(format!(
-                "Failed to load eigen_da blobs from stream: {}",
-                self.block_ref.hash
-            ))
-                .temp());
+        let result = self.load_blobs().await;
+        match result {
+            Ok(_) => (),
+
+            Err(e) => {
+                return Err(PipelineError::Provider(format!(
+                    "Failed to load eigen_da blobs from stream: {}, err: {}",
+                    self.block_ref.hash,e.to_string()
+                ))
+                    .temp());
+            }
         }
 
         let next_data = match self.next_data() {
