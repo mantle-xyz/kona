@@ -152,7 +152,7 @@ where
                                 warn!(target: "eigen-da-source", "decoded frame ref contains no quorum IDs");
                                 continue;
                             }
-                            info!(target: "eigen_da", "decoded frame contains frame ref");
+                            info!(target: "eigen-da", "decoded frame contains frame ref");
                             let blob_data = self.eigen_da_provider
                                 .retrieve_blob_with_commitment( &frame_ref.commitment)
                                 .await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
