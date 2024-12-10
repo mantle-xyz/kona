@@ -58,6 +58,7 @@ impl<T: CommsClient + Sync + Send> EigenDAProvider for OracleEigenDaProvider<T> 
     }
 
     async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        trace!("Start to get blobs from eigen da with commitment {:?}", commitment);
         let out_data:Vec<u8> = self.get_blob(commitment).await?;
         Ok(out_data)
     }
