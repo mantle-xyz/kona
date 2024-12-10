@@ -1,8 +1,10 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use alloc::boxed::Box;
+use alloc::vec;
 use alloy_primitives::keccak256;
 use async_trait::async_trait;
+use tokio::io::AsyncReadExt;
 use kona_derive::traits::EigenDAProvider;
 use kona_preimage::{CommsClient, PreimageKey, PreimageKeyType};
 use kona_preimage::PreimageKeyType::Precompile;
@@ -30,11 +32,11 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
     /// ## Returns
     /// - `Ok(blob)`: The blob.
     /// - `Err(e)`: The blob could not be retrieved.
-    async fn get_blob(&self, commitment: &[u8]) -> Result<Vec<u8>, OracleProviderError> {
+    async fn get_blob(&self, commitment: &[u8], blob_len: u32) -> Result<Vec<u8>, OracleProviderError> {
         self.oracle.write(&HintType::EigenDa.encode_with(&[commitment.as_ref()]))
             .await
             .map_err(OracleProviderError::Preimage)?;
-        let mut out_data:Vec<u8> = Vec::new();
+        let mut out_data = vec![0u8; blob_len as usize];
         self.oracle.get_exact(PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric), &mut out_data)
             .await
             .map_err(OracleProviderError::Preimage)?;
@@ -48,9 +50,9 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
 impl<T: CommsClient + Sync + Send> EigenDAProvider for OracleEigenDaProvider<T> {
     type Error = OracleProviderError;
 
-    async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8], blob_len: u32) -> Result<Vec<u8>, Self::Error> {
         trace!("Start to get blobs from eigen da with commitment {:?}", commitment);
-        let out_data:Vec<u8> = self.get_blob(commitment).await?;
+        let out_data:Vec<u8> = self.get_blob(commitment, blob_len).await?;
         Ok(out_data)
     }
 

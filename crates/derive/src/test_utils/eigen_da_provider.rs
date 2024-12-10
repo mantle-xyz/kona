@@ -18,7 +18,7 @@ pub struct TestEigenDaProvider {
 impl EigenDAProvider for TestEigenDaProvider {
     type Error = EigenDAProviderError;
 
-    async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8], blob_len: u32) -> Result<Vec<u8>, Self::Error> {
         if self.should_error {
             return Err(EigenDAProviderError::Blob("error".to_string()));
         }

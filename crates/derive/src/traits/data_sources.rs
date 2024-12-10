@@ -33,6 +33,7 @@ pub trait EigenDAProvider {
     async fn retrieve_blob_with_commitment(
         &mut self,
         commitment: &[u8],
+        blob_len: u32,
     ) -> Result<Vec<u8>, Self::Error>;
 
     /// Weather use mantle eigen-da indexer service

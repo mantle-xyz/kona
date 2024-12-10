@@ -43,7 +43,7 @@ where
 {
     type Error = EigenDAProviderError;
 
-    async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8], blob_len: u32) -> Result<Vec<u8>, Self::Error> {
         self.eigen_da_proxy_client.retrieve_blob_with_commitment(commitment).await
             .map_err(|e|EigenDAProviderError::String(e.to_string()))
     }
