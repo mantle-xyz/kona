@@ -8,7 +8,7 @@ use alloy_rlp::Rlp;
 use async_trait::async_trait;
 use op_alloy_protocol::BlockInfo;
 use rlp::{decode, Decodable, DecoderError};
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 use crate::errors::{BlobDecodingError, BlobProviderError, EigenDAProviderError, EigenDAProxyError, PipelineError, PipelineResult};
 use crate::prelude::ChainProvider;
 use crate::proto::{calldata_frame, CalldataFrame};
@@ -152,6 +152,7 @@ where
                                 warn!(target: "eigen-da-source", "decoded frame ref contains no quorum IDs");
                                 continue;
                             }
+                            info!(target: "eigen_da", "decoded frame contains frame ref");
                             let blob_data = self.eigen_da_provider
                                 .retrieve_blob_with_commitment( &frame_ref.commitment)
                                 .await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
@@ -180,6 +181,7 @@ where
             .await
             .map_err(|e| EigenDAProviderError::Backend(e.to_string()))?;
         let (mut blob_data, blob_hashes) = self.data_from_eigen_da(info.1).await?;
+        info!(target: "eigen_da", "loading eigen blobs blob hashes len {}, blob data len {}", blob_hashes.len(), blob_data.len());
         if blob_hashes.len() > 0 {
             let blobs =
                 self.blob_provider.get_blobs(&self.block_ref, &blob_hashes).await.map_err(|e| {
