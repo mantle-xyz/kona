@@ -2382,8 +2382,6 @@ dependencies = [
  "kona-mpt",
  "kona-preimage",
  "kona-proof",
- "kona-std-fpvm",
- "kona-std-fpvm-proc",
  "lru",
  "op-alloy-consensus",
  "op-alloy-genesis",
@@ -2512,11 +2510,11 @@ dependencies = [
  "eigen-da",
  "futures",
  "kona-client",
+ "kona-common",
  "kona-derive",
  "kona-mpt",
  "kona-preimage",
  "kona-proof",
- "kona-std-fpvm",
  "op-alloy-genesis",
  "op-alloy-protocol",
  "op-alloy-rpc-types-engine",
@@ -2594,30 +2592,6 @@ dependencies = [
  "thiserror 2.0.6",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "kona-std-fpvm"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "cfg-if",
- "kona-preimage",
- "linked_list_allocator",
- "thiserror 2.0.6",
- "tracing",
-]
-
-[[package]]
-name = "kona-std-fpvm-proc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cfg-if",
- "kona-std-fpvm",
- "proc-macro2",
- "quote",
- "syn 2.0.90",
 ]
 
 [[package]]
