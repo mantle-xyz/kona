@@ -35,7 +35,6 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
             .await
             .map_err(OracleProviderError::Preimage)?;
         let mut out_data:Vec<u8> = Vec::new();
-
         self.oracle.get_exact(PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric), &mut out_data)
             .await
             .map_err(OracleProviderError::Preimage)?;

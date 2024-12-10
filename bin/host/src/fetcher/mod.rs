@@ -557,7 +557,7 @@ where
                     .map_err(|e| anyhow!("Failed to fetch blob: {e}"))?;
                 trace!("Successfully get blob from eigen da");
                 let mut kv_write_lock = self.kv_store.write().await;
-                let pre_image_key = PreimageKey::new(*keccak256(commitment.as_ref()),PreimageKeyType::GlobalGeneric).into();
+                let pre_image_key = PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric).into();
                 kv_write_lock.set(
                     pre_image_key,
                     blob.into(),
