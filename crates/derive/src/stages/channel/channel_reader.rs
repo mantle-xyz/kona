@@ -16,7 +16,7 @@ use op_alloy_genesis::{
     RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK,
 };
 use op_alloy_protocol::{Batch, BlockInfo};
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 
 /// ZLIB Deflate Compression Method.
 pub(crate) const ZLIB_DEFLATE_COMPRESSION_METHOD: u8 = 8;
@@ -118,6 +118,7 @@ where
     }
 
     async fn next_batch(&mut self) -> PipelineResult<Batch> {
+        info!("channel_reader next_batch");
         if let Err(e) = self.set_batch_reader().await {
             debug!(target: "channel-reader", "Failed to set batch reader: {:?}", e);
             self.next_channel();
@@ -201,6 +202,7 @@ impl BatchReader {
 
     /// Pulls out the next batch from the reader.
     pub(crate) fn next_batch(&mut self, cfg: &RollupConfig) -> Option<Batch> {
+        info!(target: "batch_reader", "next_batch");
 
         if let Some(data) = self.data.take() {
             // Peek at the data to determine the compression type.
