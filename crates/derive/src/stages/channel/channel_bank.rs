@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::{BlockInfo, Channel, ChannelId, Frame};
-use tracing::{trace, warn};
+use tracing::{info, trace, warn};
 
 /// The maximum size of a channel bank.
 pub(crate) const MAX_CHANNEL_BANK_SIZE: usize = 100_000_000;
@@ -188,6 +188,7 @@ where
     P: NextFrameProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
 {
     async fn next_data(&mut self) -> PipelineResult<Option<Bytes>> {
+        info!("channel_bank next_data");
         match self.read() {
             Err(e) => {
                 if !matches!(e, PipelineErrorKind::Temporary(PipelineError::Eof)) {

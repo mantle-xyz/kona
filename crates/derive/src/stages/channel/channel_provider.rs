@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use core::fmt::Debug;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::BlockInfo;
+use tracing::info;
 
 /// The [ChannelProvider] stage is a mux between the [ChannelBank] and [ChannelAssembler] stages.
 ///
@@ -122,6 +123,7 @@ where
     P: NextFrameProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
 {
     async fn next_data(&mut self) -> PipelineResult<Option<Bytes>> {
+        info!("channel provider next_data");
         self.attempt_update()?;
 
         if let Some(channel_assembler) = self.channel_assembler.as_mut() {
