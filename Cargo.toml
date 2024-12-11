@@ -96,10 +96,10 @@ alloy-rpc-types-beacon = { version = "0.8.0", default-features = false }
 #op-alloy-rpc-types-engine = { version = "0.5.2", default-features = false }
 
 # Mantle Alloy
-op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4" }
-op-alloy-protocol = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4" }
-op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4" }
-op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4" }
+op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
+op-alloy-protocol = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
+op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
+op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
 
 # General
 lru = "0.12.4"
