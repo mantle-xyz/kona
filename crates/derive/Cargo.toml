@@ -44,6 +44,7 @@ bytes = { workspace = true}
 hex = {workspace = true}
 prost = { workspace = true, default-features = false}
 rlp = {workspace = true, default-features = false}
+log = "0.4.22"
 
 
 [dev-dependencies]

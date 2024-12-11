@@ -16,6 +16,7 @@ use async_trait::async_trait;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::{decode_deposit, L1BlockInfoTx, L2BlockInfo, DEPOSIT_EVENT_ABI_HASH};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
+use tracing::{info, trace};
 
 /// The sequencer fee vault address.
 pub const SEQUENCER_FEE_VAULT_ADDRESS: Address =
@@ -60,7 +61,7 @@ where
     ) -> PipelineResult<OpPayloadAttributes> {
         let l1_header;
         let deposit_transactions: Vec<Bytes>;
-
+        info!("start to prepare_payload_attributes");
         let mut sys_config = self
             .config_fetcher
             .system_config_by_number(l2_parent.block_info.number, self.rollup_cfg.clone())
@@ -71,6 +72,7 @@ where
         // In this case we need to fetch all transaction receipts from the L1 origin block so
         // we can scan for user deposits.
         let sequence_number = if l2_parent.l1_origin.number != epoch.number {
+            info!("l1 origin number doesn't equal epoch number");
             let header = self
                 .receipts_fetcher
                 .header_by_hash(epoch.hash)
@@ -138,7 +140,7 @@ where
         }
 
 
-
+        info!("try new with deposit tx");
         // Build and encode the L1 info transaction for the current payload.
         let (_, l1_info_tx_envelope) = L1BlockInfoTx::try_new_with_deposit_tx(
             &self.rollup_cfg,
@@ -155,8 +157,9 @@ where
 
         let mut txs =
             Vec::with_capacity(1 + deposit_transactions.len());
-        txs.push(encoded_l1_info_tx.into());
+        txs.push(Bytes::from(encoded_l1_info_tx));
         txs.extend(deposit_transactions);
+        info!(" new OpPayloadAttributes");
 
         let withdrawals = None;
         let parent_beacon_root = None;
