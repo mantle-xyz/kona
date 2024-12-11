@@ -200,6 +200,7 @@ impl BatchReader {
                 return None;
             }
 
+
             self.decompressed = decompress_to_vec_zlib(&data).ok()?;
 
             // Check the size of the decompressed channel RLP.
