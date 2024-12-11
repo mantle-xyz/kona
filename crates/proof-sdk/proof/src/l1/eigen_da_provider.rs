@@ -4,7 +4,7 @@ use alloc::boxed::Box;
 use alloc::vec;
 use alloy_primitives::keccak256;
 use async_trait::async_trait;
-use tokio::io::AsyncReadExt;
+// use tokio::io::AsyncReadExt;
 use kona_derive::traits::EigenDAProvider;
 use kona_preimage::{CommsClient, PreimageKey, PreimageKeyType};
 use kona_preimage::PreimageKeyType::Precompile;
