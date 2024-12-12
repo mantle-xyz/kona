@@ -16,7 +16,9 @@ members = [
     "crates/executor",
     "crates/mpt",
     "crates/proof-sdk/*",
-    "bin/*", "crates/eigen-da", ]
+    "bin/*",
+    "crates/eigen-da",
+]
 default-members = ["bin/host", "bin/client"]
 
 # Explicitly set the resolver to version 2, which is the default for packages with edition >= 2021
@@ -70,7 +72,7 @@ kona-common-proc = { path = "crates/proof-sdk/common-proc", version = "0.0.4", d
 kona-driver = { path = "crates/driver", version = "0.1.0", default-features = false }
 kona-preimage = { path = "crates/proof-sdk/preimage", version = "0.1.0", default-features = false }
 kona-proof = { path = "crates/proof-sdk/proof", version = "0.1.0", default-features = false }
-eigen-da = { path = "crates/eigen-da" , version = "0.1.0", default-features = false }
+eigen-da = { path = "crates/eigen-da", version = "0.1.0", default-features = false }
 
 # Alloy
 alloy-rlp = { version = "0.3", default-features = false }
@@ -81,7 +83,9 @@ alloy-provider = { version = "0.6.4", default-features = false }
 alloy-primitives = { version = "0.8.13", default-features = false }
 alloy-consensus = { version = "0.6.4", default-features = false }
 alloy-transport = { version = "0.6.4", default-features = false }
-alloy-rpc-types = { version = "0.6.4", default-features = false, features = ["debug"]  }
+alloy-rpc-types = { version = "0.6.4", default-features = false, features = [
+    "debug",
+] }
 alloy-rpc-client = { version = "0.6.4", default-features = false }
 alloy-node-bindings = { version = "0.6.4", default-features = false }
 alloy-transport-http = { version = "0.6.4", default-features = false }
@@ -95,10 +99,10 @@ alloy-rpc-types-beacon = { version = "0.6.4", default-features = false }
 #op-alloy-rpc-types-engine = { version = "0.5.2", default-features = false }
 
 # Mantle Alloy
-op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
-op-alloy-protocol = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
-op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
-op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
+op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle" }
+op-alloy-protocol = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle" }
+op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle" }
+op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle" }
 
 # General
 lru = "0.12.4"

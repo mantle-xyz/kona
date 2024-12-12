@@ -2983,8 +2983,8 @@ checksum = "b410bbe7e14ab526a0e86877eb47c6996a2bd7746f027ba551028c925390e4e9"
 
 [[package]]
 name = "op-alloy-consensus"
-version = "0.4.0"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=mantle-alloy-0.6.4-fix#fcc1b228337253134642d15554e29dbd6b69c305"
+version = "0.6.5"
+source = "git+https://github.com/mantle-xyz/op-alloy?branch=mantle#c2d42901432bedf26843c07724081a23a5d4c083"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -2998,8 +2998,8 @@ dependencies = [
 
 [[package]]
 name = "op-alloy-genesis"
-version = "0.4.0"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=mantle-alloy-0.6.4-fix#fcc1b228337253134642d15554e29dbd6b69c305"
+version = "0.6.5"
+source = "git+https://github.com/mantle-xyz/op-alloy?branch=mantle#c2d42901432bedf26843c07724081a23a5d4c083"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -3011,8 +3011,8 @@ dependencies = [
 
 [[package]]
 name = "op-alloy-protocol"
-version = "0.4.0"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=mantle-alloy-0.6.4-fix#fcc1b228337253134642d15554e29dbd6b69c305"
+version = "0.6.5"
+source = "git+https://github.com/mantle-xyz/op-alloy?branch=mantle#c2d42901432bedf26843c07724081a23a5d4c083"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -3028,8 +3028,8 @@ dependencies = [
 
 [[package]]
 name = "op-alloy-rpc-types-engine"
-version = "0.4.0"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=mantle-alloy-0.6.4-fix#fcc1b228337253134642d15554e29dbd6b69c305"
+version = "0.6.5"
+source = "git+https://github.com/mantle-xyz/op-alloy?branch=mantle#c2d42901432bedf26843c07724081a23a5d4c083"
 dependencies = [
  "alloy-primitives",
  "alloy-rpc-types-engine",
