@@ -176,9 +176,7 @@ where
             gas_limit: Some(u64::from_be_bytes(
                 alloy_primitives::U64::from(sys_config.gas_limit).to_be_bytes(),
             )),
-            base_fee: Some(u128::from_be_bytes(
-                alloy_primitives::U256::from(sys_config.base_fee).to_be_bytes(),
-            )),
+            base_fee: None,
         })
     }
 }
