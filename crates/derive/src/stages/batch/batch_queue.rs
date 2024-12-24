@@ -113,7 +113,8 @@ where
                 batch.check_batch(&self.cfg, &self.l1_blocks, parent).await;
             match validity {
                 BatchValidity::Future => {
-                    return Err(PipelineError::FutureBatch(batch.batch.timestamp(),next_timestamp).crit());
+                    self.prev.flush();
+                    warn!(target: "batch-queue", "[HOLOCENE] Dropping future batch with parent: {}", parent.block_info.number);
                 }
                 BatchValidity::Drop => {
                     warn!(target: "batch-queue", "Dropping batch with parent: {}", parent.block_info);

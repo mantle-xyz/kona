@@ -21,6 +21,7 @@ use kona_preimage::CommsClient;
 use op_alloy_genesis::{RollupConfig, SystemConfig};
 use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::OpAttributesWithParent;
+use kona_derive::prelude::EigenDaSource;
 use kona_derive::traits::EigenDAProvider;
 
 /// An oracle-backed derivation pipeline.
@@ -86,7 +87,9 @@ where
             l2_chain_provider.clone(),
             chain_provider.clone(),
         );
-        let dap = EthereumDataSource::new(chain_provider.clone(), blob_provider,eigen_da_provider, &cfg);
+
+        let dap = EthereumDataSource::new_from_parts(chain_provider.clone(), blob_provider.clone(), eigen_da_provider.clone(), &cfg);
+
 
         let pipeline = PipelineBuilder::new()
             .rollup_config(cfg)

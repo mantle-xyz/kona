@@ -5,15 +5,17 @@ use core::ops::Deref;
 use alloy_consensus::{Transaction, TxEip4844Variant, TxEnvelope, TxType};
 use alloy_primitives::{hex, Address, Bytes};
 use alloy_rlp::Rlp;
+use alloy_eips::eip4844::IndexedBlobHash;
 use async_trait::async_trait;
 use op_alloy_protocol::BlockInfo;
 use rlp::{decode, Decodable, DecoderError};
 use tracing::{error, info, warn};
-use crate::errors::{BlobDecodingError, BlobProviderError, EigenDAProviderError, EigenDAProxyError, PipelineError, PipelineResult};
+use crate::errors::{BlobDecodingError, BlobProviderError, EigenDAProviderError, EigenDAProxyError, PipelineError};
+use crate::types::PipelineResult;
 use crate::prelude::ChainProvider;
 use crate::proto::{calldata_frame, CalldataFrame};
-use crate::sources::{BlobData, IndexedBlobHash};
-use crate::traits::{AsyncIterator, BlobProvider, EigenDAProvider};
+use crate::sources::{BlobData};
+use crate::traits::{DataAvailabilityProvider, BlobProvider, EigenDAProvider};
 use prost::Message;
 use alloc::boxed::Box;
 
@@ -48,8 +50,6 @@ where
     pub eigen_da_provider: E,
     /// The address of the batcher contract.
     pub batcher_address: Address,
-    /// Block Ref
-    pub block_ref: BlockInfo,
     /// The L1 Signer.
     pub signer: Address,
     /// Data.
@@ -71,7 +71,6 @@ where
         blob_provider: B,
         eigen_da_provider: E,
         batcher_address: Address,
-        block_ref: BlockInfo,
         signer: Address,
     ) -> Self {
         Self {
@@ -79,14 +78,13 @@ where
             blob_provider,
             eigen_da_provider,
             batcher_address,
-            block_ref,
             signer,
             data: Vec::new(),
             open: false,
         }
     }
 
-    async fn data_from_eigen_da(&mut self, txs: Vec<TxEnvelope>) -> Result<(Vec<Bytes>, Vec<IndexedBlobHash>),EigenDAProviderError> {
+    async fn data_from_eigen_da(&mut self, txs: Vec<TxEnvelope>) -> Result<(Vec<Bytes>, Vec<IndexedBlobHash>), EigenDAProviderError> {
         let mut out:Vec<Bytes> = Vec::new();
         let mut hashes = Vec::new();
         let mut number: u64 = 0;
@@ -130,7 +128,7 @@ where
                         continue;
                     };
                     for blob in blob_hashes {
-                        let indexed = IndexedBlobHash { hash: blob, index: number as usize };
+                        let indexed = IndexedBlobHash { hash: blob, index: number };
                         hashes.push(indexed);
                         number += 1;
                     }
@@ -155,7 +153,7 @@ where
                             info!(target: "eigen-da", "decoded frame contains frame ref");
                             let blob_data = self.eigen_da_provider
                                 .retrieve_blob_with_commitment( &frame_ref.commitment, frame_ref.blob_length)
-                                .await.map_err(|e|EigenDAProviderError::String(e.to_string()))?;
+                                .await.map_err(|e|EigenDAProviderError::Status(e.to_string()))?;
                             let blobs = &blob_data[..frame_ref.blob_length as usize];
                             let blob_data:VecOfBytes = decode(blobs).map_err(|e|EigenDAProviderError::RLPDecodeError(e.to_string()))?;
                             for blob in blob_data.0 {
@@ -171,22 +169,22 @@ where
     }
 
 
-    async fn load_blobs(&mut self) -> Result<(), EigenDAProviderError> {
+    async fn load_blobs(&mut self, block_ref: &BlockInfo) -> Result<(), EigenDAProviderError> {
         if self.open {
             return Ok(());
         }
         let info = self
             .chain_provider
-            .block_info_and_transactions_by_hash(self.block_ref.hash)
+            .block_info_and_transactions_by_hash(block_ref.hash)
             .await
             .map_err(|e| EigenDAProviderError::Backend(e.to_string()))?;
         let (mut blob_data, blob_hashes) = self.data_from_eigen_da(info.1).await?;
         info!(target: "eigen_da", "loading eigen blobs blob hashes len {}, blob data len {}", blob_hashes.len(), blob_data.len());
         if blob_hashes.len() > 0 {
             let blobs =
-                self.blob_provider.get_blobs(&self.block_ref, &blob_hashes).await.map_err(|e| {
+                self.blob_provider.get_blobs(block_ref, &blob_hashes).await.map_err(|e| {
                     warn!(target: "eigen-da-source", "Failed to fetch blobs: {e}");
-                    EigenDAProviderError::Blob(BlobProviderError::Backend(e.to_string()).to_string())
+                    EigenDAProviderError::Backend(BlobProviderError::Backend(e.to_string()).to_string())
                 })?;
             let mut whole_blob_data = Vec::new();
             for blob in blobs {
@@ -217,7 +215,7 @@ where
 }
 
 #[async_trait]
-impl<F, B, E> AsyncIterator for EigenDaSource<F, B, E>
+impl<F, B, E> DataAvailabilityProvider for EigenDaSource<F, B, E>
 where
     F: ChainProvider + Send,
     B: BlobProvider + Send,
@@ -225,15 +223,15 @@ where
 {
     type Item = Bytes;
 
-    async fn next(&mut self) -> PipelineResult<Self::Item> {
-        let result = self.load_blobs().await;
+    async fn next(&mut self, block_ref: &BlockInfo) -> PipelineResult<Self::Item> {
+        let result = self.load_blobs(block_ref).await;
         match result {
             Ok(_) => (),
 
             Err(e) => {
                 return Err(PipelineError::Provider(format!(
                     "Failed to load eigen_da blobs from stream: {}, err: {}",
-                    self.block_ref.hash,e.to_string()
+                    block_ref.hash,e.to_string()
                 ))
                     .temp());
             }
@@ -246,6 +244,10 @@ where
 
          Ok(next_data)
 
+    }
+
+    fn clear(&mut self) {
+        todo!()
     }
 }
 
@@ -298,7 +300,7 @@ pub(crate) mod tests {
 
                         assert_eq!(commitment, "010000f901d8f852f842a00dbbd22149b419a9a751c25065b58745f4216dc3ae4e9ad583306c395387b6a3a02673dfa25dd3095246eeffb639d3e11108a1ba75dd29b86c3a4200ed00210e4e820200cac480213701c401213710f90181830148ae81a5f873eba0c42bcd27bcd22ba55c4189a25d362343838cb75f57979baa0686ec5381a944c3820001826362832a79cba07263089b84cbb2963e4f50a930243c081ab14b01c0c92d57c3029590bd9dfc9200832a7a20a05419bc29ac025512311c14f23d9613e408448e47bb31f71614e1f82b6c63966cb9010074b13a3acaba35d3749063c19806c9a2f2004b318d55edd6cb5129d958807ea7ac09584a2c6ea029ed34c72f849862e4189928e90931e07093209016f5fc70a6c4a8c3237c25c4f236bb25c105fd7dbd6e4a00153c69c0757d8cbf02f966167ccae243412c20de1c3a38a50818dc7f9f3e02dcb3bc4e54800f2224b8c1eaa9955e41792fa0e401f2814ee209331126149c630c34e1b8e2f804955582022676e232d24d7784b496fc997d98db2849b1bfa8443b362723fc603da8de11704a1ef50414e11234496cfac67aebdd2faa24840ffe7f04506652b8a11a534b024a40bc7e99fee042336f425eb16e40e4267593415860204c9069723dbaca8cf2e596dc820001".to_string());
                         let blob_data = eigen_da_provider.retrieve_blob_with_commitment(&frame_ref.commitment, frame_ref.blob_length)
-                            .await.map_err(|e|EigenDAProviderError::String(e.to_string())).unwrap();
+                            .await.map_err(|e|EigenDAProviderError::Status(e.to_string())).unwrap();
                         let blobs = &blob_data[..frame_ref.blob_length as usize];
                         let blob_data:VecOfBytes = decode(blobs).map_err(|e|EigenDAProviderError::RLPDecodeError(e.to_string())).unwrap();
                     }

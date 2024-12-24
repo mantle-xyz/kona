@@ -20,6 +20,9 @@ pub trait BatchStreamProvider {
     /// Returns the next [Batch] in the [BatchStream] stage.
     async fn next_batch(&mut self) -> PipelineResult<Batch>;
 
+    /// Drains the recent `Channel` if an invalid span batch is found post-holocene.
+    fn flush(&mut self);
+
 }
 
 /// [BatchStream] stage in the derivation pipeline.
@@ -57,6 +60,11 @@ impl<P> NextBatchProvider for BatchStream<P>
 where
     P: BatchStreamProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
 {
+
+    fn flush(&mut self) {
+        // mantle have no holocene version
+    }
+
     async fn next_batch(
         &mut self,
     ) -> PipelineResult<Batch> {

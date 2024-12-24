@@ -10,9 +10,7 @@ pub mod fetcher;
 pub mod kv;
 pub mod preimage;
 pub mod server;
-pub mod util;
-mod providers;
-pub use providers::*;
+mod eigen_da_provider;
 
 use anyhow::Result;
 use fetcher::Fetcher;
@@ -26,21 +24,6 @@ use std::sync::Arc;
 use tokio::{sync::RwLock, task};
 use tracing::info;
 
-use anyhow::{anyhow, bail, Result};
-use command_fds::{CommandFdExt, FdMapping};
-use futures::FutureExt;
-use kv::KeyValueStore;
-use std::{
-    io::{stderr, stdin, stdout},
-    os::fd::{AsFd, AsRawFd},
-    panic::AssertUnwindSafe,
-    sync::Arc,
-};
-use tokio::{process::Command, sync::RwLock, task};
-use tracing::{debug, error, info};
-use kona_preimage::{BidirectionalChannel, HintReader, HintWriter, NativeChannel, OracleReader, OracleServer};
-use kona_std_fpvm::{FileChannel, FileDescriptor};
-use util::Pipe;
 
 /// Starts the [PreimageServer] in the primary thread. In this mode, the host program has been
 /// invoked by the Fault Proof VM and the client program is running in the parent process.

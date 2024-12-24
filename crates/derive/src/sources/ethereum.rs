@@ -3,7 +3,7 @@
 
 use crate::{
     types::PipelineResult,
-    sources::{BlobSource, CalldataSource, EthereumDataSourceVariant},
+    sources::{BlobSource, CalldataSource},
     traits::{BlobProvider, ChainProvider, EigenDAProvider, DataAvailabilityProvider},
 };
 use alloc::{boxed::Box, fmt::Debug};
@@ -21,18 +21,13 @@ where
     B: BlobProvider + Send + Clone,
     E: EigenDAProvider + Send + Clone,
 {
-    /// The chain provider to use for the factory.
-    pub chain_provider: C,
-    /// The blob provider
-    pub blob_provider: B,
-    /// The L1 Signer.
-    pub signer: Address,
-    /// The batch inbox address.
-    pub batch_inbox_address: Address,
-    /// The eigen eigen-da data provider
-    pub eigen_da_provider: E,
-    /// The mantle da switch
+    /// The calldata source.
+    pub calldata_source: CalldataSource<C>,
+    /// The eigen da source.
+    pub eigen_da_source: EigenDaSource<C, B, E>,
+    /// Mantle da switch
     pub mantle_da_switch: bool,
+
 }
 
 impl<C, B, E> EthereumDataSource<C, B, E>
@@ -41,19 +36,22 @@ where
     B: BlobProvider + Send + Clone + Debug,
     E: EigenDAProvider + Send + Clone + Debug,
 {
+    /// Instantiates a new [EthereumDataSource].
+    pub const fn new(
+        calldata_source: CalldataSource<C>,
+        eigen_da_source: EigenDaSource<C, B, E>,
+        cfg: &RollupConfig,
+    ) -> Self {
+        Self { calldata_source, eigen_da_source, mantle_da_switch: cfg.mantle_da_switch }
+    }
+
     /// Creates a new factory.
-    pub fn new(provider: C, blobs: B, eigen_da: E, cfg: &RollupConfig) -> Self {
+    pub fn new_from_parts(provider: C, blobs: B, eigen_da_provider: E, cfg: &RollupConfig) -> Self {
+        let signer =
+            cfg.genesis.system_config.as_ref().map(|sc| sc.batcher_address).unwrap_or_default();
         Self {
-            chain_provider: provider,
-            blob_provider: blobs,
-            signer: cfg
-                .genesis
-                .system_config
-                .as_ref()
-                .map(|sc| sc.batcher_address)
-                .unwrap_or_default(),
-            batch_inbox_address: cfg.batch_inbox_address,
-            eigen_da_provider: eigen_da,
+            calldata_source: CalldataSource::new(provider.clone(), cfg.batch_inbox_address, signer),
+            eigen_da_source: EigenDaSource::new(provider,blobs,eigen_da_provider,cfg.batch_inbox_address,signer),
             mantle_da_switch: cfg.mantle_da_switch,
         }
     }
@@ -67,78 +65,70 @@ where
     E: EigenDAProvider + Send + Sync + Clone + Debug,
 {
     type Item = Bytes;
-    type DataIter = EthereumDataSourceVariant<C, B, E>;
 
-    async fn open_data(&self, block_ref: &BlockInfo) -> PipelineResult<Self::DataIter> {
+    async fn next(&mut self, block_ref: &BlockInfo) -> PipelineResult<Self::Item> {
 
         if self.mantle_da_switch {
-            Ok(EthereumDataSourceVariant::EigenDA(EigenDaSource::new(
-                self.chain_provider.clone(),
-                self.blob_provider.clone(),
-                self.eigen_da_provider.clone(),
-                self.batch_inbox_address,
-                *block_ref,
-                self.signer,
-
-            )))
+           self.eigen_da_source.next(block_ref).await
         } else {
-            Ok(EthereumDataSourceVariant::Calldata(CalldataSource::new(
-                self.chain_provider.clone(),
-                self.batch_inbox_address,
-                *block_ref,
-                self.signer,
-            )))
+            self.calldata_source.next(block_ref).await
         }
+    }
+
+    fn clear(&mut self) {
+        self.calldata_source.clear();
+        self.eigen_da_source.clear();
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{TestChainProvider, TestEigenDaProvider};
+    use super::*;
+    use crate::{
+        sources::BlobData,
+        test_utils::{TestBlobProvider, TestChainProvider},
+    };
     use alloy_consensus::TxEnvelope;
     use alloy_eips::eip2718::Decodable2718;
-    use alloy_primitives::address;
+    use alloy_primitives::{address, Address};
     use op_alloy_genesis::{RollupConfig, SystemConfig};
     use op_alloy_protocol::BlockInfo;
+    use crate::test_utils::TestEigenDaProvider;
 
-    use crate::{
-        sources::{EthereumDataSource, EthereumDataSourceVariant},
-        test_utils::TestBlobProvider,
-        traits::{AsyncIterator, DataAvailabilityProvider},
-    };
+    fn default_test_blob_source() -> BlobSource<TestChainProvider, TestBlobProvider> {
+        let chain_provider = TestChainProvider::default();
+        let blob_fetcher = TestBlobProvider::default();
+        let batcher_address = Address::default();
+        let signer = Address::default();
+        BlobSource::new(chain_provider, blob_fetcher, batcher_address, signer)
+    }
 
     #[tokio::test]
-    async fn test_validate_ethereum_data_source() {
+    async fn test_clear_ethereum_data_source() {
         let chain = TestChainProvider::default();
         let blob = TestBlobProvider::default();
+        let cfg = RollupConfig::default();
         let eigen_da = TestEigenDaProvider::default();
-        let block_ref = BlockInfo::default();
+        let mut calldata = CalldataSource::new(chain.clone(), Address::ZERO, Address::ZERO);
+        calldata.calldata.insert(0, Default::default());
+        calldata.open = true;
+        let mut eigen = EigenDaSource::new(chain,blob,eigen_da,Address::ZERO,Address::ZERO);
+        eigen.data = vec![Default::default()];
+        eigen.open = true;
+        let mut data_source = EthereumDataSource::new( calldata, eigen, &cfg);
 
-        // If the ecotone_timestamp is not set, a Calldata source should be returned.
-        let cfg = RollupConfig { ..Default::default() };
-        let data_source = EthereumDataSource::new(chain.clone(), blob.clone(), eigen_da.clone(), &cfg);
-        let data_iter = data_source.open_data(&block_ref).await.unwrap();
-        assert!(matches!(data_iter, EthereumDataSourceVariant::Calldata(_)));
-
-        // If the ecotone_timestamp is set, and the block_ref timestamp is prior to the
-        // ecotone_timestamp, a calldata source is created.
-        let cfg = RollupConfig { ..Default::default() };
-        let data_source = EthereumDataSource::new(chain, blob, eigen_da.clone(),&cfg);
-        let data_iter = data_source.open_data(&block_ref).await.unwrap();
-        assert!(matches!(data_iter, EthereumDataSourceVariant::Calldata(_)));
-
-        // If the ecotone_timestamp is set, and the block_ref timestamp is greater than
-        // or equal to the ecotone_timestamp, a Blob source is created.
-        let block_ref = BlockInfo { timestamp: 101, ..Default::default() };
-        let data_iter = data_source.open_data(&block_ref).await.unwrap();
-        assert!(matches!(data_iter, EthereumDataSourceVariant::Blob(_)));
+        data_source.clear();
+        assert!(data_source.eigen_da_source.data.is_empty());
+        assert!(!data_source.eigen_da_source.open);
+        assert!(data_source.calldata_source.calldata.is_empty());
+        assert!(!data_source.calldata_source.open);
     }
+
 
     #[tokio::test]
     async fn test_open_ethereum_calldata_source_pre_ecotone() {
         let mut chain = TestChainProvider::default();
         let blob = TestBlobProvider::default();
-        let eigen_da = TestEigenDaProvider::default();
         let batcher_address = address!("6887246668a3b87F54DeB3b94Ba47a6f63F32985");
         let batch_inbox = address!("FF00000000000000000000000000000000000010");
         let block_ref = BlockInfo { number: 10, ..Default::default() };
@@ -152,12 +142,10 @@ mod tests {
         let tx = TxEnvelope::decode_2718(&mut raw_batcher_tx.as_ref()).unwrap();
         chain.insert_block_with_transactions(10, block_ref, alloc::vec![tx]);
 
-        let data_source = EthereumDataSource::new(chain, blob, eigen_da, &cfg);
-        let mut data_iter = data_source.open_data(&block_ref).await.unwrap();
-        assert!(matches!(data_iter, EthereumDataSourceVariant::Calldata(_)));
-
         // Should successfully retrieve a calldata batch from the block
-        let calldata_batch = data_iter.next().await.unwrap();
+        let mut data_source = EthereumDataSource::new_from_parts(chain, blob, &cfg);
+        let calldata_batch = data_source.next(&block_ref).await.unwrap();
         assert_eq!(calldata_batch.len(), 119823);
     }
 }
+

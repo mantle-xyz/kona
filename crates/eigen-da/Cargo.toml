@@ -17,7 +17,6 @@ exclude.workspace = true
 alloy-primitives = { workspace = true, features = ["rlp", "k256", "serde"] }
 
 async-trait.workspace = true
-alloc-no-stdlib = { workspace = true, optional = true}
 reqwest.workspace = true
 
 # Workspace

@@ -26,6 +26,7 @@ use kona_proof::{
 };
 use thiserror::Error;
 use tracing::{error, info, warn};
+use kona_proof::l1::OracleEigenDaProvider;
 
 /// An error that can occur when running the fault proof program.
 #[derive(Error, Debug)]
@@ -74,6 +75,8 @@ where
     let mut l1_provider = OracleL1ChainProvider::new(boot.clone(), oracle.clone());
     let mut l2_provider = OracleL2ChainProvider::new(boot.clone(), oracle.clone());
     let beacon = OracleBlobProvider::new(oracle.clone());
+    let eigen_da_provider = OracleEigenDaProvider::new(oracle.clone());
+
 
     // If the claimed L2 block number is less than the safe head of the L2 chain, the claim is
     // invalid.
@@ -113,6 +116,7 @@ where
         cursor.clone(),
         oracle.clone(),
         beacon,
+        eigen_da_provider,
         l1_provider.clone(),
         l2_provider.clone(),
     );

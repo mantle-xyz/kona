@@ -14,12 +14,12 @@ mod ethereum;
 pub use ethereum::EthereumDataSource;
 
 mod blobs;
-pub use blobs::{BlobData, BlobSource, IndexedBlobHash};
+pub use blobs::{BlobSource};
 
 mod calldata;
 pub use calldata::CalldataSource;
 
-mod variant;
 mod eigen_da;
 
-pub use variant::EthereumDataSourceVariant;
+pub use eigen_da::EigenDaSource;
+

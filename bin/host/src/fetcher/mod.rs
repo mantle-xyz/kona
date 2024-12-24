@@ -2,8 +2,6 @@
 //! remote source.
 
 use crate::{blobs::OnlineBlobProvider, kv::KeyValueStore};
-use crate::{kv::KeyValueStore, util,
-    providers::{OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDaProvider}};
 use alloy_consensus::{Header, TxEnvelope, EMPTY_ROOT_HASH};
 use alloy_eips::{
     eip2718::Encodable2718,
@@ -27,6 +25,7 @@ use tokio::sync::RwLock;
 use tracing::{error, trace, warn};
 use eigen_da::EigenDaProxy;
 use kona_derive::traits::EigenDAProvider;
+use crate::eigen_da_provider::OnlineEigenDaProvider;
 
 mod precompiles;
 

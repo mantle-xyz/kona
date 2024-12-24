@@ -13,7 +13,6 @@ use alloy_primitives::{address, Address, Bytes, B256};
 use alloy_rlp::Encodable;
 use alloy_rpc_types_engine::PayloadAttributes;
 use async_trait::async_trait;
-use op_alloy_consensus::{Hardfork, Hardforks};
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::{decode_deposit, L1BlockInfoTx, L2BlockInfo, DEPOSIT_EVENT_ABI_HASH};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
@@ -93,7 +92,6 @@ where
                 .update_with_receipts(
                     &receipts,
                     self.rollup_cfg.l1_system_config_address,
-                    self.rollup_cfg.is_ecotone_active(header.timestamp),
                 )
                 .map_err(|e| PipelineError::SystemConfigUpdate(e).crit())?;
             l1_header = header;
@@ -129,17 +127,6 @@ where
             ));
         }
 
-        let mut upgrade_transactions: Vec<Bytes> = vec![];
-        if self.rollup_cfg.is_ecotone_active(next_l2_time) &&
-            !self.rollup_cfg.is_ecotone_active(l2_parent.block_info.timestamp)
-        {
-            upgrade_transactions = Hardforks::ECOTONE.txs().collect();
-        }
-        if self.rollup_cfg.is_fjord_active(next_l2_time) &&
-            !self.rollup_cfg.is_fjord_active(l2_parent.block_info.timestamp)
-        {
-            upgrade_transactions.append(&mut Hardforks::FJORD.txs().collect());
-        }
 
         // Build and encode the L1 info transaction for the current payload.
         let (_, l1_info_tx_envelope) = L1BlockInfoTx::try_new_with_deposit_tx(
@@ -156,22 +143,12 @@ where
         l1_info_tx_envelope.encode_2718(&mut encoded_l1_info_tx);
 
         let mut txs =
-            Vec::with_capacity(1 + deposit_transactions.len() + upgrade_transactions.len());
+            Vec::with_capacity(1 + deposit_transactions.len());
         txs.push(encoded_l1_info_tx.into());
         txs.extend(deposit_transactions);
-        txs.extend(upgrade_transactions);
 
         let mut withdrawals = None;
-        if self.rollup_cfg.is_canyon_active(next_l2_time) {
-            withdrawals = Some(Vec::default());
-        }
-
         let mut parent_beacon_root = None;
-        if self.rollup_cfg.is_ecotone_active(next_l2_time) {
-            // if the parent beacon root is not available, default to zero hash
-            parent_beacon_root = Some(l1_header.parent_beacon_block_root.unwrap_or_default());
-        }
-
         Ok(OpPayloadAttributes {
             payload_attributes: PayloadAttributes {
                 timestamp: next_l2_time,
@@ -179,19 +156,13 @@ where
                 suggested_fee_recipient: SEQUENCER_FEE_VAULT_ADDRESS,
                 parent_beacon_block_root: parent_beacon_root,
                 withdrawals,
-                target_blobs_per_block: None,
-                max_blobs_per_block: None,
             },
             transactions: Some(txs),
             no_tx_pool: Some(true),
             gas_limit: Some(u64::from_be_bytes(
                 alloy_primitives::U64::from(sys_config.gas_limit).to_be_bytes(),
             )),
-            eip_1559_params: sys_config.eip_1559_params(
-                &self.rollup_cfg,
-                l2_parent.block_info.timestamp,
-                next_l2_time,
-            ),
+            base_fee: None,
         })
     }
 }
@@ -240,6 +211,7 @@ mod tests {
     use alloy_primitives::{Log, LogData, B256, U256, U64};
     use op_alloy_genesis::SystemConfig;
     use op_alloy_protocol::{BlockInfo, DepositError};
+    use proptest::num::u128;
 
     fn generate_valid_log() -> Log {
         let deposit_contract = address!("1111111111111111111111111111111111111111");
@@ -453,164 +425,18 @@ mod tests {
                 suggested_fee_recipient: SEQUENCER_FEE_VAULT_ADDRESS,
                 parent_beacon_block_root: None,
                 withdrawals: None,
-                target_blobs_per_block: None,
-                max_blobs_per_block: None,
             },
             transactions: payload.transactions.clone(),
             no_tx_pool: Some(true),
             gas_limit: Some(u64::from_be_bytes(
                 alloy_primitives::U64::from(SystemConfig::default().gas_limit).to_be_bytes(),
             )),
-            eip_1559_params: None,
+            base_fee: Some(u128::from_be_bytes(
+                alloy_primitives::U256::from(SystemConfig::default().base_fee).to_be_bytes(),
+            )),
         };
         assert_eq!(payload, expected);
         assert_eq!(payload.transactions.unwrap().len(), 1);
     }
 
-    #[tokio::test]
-    async fn test_prepare_payload_with_canyon() {
-        let block_time = 10;
-        let timestamp = 100;
-        let cfg = Arc::new(RollupConfig { block_time, canyon_time: Some(0), ..Default::default() });
-        let l2_number = 1;
-        let mut fetcher = TestSystemConfigL2Fetcher::default();
-        fetcher.insert(l2_number, SystemConfig::default());
-        let mut provider = TestChainProvider::default();
-        let header = Header { timestamp, ..Default::default() };
-        let prev_randao = header.mix_hash;
-        let hash = header.hash_slow();
-        provider.insert_header(hash, header);
-        let mut builder = StatefulAttributesBuilder::new(cfg, fetcher, provider);
-        let epoch = BlockNumHash { hash, number: l2_number };
-        let l2_parent = L2BlockInfo {
-            block_info: BlockInfo {
-                hash: B256::ZERO,
-                number: l2_number,
-                timestamp,
-                parent_hash: hash,
-            },
-            l1_origin: BlockNumHash { hash, number: l2_number },
-            seq_num: 0,
-        };
-        let next_l2_time = l2_parent.block_info.timestamp + block_time;
-        let payload = builder.prepare_payload_attributes(l2_parent, epoch).await.unwrap();
-        let expected = OpPayloadAttributes {
-            payload_attributes: PayloadAttributes {
-                timestamp: next_l2_time,
-                prev_randao,
-                suggested_fee_recipient: SEQUENCER_FEE_VAULT_ADDRESS,
-                parent_beacon_block_root: None,
-                withdrawals: Some(Vec::default()),
-                target_blobs_per_block: None,
-                max_blobs_per_block: None,
-            },
-            transactions: payload.transactions.clone(),
-            no_tx_pool: Some(true),
-            gas_limit: Some(u64::from_be_bytes(
-                alloy_primitives::U64::from(SystemConfig::default().gas_limit).to_be_bytes(),
-            )),
-            eip_1559_params: None,
-        };
-        assert_eq!(payload, expected);
-        assert_eq!(payload.transactions.unwrap().len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_prepare_payload_with_ecotone() {
-        let block_time = 2;
-        let timestamp = 100;
-        let cfg =
-            Arc::new(RollupConfig { block_time, ecotone_time: Some(102), ..Default::default() });
-        let l2_number = 1;
-        let mut fetcher = TestSystemConfigL2Fetcher::default();
-        fetcher.insert(l2_number, SystemConfig::default());
-        let mut provider = TestChainProvider::default();
-        let header = Header { timestamp, ..Default::default() };
-        let parent_beacon_block_root = Some(header.parent_beacon_block_root.unwrap_or_default());
-        let prev_randao = header.mix_hash;
-        let hash = header.hash_slow();
-        provider.insert_header(hash, header);
-        let mut builder = StatefulAttributesBuilder::new(cfg, fetcher, provider);
-        let epoch = BlockNumHash { hash, number: l2_number };
-        let l2_parent = L2BlockInfo {
-            block_info: BlockInfo {
-                hash: B256::ZERO,
-                number: l2_number,
-                timestamp,
-                parent_hash: hash,
-            },
-            l1_origin: BlockNumHash { hash, number: l2_number },
-            seq_num: 0,
-        };
-        let next_l2_time = l2_parent.block_info.timestamp + block_time;
-        let payload = builder.prepare_payload_attributes(l2_parent, epoch).await.unwrap();
-        let expected = OpPayloadAttributes {
-            payload_attributes: PayloadAttributes {
-                timestamp: next_l2_time,
-                prev_randao,
-                suggested_fee_recipient: SEQUENCER_FEE_VAULT_ADDRESS,
-                parent_beacon_block_root,
-                withdrawals: Some(vec![]),
-                target_blobs_per_block: None,
-                max_blobs_per_block: None,
-            },
-            transactions: payload.transactions.clone(),
-            no_tx_pool: Some(true),
-            gas_limit: Some(u64::from_be_bytes(
-                alloy_primitives::U64::from(SystemConfig::default().gas_limit).to_be_bytes(),
-            )),
-            eip_1559_params: None,
-        };
-        assert_eq!(payload, expected);
-        assert_eq!(payload.transactions.unwrap().len(), 7);
-    }
-
-    #[tokio::test]
-    async fn test_prepare_payload_with_fjord() {
-        let block_time = 2;
-        let timestamp = 100;
-        let cfg =
-            Arc::new(RollupConfig { block_time, fjord_time: Some(102), ..Default::default() });
-        let l2_number = 1;
-        let mut fetcher = TestSystemConfigL2Fetcher::default();
-        fetcher.insert(l2_number, SystemConfig::default());
-        let mut provider = TestChainProvider::default();
-        let header = Header { timestamp, ..Default::default() };
-        let prev_randao = header.mix_hash;
-        let hash = header.hash_slow();
-        provider.insert_header(hash, header);
-        let mut builder = StatefulAttributesBuilder::new(cfg, fetcher, provider);
-        let epoch = BlockNumHash { hash, number: l2_number };
-        let l2_parent = L2BlockInfo {
-            block_info: BlockInfo {
-                hash: B256::ZERO,
-                number: l2_number,
-                timestamp,
-                parent_hash: hash,
-            },
-            l1_origin: BlockNumHash { hash, number: l2_number },
-            seq_num: 0,
-        };
-        let next_l2_time = l2_parent.block_info.timestamp + block_time;
-        let payload = builder.prepare_payload_attributes(l2_parent, epoch).await.unwrap();
-        let expected = OpPayloadAttributes {
-            payload_attributes: PayloadAttributes {
-                timestamp: next_l2_time,
-                prev_randao,
-                suggested_fee_recipient: SEQUENCER_FEE_VAULT_ADDRESS,
-                parent_beacon_block_root: Some(B256::ZERO),
-                withdrawals: Some(vec![]),
-                target_blobs_per_block: None,
-                max_blobs_per_block: None,
-            },
-            transactions: payload.transactions.clone(),
-            no_tx_pool: Some(true),
-            gas_limit: Some(u64::from_be_bytes(
-                alloy_primitives::U64::from(SystemConfig::default().gas_limit).to_be_bytes(),
-            )),
-            eip_1559_params: None,
-        };
-        assert_eq!(payload.transactions.as_ref().unwrap().len(), 10);
-        assert_eq!(payload, expected);
-    }
 }

@@ -41,4 +41,8 @@ pub trait NextBatchProvider {
         &mut self,
     ) -> PipelineResult<Batch>;
 
+
+    /// Allows the stage to flush the buffer in the [crate::stages::BatchStream]
+    /// if an invalid single batch is found. Pre-holocene hardfork, this will be a no-op.
+    fn flush(&mut self);
 }

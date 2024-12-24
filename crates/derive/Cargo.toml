@@ -39,7 +39,11 @@ hex = {workspace = true}
 prost = { workspace = true, default-features = false}
 rlp = {workspace = true, default-features = false}
 log = "0.4.22"
+miniz_oxide.workspace = true
 
+
+# `serde` feature dependencies
+serde = { workspace = true, optional = true, features = ["derive"] }
 
 [dev-dependencies]
 spin.workspace = true
@@ -50,8 +54,9 @@ tracing-subscriber = { workspace = true, features = ["fmt"] }
 alloy-primitives = { workspace = true, features = ["rlp", "k256", "map", "arbitrary"] }
 
 [features]
-default = []
+default = ["serde"]
 serde = [
+  "dep:serde",
   "alloy-primitives/serde",
   "alloy-consensus/serde",
   "op-alloy-consensus/serde",

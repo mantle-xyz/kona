@@ -26,7 +26,6 @@ alloy-consensus.workspace = true
 alloy-primitives.workspace = true
 
 # Op Alloy
-op-alloy-registry.workspace = true
 op-alloy-protocol.workspace = true
 op-alloy-consensus.workspace = true
 op-alloy-genesis = { workspace = true, features = ["serde"] }

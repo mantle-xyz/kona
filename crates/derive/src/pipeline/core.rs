@@ -183,17 +183,6 @@ where
             },
         }
     }
-
-    fn rollup_config(&self) -> &RollupConfig {
-        &self.rollup_config
-    }
-
-    async fn system_config_by_number(&mut self, number: u64) -> Result<SystemConfig, PipelineErrorKind> {
-        self.l2_chain_provider
-            .system_config_by_number(number, self.rollup_config.clone())
-            .await
-            .map_err(|e|PipelineErrorKind::Temporary(PipelineError::Provider(e.to_string())))
-    }
 }
 
 #[cfg(test)]

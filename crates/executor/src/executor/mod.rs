@@ -25,8 +25,6 @@ pub use builder::{KonaHandleRegister, StatelessL2BlockExecutorBuilder};
 
 mod env;
 
-mod util;
-use util::receipt_envelope_from_parts;
 
 /// The block executor for the L2 client program. Operates off of a [TrieDB] backed [State],
 /// allowing for stateless block execution of OP Stack blocks.

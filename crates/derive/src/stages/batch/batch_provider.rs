@@ -3,7 +3,7 @@
 use super::NextBatchProvider;
 use crate::{
     errors::PipelineError,
-    stages::{BatchQueue, BatchValidator},
+    stages::{BatchQueue},
     traits::{AttributesProvider, L2ChainProvider, OriginAdvancer, OriginProvider, SignalReceiver},
     types::{PipelineResult, Signal},
 };

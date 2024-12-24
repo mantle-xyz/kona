@@ -6,8 +6,6 @@ use crate::{
         DiskKeyValueStore, LocalKeyValueStore, MemoryKeyValueStore, SharedKeyValueStore,
         SplitKeyValueStore,
     },
-    providers::{OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDaProvider},
-    util,
 };
 use alloy_primitives::B256;
 use alloy_provider::ReqwestProvider;
@@ -18,7 +16,6 @@ use clap::{
     builder::styling::{AnsiColor, Color, Style},
     ArgAction, Parser,
 };
-use clap::{builder::styling::{AnsiColor, Color, Style}, value_parser, ArgAction, Parser};
 use op_alloy_genesis::RollupConfig;
 use reqwest::Client;
 use serde::Serialize;
@@ -32,6 +29,7 @@ pub(crate) use parser::parse_b256;
 
 mod tracing_util;
 pub use tracing_util::init_tracing_subscriber;
+use crate::eigen_da_provider::OnlineEigenDaProvider;
 
 const ABOUT: &str = "
 kona-host is a CLI application that runs the Kona pre-image server and client program. The host

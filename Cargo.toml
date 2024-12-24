@@ -74,20 +74,22 @@ eigen-da = { path = "crates/eigen-da" , version = "0.1.0", default-features = fa
 
 
 # Alloy
-alloy-rlp = { version = "0.3.9", default-features = false }
-alloy-trie = { version = "0.7.4", default-features = false }
-alloy-eips = { version = "0.8.0", default-features = false }
-alloy-serde = { version = "0.8.0", default-features = false }
-alloy-provider = { version = "0.8.0", default-features = false }
-alloy-consensus = { version = "0.8.0", default-features = false }
-alloy-transport = { version = "0.8.0", default-features = false }
-alloy-rpc-types = { version = "0.8.0", default-features = false }
-alloy-rpc-client = { version = "0.8.0", default-features = false }
-alloy-primitives = { version = "0.8.14", default-features = false }
-alloy-node-bindings = { version = "0.8.0", default-features = false }
-alloy-transport-http = { version = "0.8.0", default-features = false }
-alloy-rpc-types-engine = { version = "0.8.0", default-features = false }
-alloy-rpc-types-beacon = { version = "0.8.0", default-features = false }
+alloy-primitives = { version = "0.8.13", default-features = false }
+
+alloy-rlp = { version = "0.3", default-features = false }
+alloy-trie = { version = "0.7.6", default-features = false }
+
+alloy-eips = { version = "0.6.4", default-features = false }
+alloy-serde = { version = "0.6.4", default-features = false }
+alloy-provider = { version = "0.6.4", default-features = false }
+alloy-consensus = { version = "0.6.4", default-features = false }
+alloy-transport = { version = "0.6.4", default-features = false }
+alloy-rpc-types = { version = "0.6.4", default-features = false }
+alloy-rpc-client = { version = "0.6.4", default-features = false }
+alloy-node-bindings = { version = "0.6.4", default-features = false }
+alloy-transport-http = { version = "0.6.4", default-features = false }
+alloy-rpc-types-engine = { version = "0.6.4", default-features = false }
+alloy-rpc-types-beacon = { version = "0.6.4", default-features = false }
 
 # OP Alloy
 #op-alloy-genesis = { version = "0.5.2", default-features = false }
@@ -112,7 +114,6 @@ cfg-if = "1.0.0"
 reqwest = "0.12.9"
 async-trait = "0.1.83"
 linked_list_allocator = "0.10.5"
-async-channel = "2.3.1"
 
 
 # General
@@ -125,6 +126,10 @@ thiserror = { version = "2.0.4", default-features = false }
 tracing-loki = "0.2.5"
 tracing-subscriber = "0.3.19"
 tracing = { version = "0.1.41", default-features = false }
+
+# Encoding
+miniz_oxide = "0.8.0"
+brotli = { version = "7.0.0", default-features = false }
 
 # Testing
 pprof = "0.14.0"
