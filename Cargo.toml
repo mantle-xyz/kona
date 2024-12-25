@@ -16,7 +16,8 @@ members = [
     "crates/executor",
     "crates/mpt",
     "crates/proof-sdk/*",
-    "bin/*", "crates/eigen-da", ]
+    "bin/*", 
+    "crates/eigen-da", ]
 default-members = ["bin/host", "bin/client"]
 
 # Explicitly set the resolver to version 2, which is the default for packages with edition >= 2021
@@ -74,7 +75,7 @@ eigen-da = { path = "crates/eigen-da" , version = "0.1.0", default-features = fa
 
 # Alloy
 alloy-rlp = { version = "0.3", default-features = false }
-alloy-trie = { version = "0.7.2", default-features = false }
+alloy-trie = { version = "=0.7.2", default-features = false }
 alloy-eips = { version = "0.6.4", default-features = false }
 alloy-serde = { version = "0.6.4", default-features = false }
 alloy-provider = { version = "0.6.4", default-features = false }
@@ -88,11 +89,6 @@ alloy-transport-http = { version = "0.6.4", default-features = false }
 alloy-rpc-types-engine = { version = "0.6.4", default-features = false }
 alloy-rpc-types-beacon = { version = "0.6.4", default-features = false }
 
-# OP Alloy
-#op-alloy-genesis = { version = "0.5.2", default-features = false }
-#op-alloy-protocol = { version = "0.5.2", default-features = false }
-#op-alloy-consensus = { version = "0.5.2", default-features = false }
-#op-alloy-rpc-types-engine = { version = "0.5.2", default-features = false }
 
 # Mantle Alloy
 op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", branch = "mantle-alloy-0.6.4-fix" }
