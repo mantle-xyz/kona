@@ -190,6 +190,7 @@ where
                 depositor
                     .as_ref()
                     .map(|depositor| depositor.account_info().unwrap_or_default().nonce),
+                None,
             );
             receipts.push(receipt);
         }
@@ -426,7 +427,7 @@ mod test {
                     .ok_or_else(|| anyhow!("Preimage not found for key: {}", key))?
                     .as_ref(),
             )
-                .map_err(Into::into)
+            .map_err(Into::into)
         }
     }
 

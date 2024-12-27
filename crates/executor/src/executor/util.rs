@@ -18,6 +18,7 @@ pub(crate) fn receipt_envelope_from_parts<'a>(
     logs: impl IntoIterator<Item = &'a Log>,
     tx_type: OpTxType,
     deposit_nonce: Option<u64>,
+    deposit_receipt_version: Option<u64>
 ) -> OpReceiptEnvelope {
     let logs = logs.into_iter().cloned().collect::<Vec<_>>();
     let logs_bloom = logs_bloom(&logs);
@@ -38,6 +39,7 @@ pub(crate) fn receipt_envelope_from_parts<'a>(
                 receipt: OpDepositReceipt {
                     inner: inner_receipt,
                     deposit_nonce,
+                    deposit_receipt_version
                 },
                 logs_bloom,
             };
