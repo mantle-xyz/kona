@@ -22,7 +22,6 @@ pub trait BatchStreamProvider {
 
     /// Drains the recent `Channel` if an invalid span batch is found post-holocene.
     fn flush(&mut self);
-
 }
 
 /// [BatchStream] stage in the derivation pipeline.
