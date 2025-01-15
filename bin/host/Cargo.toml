@@ -21,6 +21,9 @@ kona-client.workspace = true
 eigen-da.workspace = true
 kona-common.workspace = true
 
+rlp = {workspace = true}
+
+
 
 
 # Alloy
@@ -42,6 +45,9 @@ op-alloy-rpc-types-engine.workspace = true
 
 # Revm
 revm = { workspace = true, features = ["std", "c-kzg", "secp256k1", "portable", "blst"] }
+
+rust-kzg-bn254.workspace = true
+kzg-rs-bn254.workspace = true
 
 # General
 anyhow.workspace = true

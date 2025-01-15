@@ -15,6 +15,7 @@ exclude.workspace = true
 
 #Alloy
 alloy-primitives = { workspace = true, features = ["rlp", "k256", "serde"] }
+alloy-rlp = { workspace = true}
 
 async-trait.workspace = true
 alloc-no-stdlib = { workspace = true, optional = true}
@@ -25,10 +26,12 @@ kona-derive = { workspace = true, features = ["serde"] }
 
 tokio = { workspace = true, features = ["full"] }
 prost = { workspace = true}
-rlp = {workspace = true}
 anyhow = {workspace = true}
 bytes = { workspace = true}
 hex = {workspace = true}
+tracing.workspace = true
+
+rust-kzg-bn254.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
