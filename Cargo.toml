@@ -108,6 +108,7 @@ op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "a
 
 
 
+
 # General
 lru = "0.12.5"
 spin = "0.9.8"
@@ -158,3 +159,6 @@ prost = "0.13.3"
 bytes = "1.8.0"
 hex = "0.4.3"
 rlp = "0.6.1"
+
+rust-kzg-bn254 = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "808d3bf09f0163c74769e4142ccfb33f2ce56906" }
+kzg-rs-bn254 = { git = "https://github.com/mantle-xyz/kzg-rs", branch = "main"}
