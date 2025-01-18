@@ -7,14 +7,14 @@ use core::fmt::Debug;
 use kona_derive::{
     attributes::StatefulAttributesBuilder,
     errors::PipelineErrorKind,
-    pipeline::{DerivationPipeline, PipelineBuilder, StepResult, Signal},
+    pipeline::{DerivationPipeline, PipelineBuilder},
     sources::EthereumDataSource,
     stages::{
         AttributesQueue, BatchProvider, BatchStream, ChannelProvider, ChannelReader, FrameQueue,
         L1Retrieval, L1Traversal,
     },
     traits::{BlobProvider, OriginProvider, Pipeline, SignalReceiver},
-    errors::{PipelineResult},
+    types::{PipelineResult, Signal, StepResult},
 };
 use kona_driver::{DriverPipeline, PipelineCursor};
 use kona_preimage::CommsClient;
@@ -22,6 +22,7 @@ use op_alloy_genesis::{RollupConfig, SystemConfig};
 use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::OpAttributesWithParent;
 use kona_derive::traits::EigenDAProvider;
+use spin::RwLock;
 
 /// An oracle-backed derivation pipeline.
 pub type OracleDerivationPipeline<O, B, E> = DerivationPipeline<
@@ -74,7 +75,7 @@ where
     /// Constructs a new oracle-backed derivation pipeline.
     pub fn new(
         cfg: Arc<RollupConfig>,
-        sync_start: PipelineCursor,
+        sync_start: Arc<RwLock<PipelineCursor>>,
         caching_oracle: Arc<O>,
         blob_provider: B,
         eigen_da_provider: E,
@@ -94,7 +95,7 @@ where
             .l2_chain_provider(l2_chain_provider)
             .chain_provider(chain_provider)
             .builder(attributes)
-            .origin(sync_start.origin())
+            .origin(sync_start.read().origin())
             .build();
         Self { pipeline, caching_oracle }
     }

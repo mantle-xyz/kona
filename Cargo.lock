@@ -2500,6 +2500,7 @@ dependencies = [
  "op-alloy-genesis",
  "op-alloy-protocol",
  "op-alloy-rpc-types-engine",
+ "spin",
  "thiserror 2.0.11",
  "tracing",
 ]
