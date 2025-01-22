@@ -605,9 +605,12 @@ where
                 }
 
                 // proof is at the random point
-                // Write the KZG Proof as the last element, needed for ZK
-                blob_key[88..].copy_from_slice((blob_length).to_be_bytes().as_ref());
-                let blob_key_hash = keccak256(blob_key.as_ref());
+                //TODO
+                // Because the blob_length in EigenDA is variable-length, KZG proofs cannot be cached at the position corresponding to blob_length
+                // For now, they are placed at the position corresponding to commit x y. Further optimization will follow the EigenLayer approach
+                let mut kzg_proof_key = [0u8; 64];
+                kzg_proof_key[..64].copy_from_slice(blob_key[..64].as_ref());
+                let kzg_proof_key_hash = keccak256(kzg_proof_key.as_ref());
 
                 let output = match Bn254KZG::compute_bn254_kzg_proof(eigenda_blob.blob.as_ref()) {
                     Ok(o) => o,
@@ -625,12 +628,12 @@ where
                 }
 
                 kv_write_lock.set(
-                    PreimageKey::new(*blob_key_hash, PreimageKeyType::Keccak256).into(),
-                    blob_key.into(),
+                    PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::Keccak256).into(),
+                    kzg_proof_key.into(),
                 )?;
                 // proof to be done
                 kv_write_lock.set(
-                    PreimageKey::new(*blob_key_hash, PreimageKeyType::GlobalGeneric).into(),
+                    PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::GlobalGeneric).into(),
                     output[64..].to_vec(),
                 )?;
             }
