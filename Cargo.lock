@@ -2504,7 +2504,6 @@ dependencies = [
  "alloy-primitives",
  "alloy-rlp",
  "alloy-rpc-types-engine",
- "anyhow",
  "criterion",
  "kona-mpt",
  "op-alloy-consensus",
