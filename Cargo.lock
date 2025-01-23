@@ -2772,7 +2772,7 @@ dependencies = [
  "kona-mpt",
  "kona-preimage",
  "kona-proof",
- "kzg-rs-bn254",
+ "kzg-bn254",
  "op-alloy-genesis",
  "op-alloy-protocol",
  "op-alloy-rpc-types-engine",
@@ -2857,17 +2857,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "kzg-rs-bn254"
-version = "0.2.3"
-source = "git+https://github.com/mantle-xyz/kzg-rs?branch=test#47fe9e36651249aa64ecdca74087d5eca95215e4"
+name = "kzg-bn254"
+version = "0.1.0"
+source = "git+https://github.com/mantle-xyz/kzg-rs?branch=test#f349f3673c2b85468bef0525b068e0ac7c08c527"
 dependencies = [
- "alloy-primitives",
  "anyhow",
- "ark-bn254",
- "ark-ff 0.5.0",
  "num",
  "rust-kzg-bn254 0.2.1 (git+https://github.com/Layr-Labs/rust-kzg-bn254?rev=808d3bf09f0163c74769e4142ccfb33f2ce56906)",
- "tracing",
 ]
 
 [[package]]
@@ -3700,7 +3696,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157c5a9d7ea5c2ed2d9fb8f495b64759f7816c7eaea54ba3978f0d63000162e3"
 dependencies = [
  "anyhow",
- "itertools 0.13.0",
+ "itertools 0.12.1",
  "proc-macro2",
  "quote",
  "syn 2.0.96",

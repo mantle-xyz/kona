@@ -17,7 +17,7 @@ use kona_preimage::{PreimageKey, PreimageKeyType};
 use op_alloy_protocol::BlockInfo;
 use std::sync::Arc;
 use alloy_primitives::map::HashMap;
-use kzg_rs_bn254::Bn254KZG;
+use kzg_bn254::Bn254KZG;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use tokio::sync::RwLock;
 use tracing::{error, trace, warn};

@@ -154,4 +154,4 @@ hex = "0.4.3"
 rlp = "0.6.1"
 
 rust-kzg-bn254 = { git = "https://github.com/byteflyfunny/rust-kzg-bn254", branch = "test" }
-kzg-rs-bn254 = { git = "https://github.com/mantle-xyz/kzg-rs", branch = "test", features = ["kona"]}
+kzg-bn254 = { git = "https://github.com/mantle-xyz/kzg-rs", branch = "test"}

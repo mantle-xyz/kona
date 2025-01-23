@@ -47,7 +47,7 @@ op-alloy-rpc-types-engine.workspace = true
 revm = { workspace = true, features = ["std", "c-kzg", "secp256k1", "portable", "blst"] }
 
 rust-kzg-bn254.workspace = true
-kzg-rs-bn254.workspace = true
+kzg-bn254.workspace = true
 
 # General
 anyhow.workspace = true
