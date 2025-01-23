@@ -43,10 +43,8 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
             .map_err(OracleProviderError::Preimage)?;
 
         // the fourth because 0x010000 in the beginning is metadata
-        let item_slice = commitment.as_ref();
-
-        // cert should at least contain 32 bytes for header + 4 bytes for commitment type metadata
-        if item_slice.len() <= 32 + 3 {
+        // cert should at least contain 32 bytes for header + 3 bytes for commitment type metadata
+        if commitment.len() <= 32 + 3 {
             return Err(OracleProviderError::Preimage(PreimageOracleError::Other(
                 "does not contain header".into(),
             )));
@@ -55,7 +53,7 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
         // the first four bytes are metadata, like cert version, OP generic commitement
         // see https://github.com/Layr-Labs/eigenda-proxy/blob/main/commitments/mode.go#L39
         // the first byte my guess is the OP
-        let cert_blob_info = BlobInfo::decode(&mut &item_slice[3..]).unwrap();
+        let cert_blob_info = BlobInfo::decode(&mut &commitment[3..]).unwrap();
         info!("cert_blob_info {:?}", cert_blob_info);
 
         // data_length measurs in field element, multiply to get num bytes
