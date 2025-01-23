@@ -1392,9 +1392,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.13"
+version = "0.5.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33480d6946193aa8033910124896ca395333cae7e2d1113d1fef6c3272217df2"
+checksum = "06ba6d68e24814cb8de6bb986db8222d3a027d15872cabc0d18817bc3c0e4471"
 dependencies = [
  "crossbeam-utils",
 ]
@@ -1678,7 +1678,7 @@ dependencies = [
  "kona-derive",
  "prost",
  "reqwest",
- "rust-kzg-bn254 0.2.1 (git+https://github.com/byteflyfunny/rust-kzg-bn254?branch=test)",
+ "rust-kzg-bn254",
  "serde_json",
  "tokio",
  "tracing",
@@ -2782,7 +2782,7 @@ dependencies = [
  "revm",
  "rlp 0.6.1",
  "rocksdb",
- "rust-kzg-bn254 0.2.1 (git+https://github.com/byteflyfunny/rust-kzg-bn254?branch=test)",
+ "rust-kzg-bn254",
  "serde",
  "serde_json",
  "tokio",
@@ -2847,7 +2847,7 @@ dependencies = [
  "op-alloy-genesis",
  "op-alloy-protocol",
  "op-alloy-rpc-types-engine",
- "rust-kzg-bn254 0.2.1 (git+https://github.com/byteflyfunny/rust-kzg-bn254?branch=test)",
+ "rust-kzg-bn254",
  "serde",
  "serde_json",
  "spin",
@@ -2863,7 +2863,7 @@ source = "git+https://github.com/mantle-xyz/kzg-rs?branch=test#f349f3673c2b85468
 dependencies = [
  "anyhow",
  "num",
- "rust-kzg-bn254 0.2.1 (git+https://github.com/Layr-Labs/rust-kzg-bn254?rev=808d3bf09f0163c74769e4142ccfb33f2ce56906)",
+ "rust-kzg-bn254",
 ]
 
 [[package]]
@@ -3696,7 +3696,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157c5a9d7ea5c2ed2d9fb8f495b64759f7816c7eaea54ba3978f0d63000162e3"
 dependencies = [
  "anyhow",
- "itertools 0.12.1",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.96",
@@ -4118,33 +4118,6 @@ name = "ruint-macro"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
-
-[[package]]
-name = "rust-kzg-bn254"
-version = "0.2.1"
-source = "git+https://github.com/byteflyfunny/rust-kzg-bn254?branch=test#2a2c1f48f0dd06c2ae0c45ca3dc9608a9cd879b0"
-dependencies = [
- "ark-bn254",
- "ark-ec",
- "ark-ff 0.5.0",
- "ark-poly",
- "ark-serialize 0.5.0",
- "ark-std 0.5.0",
- "byteorder",
- "crossbeam-channel",
- "directories",
- "hex-literal",
- "itertools 0.13.0",
- "num-bigint",
- "num-traits",
- "num_cpus",
- "rand",
- "rayon",
- "sha2",
- "sys-info",
- "thiserror 2.0.11",
- "ureq",
-]
 
 [[package]]
 name = "rust-kzg-bn254"

@@ -153,5 +153,5 @@ bytes = "1.8.0"
 hex = "0.4.3"
 rlp = "0.6.1"
 
-rust-kzg-bn254 = { git = "https://github.com/byteflyfunny/rust-kzg-bn254", branch = "test" }
+rust-kzg-bn254 = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "808d3bf09f0163c74769e4142ccfb33f2ce56906" }
 kzg-bn254 = { git = "https://github.com/mantle-xyz/kzg-rs", branch = "test"}
