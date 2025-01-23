@@ -1392,9 +1392,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.14"
+version = "0.5.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06ba6d68e24814cb8de6bb986db8222d3a027d15872cabc0d18817bc3c0e4471"
+checksum = "33480d6946193aa8033910124896ca395333cae7e2d1113d1fef6c3272217df2"
 dependencies = [
  "crossbeam-utils",
 ]
@@ -2859,7 +2859,7 @@ dependencies = [
 [[package]]
 name = "kzg-rs-bn254"
 version = "0.2.3"
-source = "git+https://github.com/mantle-xyz/kzg-rs?branch=main#e54bcb532305e47e195743b18772f5c3e3d4db66"
+source = "git+https://github.com/mantle-xyz/kzg-rs?branch=test#45598ade82790aa824ef7ce4283929fa7e3817ab"
 dependencies = [
  "alloy-primitives",
  "anyhow",
@@ -4126,7 +4126,7 @@ checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
 [[package]]
 name = "rust-kzg-bn254"
 version = "0.2.1"
-source = "git+https://github.com/Layr-Labs/rust-kzg-bn254?rev=808d3bf09f0163c74769e4142ccfb33f2ce56906#808d3bf09f0163c74769e4142ccfb33f2ce56906"
+source = "git+https://github.com/byteflyfunny/rust-kzg-bn254?branch=test#2a2c1f48f0dd06c2ae0c45ca3dc9608a9cd879b0"
 dependencies = [
  "ark-bn254",
  "ark-ec",
