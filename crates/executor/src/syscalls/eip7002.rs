@@ -1,4 +1,4 @@
-//! Contains the logic for the EIP-7251 syscall.
+//! Contains the logic for executing the pre-block withdrawals request call.
 
 use crate::{
     db::TrieDB,
@@ -17,8 +17,8 @@ use revm::{
     DatabaseCommit, Evm,
 };
 
-/// Execute the EIP-7251 pre-block beacon root contract call.
-pub(crate) fn pre_block_consolidation_requests_contract_call<F, H>(
+/// Execute the EIP-7002 pre-block withdrawals request contract call.
+pub(crate) fn pre_block_withdrawals_request_contract_call<F, H>(
     db: &mut State<&mut TrieDB<F, H>>,
     config: &RollupConfig,
     initialized_cfg: &CfgEnvWithHandlerCfg,
@@ -29,6 +29,7 @@ where
     F: TrieDBProvider,
     H: TrieHinter,
 {
+    // apply pre-block EIP-4788 contract call
     let mut evm_pre_block = Evm::builder()
         .with_db(db)
         .with_env_with_handler_cfg(EnvWithHandlerCfg::new_with_cfg_env(
@@ -39,15 +40,15 @@ where
         .build();
 
     // initialize a block from the env, because the pre block call needs the block itself
-    apply_consolidation_requests_contract_call(
+    apply_withdrawals_request_contract_call(
         config,
         payload.payload_attributes.timestamp,
         &mut evm_pre_block,
     )
 }
 
-/// Apply the EIP-7251 pre-block consolidation requests contract call to a given EVM instance.
-fn apply_consolidation_requests_contract_call<F, H>(
+/// Apply the EIP-7002 pre-block withdrawals request contract call to a given EVM instance.
+fn apply_withdrawals_request_contract_call<F, H>(
     config: &RollupConfig,
     timestamp: u64,
     evm: &mut Evm<'_, (), &mut State<&mut TrieDB<F, H>>>,
@@ -67,7 +68,7 @@ where
     fill_tx_env_for_contract_call(
         &mut evm.context.evm.env,
         alloy_eips::eip7002::SYSTEM_ADDRESS,
-        alloy_eips::eip7251::CONSOLIDATION_REQUEST_PREDEPLOY_ADDRESS,
+        alloy_eips::eip7002::WITHDRAWAL_REQUEST_PREDEPLOY_ADDRESS,
         Bytes::new(),
     );
 
