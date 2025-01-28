@@ -1,12 +1,11 @@
 //! Contains the core derivation pipeline.
 
-use super::{
-    NextAttributes, OriginAdvancer, OriginProvider, Pipeline, PipelineError, PipelineResult,
-    StepResult,
-};
 use crate::{
-    errors::PipelineErrorKind,
-    traits::{ActivationSignal, L2ChainProvider, ResetSignal, Signal, SignalReceiver},
+    errors::{PipelineError, PipelineErrorKind},
+    traits::{
+        L2ChainProvider, NextAttributes, OriginAdvancer, OriginProvider, Pipeline, SignalReceiver,
+    },
+    types::{ActivationSignal, PipelineResult, ResetSignal, Signal, StepResult},
 };
 use alloc::{boxed::Box, collections::VecDeque, string::ToString, sync::Arc};
 use async_trait::async_trait;
@@ -93,8 +92,8 @@ where
     /// The `signal` is contains the signal variant with any necessary parameters.
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         match signal {
-            s @ Signal::Reset(ResetSignal { l2_safe_head, .. }) |
-            s @ Signal::Activation(ActivationSignal { l2_safe_head, .. }) => {
+            mut s @ Signal::Reset(ResetSignal { l2_safe_head, .. }) |
+            mut s @ Signal::Activation(ActivationSignal { l2_safe_head, .. }) => {
                 let system_config = self
                     .l2_chain_provider
                     .system_config_by_number(
@@ -102,8 +101,8 @@ where
                         Arc::clone(&self.rollup_config),
                     )
                     .await
-                    .map_err(|e| PipelineError::Provider(e.to_string()).temp())?;
-                s.with_system_config(system_config);
+                    .map_err(Into::into)?;
+                s = s.with_system_config(system_config);
                 match self.attributes.signal(s).await {
                     Ok(()) => trace!(target: "pipeline", "Stages reset"),
                     Err(err) => {

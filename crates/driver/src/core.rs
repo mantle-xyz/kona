@@ -8,7 +8,8 @@ use alloy_rlp::Decodable;
 use core::fmt::Debug;
 use kona_derive::{
     errors::{PipelineError, PipelineErrorKind},
-    traits::{Pipeline, SignalReceiver,Signal},
+    traits::{Pipeline, SignalReceiver},
+    types::Signal,
 };
 use op_alloy_consensus::{OpBlock, OpTxEnvelope, OpTxType};
 use op_alloy_genesis::RollupConfig;

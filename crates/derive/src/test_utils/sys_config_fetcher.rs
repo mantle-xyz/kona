@@ -31,11 +31,15 @@ impl TestSystemConfigL2Fetcher {
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum TestSystemConfigL2FetcherError {
     /// The system config was not found.
-    #[display("system config not found: {_0}")]
+    #[error("system config not found: {0}")]
     NotFound(u64),
 }
 
-impl core::error::Error for TestSystemConfigL2FetcherError {}
+impl From<TestSystemConfigL2FetcherError> for PipelineErrorKind {
+    fn from(val: TestSystemConfigL2FetcherError) -> Self {
+        PipelineError::Provider(val.to_string()).temp()
+    }
+}
 
 #[async_trait]
 impl BatchValidationProvider for TestSystemConfigL2Fetcher {

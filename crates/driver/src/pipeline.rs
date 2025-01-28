@@ -7,7 +7,8 @@ use op_alloy_rpc_types_engine::OpAttributesWithParent;
 
 use kona_derive::{
     errors::{PipelineError, PipelineErrorKind, ResetError},
-    traits::{Pipeline, SignalReceiver,ActivationSignal,ResetSignal,StepResult},
+    traits::{Pipeline, SignalReceiver},
+    types::{ActivationSignal, ResetSignal, StepResult},
 };
 
 /// The Driver's Pipeline

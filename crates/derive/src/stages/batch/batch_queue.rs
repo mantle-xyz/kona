@@ -2,11 +2,9 @@
 
 use super::NextBatchProvider;
 use crate::{
-    errors::{PipelineEncodingError, PipelineError, PipelineErrorKind, PipelineResult, ResetError},
-    traits::{
-        AttributesProvider, L2ChainProvider, OriginAdvancer, OriginProvider, ResetSignal, Signal,
-        SignalReceiver,
-    },
+    errors::{PipelineEncodingError, PipelineError, PipelineErrorKind, ResetError},
+    traits::{AttributesProvider, L2ChainProvider, OriginAdvancer, OriginProvider, SignalReceiver},
+    types::{PipelineResult, ResetSignal, Signal},
 };
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use async_trait::async_trait;
@@ -15,9 +13,8 @@ use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::{
     Batch, BatchValidity, BatchWithInclusionBlock, BlockInfo, L2BlockInfo, SingleBatch,
 };
-use tracing::{error, info, warn};
 
-/// [BatchQueue] is responsible for o rdering unordered batches
+/// [BatchQueue] is responsible for ordering unordered batches
 /// and generating empty batches when the sequence window has passed.
 ///
 /// It receives batches that are tagged with the L1 Inclusion block of the batch.
