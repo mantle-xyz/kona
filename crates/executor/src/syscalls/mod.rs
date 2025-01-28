@@ -12,3 +12,6 @@ pub(crate) use eip7251::pre_block_consolidation_requests_contract_call;
 mod eip4788;
 pub(crate) use eip4788::pre_block_beacon_root_contract_call;
 
+
+mod tx_env;
+pub(crate) use tx_env::fill_tx_env_for_contract_call;
