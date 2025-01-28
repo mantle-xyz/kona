@@ -73,7 +73,7 @@ where
         &mut self,
         cfg: &RollupConfig,
         mut target: Option<u64>,
-    ) -> DriverResult<(u64, B256), E::Error> {
+    ) -> DriverResult<(u64, B256, B256), E::Error> {
         loop {
             // Check if we have reached the target block number.
             let pipeline_cursor = self.cursor.read();

@@ -125,6 +125,8 @@ where
             base.build()
         };
 
+        let is_isthmus = self.config.is_isthmus_active(payload.payload_attributes.timestamp);
+
         // Execute the transactions in the payload.
         let decoded_txs = transactions
             .iter()
@@ -193,8 +195,10 @@ where
                     .map(|depositor| depositor.account_info().unwrap_or_default().nonce),
             );
             // Ensure the receipt is not an EIP-7702 receipt.
-            if matches!(receipt, OpReceiptEnvelope::Eip7702(_)) {
-                panic!("EIP-7702 receipts are not supported by the fault proof program");
+            if matches!(receipt, OpReceiptEnvelope::Eip7702(_)) && !is_isthmus {
+                panic!(
+                    "EIP-7702 receipts are not supported by the fault proof program before Isthmus"
+                );
             }
             receipts.push(receipt);
         }
