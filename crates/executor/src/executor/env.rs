@@ -3,7 +3,7 @@
 use super::{util::decode_holocene_eip_1559_params, StatelessL2BlockExecutor};
 use crate::{constants::FEE_RECIPIENT, ExecutorError, ExecutorResult, TrieDBProvider};
 use alloy_consensus::Header;
-use alloy_eips::eip1559::BaseFeeParams;
+use alloy_eips::{eip1559::BaseFeeParams, eip7840::BlobParams};
 use alloy_primitives::{TxKind, U256};
 use kona_mpt::{TrieHinter};
 use op_alloy_consensus::OpTxEnvelope;
@@ -27,7 +27,9 @@ where
     /// ## Returns
     /// The active [SpecId] for the executor.
     pub(crate) fn revm_spec_id(&self, timestamp: u64) -> SpecId {
-        if self.config.is_shanghai_active(timestamp) {
+        if self.config.is_isthmus_active(timestamp) {
+            SpecId::ISTHMUS
+        } else if self.config.is_shanghai_active(timestamp) {
             SpecId::SHANGHAI
         } else if self.config.is_regolith_active(timestamp) {
             SpecId::REGOLITH
