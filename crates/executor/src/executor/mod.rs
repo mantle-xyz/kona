@@ -2,7 +2,7 @@
 
 use crate::{
     constants::{L2_TO_L1_BRIDGE, OUTPUT_ROOT_VERSION},
-    db::{TrieDB, TrieDBProvider},
+    db::TrieDB,
     errors::TrieDBError,
     ExecutorError, ExecutorResult,
 };
@@ -114,6 +114,8 @@ where
             gas_limit = gas_limit,
             tx_len = transactions.len(),
         );
+
+        let parent_block_hash: B256 = self.trie_db.parent_block_header().seal();
 
         let mut state =
             State::builder().with_database(&mut self.trie_db).with_bundle_update().build();
