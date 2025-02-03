@@ -1,15 +1,21 @@
 //! A stateless block executor for the OP Stack.
 
 use crate::{
-    constants::{L2_TO_L1_BRIDGE, OUTPUT_ROOT_VERSION},
+    constants::{L2_TO_L1_BRIDGE, OUTPUT_ROOT_VERSION, SHA256_EMPTY},
     db::TrieDB,
     errors::TrieDBError,
-    ExecutorError, ExecutorResult,
+    syscalls::{
+        ensure_create2_deployer_canyon, pre_block_beacon_root_contract_call,
+        pre_block_block_hash_contract_call,
+    },
+    ExecutorError, ExecutorResult, TrieDBProvider,
 };
 use alloc::vec::Vec;
-use alloy_consensus::{Header, Sealable, Transaction, EMPTY_OMMER_ROOT_HASH, EMPTY_ROOT_HASH};
+use alloy_consensus::{
+    Header, Sealable, Sealed, Transaction, EMPTY_OMMER_ROOT_HASH, EMPTY_ROOT_HASH,
+};
 use alloy_eips::eip2718::{Decodable2718, Encodable2718};
-use alloy_primitives::{b256, keccak256, logs_bloom, Bytes, Log, B256, U256};
+use alloy_primitives::{keccak256, logs_bloom, Bytes, Log, B256, U256};
 use kona_mpt::{ordered_trie_with_encoder, TrieHinter};
 use op_alloy_consensus::{OpReceiptEnvelope, OpTxEnvelope};
 use op_alloy_genesis::RollupConfig;
@@ -29,9 +35,15 @@ mod env;
 mod util;
 use util::receipt_envelope_from_parts;
 
-/// Empty SHA-256 hash.
-const SHA256_EMPTY: B256 =
-    b256!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
+/// The [ExecutionArtifacts] holds the produced block header and receipts from the execution of a
+/// block.
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct ExecutionArtifacts {
+    /// The block header.
+    pub block_header: Sealed<Header>,
+    /// The receipts generated during execution.
+    pub receipts: Vec<OpReceiptEnvelope>,
+}
 
 /// The block executor for the L2 client program. Operates off of a [TrieDB] backed [State],
 /// allowing for stateless block execution of OP Stack blocks.
@@ -64,13 +76,16 @@ where
     }
 
     /// Fetches the L2 to L1 message passer account from the cache or underlying trie.
-    fn message_passer_account(db: &mut TrieDB<F, H>) -> Result<B256, TrieDBError> {
+    fn message_passer_account(
+        db: &mut TrieDB<F, H>,
+        block_number: u64,
+    ) -> Result<B256, TrieDBError> {
         match db.storage_roots().get(&L2_TO_L1_BRIDGE) {
             Some(storage_root) => {
                 storage_root.blinded_commitment().ok_or(TrieDBError::RootNotBlinded)
             }
             None => Ok(db
-                .get_trie_account(&L2_TO_L1_BRIDGE)?
+                .get_trie_account(&L2_TO_L1_BRIDGE, block_number)?
                 .ok_or(TrieDBError::MissingAccountInfo)?
                 .storage_root),
         }
@@ -92,11 +107,14 @@ where
     /// 4. Merge all state transitions into the cache state.
     /// 5. Compute the [state root, transactions root, receipts root, logs bloom] for the processed
     ///    block.
-    pub fn execute_payload(&mut self, payload: OpPayloadAttributes) -> ExecutorResult<&Header> {
+    pub fn execute_payload(
+        &mut self,
+        payload: OpPayloadAttributes,
+    ) -> ExecutorResult<ExecutionArtifacts> {
         // Prepare the `revm` environment.
 
         let initialized_block_env = Self::prepare_block_env(
-            self.revm_spec_id(payload.payload_attributes.timestamp),
+            self.config.spec_id(payload.payload_attributes.timestamp),
             self.trie_db.parent_block_header(),
             &payload,
         )?;
@@ -304,8 +322,8 @@ where
         );
 
         // Update the parent block hash in the state database.
-        state.database.set_parent_block_header(header);
-        Ok(state.database.parent_block_header())
+        state.database.set_parent_block_header(header.clone());
+        Ok(ExecutionArtifacts { block_header: header, receipts })
     }
 
     /// Computes the current output root of the executor, based on the parent header and the
@@ -321,7 +339,8 @@ where
     /// - `Ok(output_root)`: The computed output root.
     /// - `Err(_)`: If an error occurred while computing the output root.
     pub fn compute_output_root(&mut self) -> ExecutorResult<B256> {
-        let storage_root = Self::message_passer_account(&mut self.trie_db)?;
+        let parent_number = self.trie_db.parent_block_header().number;
+        let storage_root = Self::message_passer_account(&mut self.trie_db, parent_number)?;
         let parent_header = self.trie_db.parent_block_header();
 
         info!(
@@ -343,7 +362,7 @@ where
         info!(
             target: "client_executor",
             "Computed output root for block # {block_number} | Output root: {output_root}",
-            block_number = parent_header.number,
+            block_number = parent_number,
         );
 
         // Hash the output and return
@@ -423,8 +442,9 @@ mod test {
 
     #[rstest]
     #[case::small_block(22884230)]
-    #[case::small_block_2(22880574)]
-    #[case::small_block_3(22887258)]
+    #[case::small_block_2(22884231)]
+    #[case::small_block_3(22880574)]
+    #[case::small_block_4(22887258)]
     #[case::medium_block(22886464)]
     #[case::medium_block_2(22886311)]
     #[case::medium_block_3(22880944)]
@@ -432,7 +452,7 @@ mod test {
     async fn test_statelessly_execute_block(#[case] block_number: u64) {
         let fixture_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("testdata")
-            .join(format!("block-{block_number}"));
+            .join(format!("block-{block_number}.tar.gz"));
 
         run_test_fixture(fixture_dir).await;
     }
