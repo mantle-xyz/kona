@@ -1,15 +1,17 @@
 //! A stateless block executor for the OP Stack.
 
 use crate::{
-    constants::{L2_TO_L1_BRIDGE, OUTPUT_ROOT_VERSION},
+    constants::{L2_TO_L1_BRIDGE, OUTPUT_ROOT_VERSION, SHA256_EMPTY},
     db::TrieDB,
     errors::TrieDBError,
     ExecutorError, ExecutorResult, TrieDBProvider,
 };
 use alloc::vec::Vec;
-use alloy_consensus::{Header, Sealable, Transaction, EMPTY_OMMER_ROOT_HASH, EMPTY_ROOT_HASH};
+use alloy_consensus::{
+    Header, Sealable, Sealed, Transaction, EMPTY_OMMER_ROOT_HASH, EMPTY_ROOT_HASH,
+};
 use alloy_eips::eip2718::{Decodable2718, Encodable2718};
-use alloy_primitives::{b256, keccak256, logs_bloom, Bytes, Log, B256, U256};
+use alloy_primitives::{keccak256, logs_bloom, Bytes, Log, B256, U256};
 use kona_mpt::{ordered_trie_with_encoder, TrieHinter};
 use op_alloy_consensus::{OpReceiptEnvelope, OpTxEnvelope};
 use op_alloy_genesis::RollupConfig;
@@ -26,9 +28,15 @@ pub use builder::{KonaHandleRegister, StatelessL2BlockExecutorBuilder};
 mod env;
 
 
-/// Empty SHA-256 hash.
-const SHA256_EMPTY: B256 =
-    b256!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");
+/// The [ExecutionArtifacts] holds the produced block header and receipts from the execution of a
+/// block.
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct ExecutionArtifacts {
+    /// The block header.
+    pub block_header: Sealed<Header>,
+    /// The receipts generated during execution.
+    pub receipts: Vec<OpReceiptEnvelope>,
+}
 
 /// The block executor for the L2 client program. Operates off of a [TrieDB] backed [State],
 /// allowing for stateless block execution of OP Stack blocks.
@@ -285,8 +293,8 @@ where
         );
 
         // Update the parent block hash in the state database.
-        state.database.set_parent_block_header(header);
-        Ok(state.database.parent_block_header())
+        state.database.set_parent_block_header(header.clone());
+        Ok(ExecutionArtifacts { block_header: header, receipts })
     }
 
     /// Computes the current output root of the executor, based on the parent header and the
