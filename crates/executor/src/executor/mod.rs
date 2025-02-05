@@ -84,7 +84,10 @@ where
     /// 4. Merge all state transitions into the cache state.
     /// 5. Compute the [state root, transactions root, receipts root, logs bloom] for the processed
     ///    block.
-    pub fn execute_payload(&mut self, payload: OpPayloadAttributes) -> ExecutorResult<&Header> {
+    pub fn execute_payload(
+        &mut self,
+        payload: OpPayloadAttributes,
+    ) -> ExecutorResult<ExecutionArtifacts> {
         // Prepare the `revm` environment.
 
         let initialized_block_env = Self::prepare_block_env(
