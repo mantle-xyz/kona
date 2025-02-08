@@ -17,15 +17,14 @@ use kona_preimage::{PreimageKey, PreimageKeyType};
 use op_alloy_protocol::BlockInfo;
 use std::sync::Arc;
 use alloy_primitives::map::HashMap;
-use kzg_bn254::Bn254KZG;
+use hokulea_cryptography::witness::EigenDABlobWitness;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use tokio::sync::RwLock;
 use tracing::{error, trace, warn};
-use eigen_da::{BlobInfo, EigenDABlobData, EigenDaProxy};
+use eigen_da::{BlobInfo, EigenDABlobData, EigenDaProxy, BYTES_PER_FIELD_ELEMENT};
 use kona_derive::traits::EigenDAProvider;
 use kona_proof::HintType;
 use rlp::{decode, RlpStream};
-use rust_kzg_bn254::consts::BYTES_PER_FIELD_ELEMENT;
 
 mod precompiles;
 
@@ -573,11 +572,8 @@ where
 
                 let eigenda_blob = EigenDABlobData::encode(blob.as_ref());
 
-                if eigenda_blob.blob.len() != blob_length as usize * BYTES_PER_FIELD_ELEMENT {
-                    return Err(
-                        anyhow!("data size from cert  does not equal to reconstructed data codec_rollup_data_len {} blob size {}",
-                        eigenda_blob.blob.len(), blob_length as usize * BYTES_PER_FIELD_ELEMENT));
-                }
+                assert_eq!(eigenda_blob.blob.len(), blob_length as usize * BYTES_PER_FIELD_ELEMENT, "data size from cert  does not equal to reconstructed data");
+
 
                 // Write all the field elements to the key-value store.
                 // The preimage oracle key for each field element is the keccak256 hash of
@@ -612,20 +608,21 @@ where
                 kzg_proof_key[..64].copy_from_slice(blob_key[..64].as_ref());
                 let kzg_proof_key_hash = keccak256(kzg_proof_key.as_ref());
 
-                let output = match Bn254KZG::compute_bn254_kzg_proof(eigenda_blob.blob.as_ref()) {
-                    Ok(o) => o,
-                    Err(e) => panic!("cannot produce bn254 proof {:?}", e),
-                };
+                let mut witness = EigenDABlobWitness::new();
+
+                let _ = witness.push_witness(&blob).map_err(|e| anyhow!("eigen da blob push witness error {e}"));
+
+                let last_commitment = witness.commitments.last().unwrap();
 
                 // make sure locally computed proof equals to returned proof from the provider
-                if output[..32] != cert_blob_info.blob_header.commitment.x[..] ||
-                    output[32..64] != cert_blob_info.blob_header.commitment.y[..]{
-                    return Err(anyhow!("proxy commitment is different from computed commitment proxy {:x?} {:x?}, local {:x?}",
-                        cert_blob_info.blob_header.commitment.x,
-                        cert_blob_info.blob_header.commitment.y,
-                        output,
+                if last_commitment[..32] != cert_blob_info.blob_header.commitment.x[..]
+                    || last_commitment[32..64] != cert_blob_info.blob_header.commitment.y[..]
+                {
+                    return Err(
+                        anyhow!("proxy commitment is different from computed commitment proxy",
                     ));
-                }
+                };
+                let proof:Vec<u8> = witness.proofs.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
 
                 kv_write_lock.set(
                     PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::Keccak256).into(),
@@ -634,7 +631,7 @@ where
                 // proof to be done
                 kv_write_lock.set(
                     PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::GlobalGeneric).into(),
-                    output[64..].to_vec(),
+                    proof,
                 )?;
             }
         }
