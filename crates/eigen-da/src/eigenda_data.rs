@@ -1,11 +1,10 @@
 use vec;
 use alloy_primitives::Bytes;
 use bytes::buf::Buf;
-use rust_kzg_bn254::consts::BYTES_PER_FIELD_ELEMENT;
 use kona_derive::errors::BlobDecodingError;
-use rust_kzg_bn254::helpers;
+use rust_kzg_bn254_primitives::helpers;
 use tracing::info;
-
+use crate::BYTES_PER_FIELD_ELEMENT;
 
 pub const BLOB_ENCODING_VERSION_0: u8 = 0x0;
 

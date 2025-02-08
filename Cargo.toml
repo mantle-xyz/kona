@@ -160,5 +160,5 @@ bytes = "1.8.0"
 hex = "0.4.3"
 rlp = "0.6.1"
 
-rust-kzg-bn254 = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "808d3bf09f0163c74769e4142ccfb33f2ce56906" }
-kzg-bn254 = { git = "https://github.com/mantle-xyz/kzg-rs", branch = "test"}
+rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "b3e532e9aad533009849755d5ad7b9578a16bfb2", default-features = false }
+hokulea-cryptography = { git = "https://github.com/Layr-Labs/hokulea.git", rev = "14aad446793b1636fb7029ec6b30637baa105549"}
