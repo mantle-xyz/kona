@@ -31,3 +31,4 @@ pub mod traits;
 pub mod test_utils;
 mod proto;
 pub mod da;
+mod types;
