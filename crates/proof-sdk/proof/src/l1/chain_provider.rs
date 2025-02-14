@@ -15,16 +15,16 @@ use op_alloy_protocol::BlockInfo;
 /// The oracle-backed L1 chain provider for the client program.
 #[derive(Debug, Clone)]
 pub struct OracleL1ChainProvider<T: CommsClient> {
-    /// The boot information
-    boot_info: Arc<BootInfo>,
+    /// The L1 head hash.
+    pub l1_head: B256,
     /// The preimage oracle client.
     pub oracle: Arc<T>,
 }
 
 impl<T: CommsClient> OracleL1ChainProvider<T> {
     /// Creates a new [OracleL1ChainProvider] with the given boot information and oracle client.
-    pub const fn new(boot_info: Arc<BootInfo>, oracle: Arc<T>) -> Self {
-        Self { boot_info, oracle }
+    pub const fn new(l1_head: B256, oracle: Arc<T>) -> Self {
+        Self { l1_head, oracle }
     }
 }
 
@@ -36,14 +36,13 @@ impl<T: CommsClient + Sync + Send> ChainProvider for OracleL1ChainProvider<T> {
         // Fetch the header RLP from the oracle.
         HintType::L1BlockHeader.with_data(&[hash.as_ref()]).send(self.oracle.as_ref()).await?;
         let header_rlp = self.oracle.get(PreimageKey::new_keccak256(*hash)).await?;
-
         // Decode the header RLP into a Header.
         Header::decode(&mut header_rlp.as_slice()).map_err(OracleProviderError::Rlp)
     }
 
     async fn block_info_by_number(&mut self, block_number: u64) -> Result<BlockInfo, Self::Error> {
         // Fetch the starting block header.
-        let mut header = self.header_by_hash(self.boot_info.l1_head).await?;
+        let mut header = self.header_by_hash(self.l1_head).await?;
 
         // Check if the block number is in range. If not, we can fail early.
         if block_number > header.number {

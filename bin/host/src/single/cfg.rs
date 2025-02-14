@@ -15,16 +15,18 @@ use kona_preimage::{
     BidirectionalChannel, Channel, HintReader, HintWriter, OracleReader, OracleServer,
 };
 use kona_proof::HintType;
-use kona_providers_alloy::{OnlineBeaconClient, OnlineBlobProvider};
+use kona_providers_alloy::{OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDaProvider};
 use kona_std_fpvm::{FileChannel, FileDescriptor};
-use maili_genesis::RollupConfig;
+use op_alloy_genesis::RollupConfig;
 use op_alloy_network::Optimism;
 use serde::Serialize;
 use std::{path::PathBuf, sync::Arc};
+use std::time::Duration;
 use tokio::{
     sync::RwLock,
     task::{self, JoinHandle},
 };
+use eigen_da::{EigenDaConfig, EigenDaProxy};
 
 /// The host binary CLI application arguments.
 #[derive(Default, Parser, Serialize, Clone, Debug)]
@@ -107,6 +109,52 @@ pub struct SingleChainHost {
         env
     )]
     pub rollup_config_path: Option<PathBuf>,
+    /// The url of Mantle da indexer.
+    #[clap(long,
+        alias = "da-indexer-url",
+        env)]
+    pub mantle_da_indexer_url: Option<String>,
+    /// The url of EigenDA Proxy service
+    #[clap(long,
+        alias = "proxy-url",
+        conflicts_with = "mantle_da_indexer_url",
+        required_unless_present = "mantle_da_indexer_url",
+        env
+    )]
+    pub proxy_url: Option<String>,
+    /// EigenDA Disperser RPC URL
+    /// does not need to be configured in derive.
+    #[clap(long,
+        alias = "disperse-url",
+        conflicts_with = "mantle_da_indexer_url",
+        env
+    )]
+    pub disperse_url: Option<String>,
+    /// The total amount of time that the batcher will spend waiting for EigenDA to disperse a blob
+    /// does not need to be configured in derive.
+    #[clap(long,
+        alias = "disperse-timeout",
+        conflicts_with = "mantle_da_indexer_url",
+        default_value = "120",
+        value_parser = parse_duration,
+        env
+    )]
+    pub disperse_timeout: Duration,
+    /// The total amount of time that the batcher will spend waiting for EigenDA to retrieve a blob
+    #[clap(long,
+        alias = "retrieve-timeout",
+        conflicts_with = "mantle_da_indexer_url",
+        default_value = "120",
+        value_parser = parse_duration,
+        env
+    )]
+    pub retrieve_timeout: Duration,
+}
+
+fn parse_duration(input: &str) -> Result<Duration, String> {
+    input.parse::<u64>()
+        .map(Duration::from_secs)
+        .map_err(|e| format!("Failed to parse duration: {}", e))
 }
 
 impl SingleChainHost {
@@ -234,7 +282,29 @@ impl SingleChainHost {
             self.l2_node_address.as_ref().ok_or(anyhow!("L2 node address must be set"))?,
         );
 
-        Ok(SingleChainProviders { l1: l1_provider, blobs: blob_provider, l2: l2_provider })
+        let mut eigen_da_config = EigenDaConfig::default();
+        let mut eigen_proxy_url = "".to_string();
+        let mut da_indexer_url = "".to_string();
+        let mantle_da_indexer = false;
+        // match self.read_rollup_config().ok() {
+        //     Some(rollup_config) => {
+        //         if rollup_config.mantle_da_switch {
+        //             mantle_da_switch = true;
+        //             // da_indexer_url = self.mantle_da_indexer_url.clone().ok_or(anyhow!("Mantle da indexer URL must be set"))?;
+        //         }
+        //     }
+        //     None => {}
+        // }
+
+        if da_indexer_url.is_empty() {
+            eigen_proxy_url = self.proxy_url.clone().ok_or(anyhow!("EigenDA Proxy URL must be set"))?;
+        }
+        eigen_da_config.proxy_url = eigen_proxy_url;
+        eigen_da_config.retrieve_blob_timeout = self.retrieve_timeout;
+        let eigen_da_provider = EigenDaProxy::new(eigen_da_config);
+        let mut eigen_da = OnlineEigenDaProvider::new(eigen_da_provider,da_indexer_url, mantle_da_indexer);
+
+        Ok(SingleChainProviders { l1: l1_provider, blobs: blob_provider, l2: l2_provider, eigen_da })
     }
 }
 
@@ -252,6 +322,8 @@ pub struct SingleChainProviders {
     pub blobs: OnlineBlobProvider<OnlineBeaconClient>,
     /// The L2 EL provider.
     pub l2: RootProvider<Optimism>,
+    /// The EigenDa provider.
+    pub eigen_da: OnlineEigenDaProvider<EigenDaProxy>,
 }
 
 #[cfg(test)]

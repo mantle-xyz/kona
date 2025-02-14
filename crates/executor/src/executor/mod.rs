@@ -136,7 +136,7 @@ where
             base.build()
         };
 
-        let is_isthmus = self.config.is_isthmus_active(payload.payload_attributes.timestamp);
+        // let is_isthmus = self.config.is_isthmus_active(payload.payload_attributes.timestamp);
 
         // Execute the transactions in the payload.
         let decoded_txs = transactions
@@ -158,9 +158,9 @@ where
             }
 
             // Prevent EIP-7702 transactions pre-isthmus hardfork.
-            if !is_isthmus && matches!(transaction, OpTxEnvelope::Eip7702(_)) {
-                return Err(ExecutorError::UnsupportedTransactionType(transaction.tx_type() as u8));
-            }
+            // if !is_isthmus && matches!(transaction, OpTxEnvelope::Eip7702(_)) {
+            //     return Err(ExecutorError::UnsupportedTransactionType(transaction.tx_type() as u8));
+            // }
 
             // Modify the transaction environment with the current transaction.
             evm = evm
@@ -203,15 +203,18 @@ where
             // Create receipt envelope.
             let receipt = OpReceiptEnvelope::<Log>::from_parts(
                 result.is_success(),
-                cumulative_gas_used as u128,
+                cumulative_gas_used,
                 result.logs(),
                 transaction.tx_type(),
                 depositor
                     .as_ref()
                     .map(|depositor| depositor.account_info().unwrap_or_default().nonce),
+                depositor
+                    .is_some()
+                    .then_some(0)
             );
             // Ensure the receipt is not an EIP-7702 receipt.
-            if matches!(receipt, OpReceiptEnvelope::Eip7702(_)) && !is_isthmus {
+            if matches!(receipt, OpReceiptEnvelope::Eip7702(_))  {
                 panic!(
                     "EIP-7702 receipts are not supported by the fault proof program before Isthmus"
                 );
@@ -316,7 +319,7 @@ where
         // Fetch the L2 to L1 message passer account from the cache or underlying trie.
         let storage_root = match self.trie_db.storage_roots().get(&L2_TO_L1_BRIDGE) {
             Some(storage_root) => {
-                storage_root.blinded_commitment().ok_or(TrieDBError::RootNotBlinded)?
+                storage_root.blind()
             }
             None => {
                 self.trie_db

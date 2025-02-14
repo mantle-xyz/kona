@@ -13,7 +13,8 @@ use alloy_rlp::Encodable;
 use alloy_rpc_types_engine::PayloadAttributes;
 use async_trait::async_trait;
 use op_alloy_genesis::RollupConfig;
-use op_alloy_protocol::{decode_deposit, L1BlockInfoTx, L2BlockInfo, DEPOSIT_EVENT_ABI_HASH};
+use op_alloy_protocol::{decode_deposit, L1BlockInfoTx, DEPOSIT_EVENT_ABI_HASH};
+use op_alloy_protocol::L2BlockInfo;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 
 /// The sequencer fee vault address.
@@ -209,7 +210,8 @@ mod tests {
     use alloy_consensus::Header;
     use alloy_primitives::{Log, LogData, B256, U256, U64};
     use op_alloy_genesis::SystemConfig;
-    use op_alloy_protocol::{BlockInfo, DepositError};
+    use op_alloy_protocol::{DepositError};
+    use op_alloy_protocol::BlockInfo;
     use proptest::num::u128;
 
     fn generate_valid_log() -> Log {

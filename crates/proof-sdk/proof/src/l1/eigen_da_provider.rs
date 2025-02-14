@@ -33,9 +33,8 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
     /// - `Ok(blob)`: The blob.
     /// - `Err(e)`: The blob could not be retrieved.
     async fn get_blob(&self, commitment: &[u8], blob_len: u32) -> Result<Vec<u8>, OracleProviderError> {
-        self.oracle.write(&HintType::EigenDa.encode_with(&[commitment.as_ref()]))
-            .await
-            .map_err(OracleProviderError::Preimage)?;
+        HintType::EigenDa.with_data(&[commitment.as_ref()]).send(self.oracle.as_ref()).await?;
+
         let mut out_data = vec![0u8; blob_len as usize];
         self.oracle.get_exact(PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric), &mut out_data)
             .await

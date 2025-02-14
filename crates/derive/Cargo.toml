@@ -25,6 +25,7 @@ op-alloy-protocol.workspace = true
 op-alloy-rpc-types-engine.workspace = true
 op-alloy-consensus = { workspace = true, features = ["k256"] }
 
+
 # General
 tracing.workspace = true
 async-trait.workspace = true
@@ -41,9 +42,6 @@ rlp = {workspace = true, default-features = false}
 log = "0.4.22"
 miniz_oxide.workspace = true
 
-
-# `serde` feature dependencies
-serde = { workspace = true, optional = true, features = ["derive"] }
 
 [dev-dependencies]
 spin.workspace = true

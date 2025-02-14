@@ -9,7 +9,7 @@ use crate::{
 use alloc::boxed::Box;
 use alloy_primitives::B256;
 use kona_mpt::TrieHinter;
-use maili_genesis::RollupConfig;
+use op_alloy_genesis::RollupConfig;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use revm::{
     db::State,
@@ -62,9 +62,11 @@ where
     F: TrieDBProvider,
     H: TrieHinter,
 {
-    if !config.is_ecotone_active(timestamp) {
-        return Ok(());
-    }
+    //TODO
+    // if !config.is_ecotone_active(timestamp) {
+    //     return Ok(());
+    // }
+    return  Ok(());
 
     let parent_beacon_block_root =
         parent_beacon_block_root.ok_or(ExecutorError::MissingParentBeaconBlockRoot)?;

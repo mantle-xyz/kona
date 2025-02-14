@@ -74,9 +74,7 @@ where
             let channel =
                 self.prev.next_data().await?.ok_or(PipelineError::ChannelReaderEmpty.temp())?;
 
-            let origin = self.prev.origin().ok_or(PipelineError::MissingOrigin.crit())?;
             let max_rlp_bytes_per_channel = MAX_RLP_BYTES_PER_CHANNEL_BEDROCK;
-
 
             self.next_batch =
                 Some(BatchReader::new(&channel[..], max_rlp_bytes_per_channel as usize));
@@ -252,7 +250,7 @@ impl BatchReader {
 mod test {
     use super::*;
     use crate::{
-        errors::PipelineErrorKind, test_utils::TestChannelReaderProvider, traits::ResetSignal,
+        errors::PipelineErrorKind, test_utils::TestChannelReaderProvider, types::ResetSignal,
     };
     use alloc::vec;
     use op_alloy_protocol::MAX_RLP_BYTES_PER_CHANNEL;

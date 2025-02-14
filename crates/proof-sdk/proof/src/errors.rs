@@ -45,6 +45,12 @@ impl From<OracleProviderError> for PipelineErrorKind {
     }
 }
 
+impl From<PreimageOracleError> for OracleProviderError {
+    fn from(val: PreimageOracleError) -> Self {
+        OracleProviderError::Preimage(val)
+    }
+}
+
 /// Error parsing a hint.
 #[derive(Error, Debug)]
 #[error("Hint parsing error: {_0}")]

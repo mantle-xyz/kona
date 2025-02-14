@@ -16,8 +16,8 @@ use alloy_rpc_types::{debug::ExecutionWitness, Block, BlockTransactionsKind};
 use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
 use kona_preimage::{PreimageKey, PreimageKeyType};
-use kona_proof::HintType;
-use maili_protocol::BlockInfo;
+use kona_proof::{Hint, HintType};
+use op_alloy_protocol::BlockInfo;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use std::collections::HashMap;
 
@@ -30,7 +30,7 @@ impl HintHandler for SingleChainHintHandler {
     type Cfg = SingleChainHost;
 
     async fn fetch_hint(
-        hint: <Self::Cfg as OnlineHostBackendCfg>::Hint,
+        hint: Hint<<Self::Cfg as OnlineHostBackendCfg>::HintType>,
         cfg: &Self::Cfg,
         providers: &<Self::Cfg as OnlineHostBackendCfg>::Providers,
         kv: SharedKeyValueStore,
@@ -347,6 +347,23 @@ impl HintHandler for SingleChainHintHandler {
                     let key = PreimageKey::new_keccak256(*hash);
                     kv_lock.set(key.into(), preimage.into())?;
                 }
+            }
+            HintType::EigenDa => {
+                ensure!(hint.data.len() > 32, "Invalid hint data length");
+
+
+                let commitment = hint.data.to_vec();
+                // Fetch the blob from the eigen da provider.
+                let blob = providers
+                    .eigen_da
+                    .get_blob(&commitment)
+                    .await
+                    .map_err(|e| anyhow!("Failed to fetch blob: {e}"))?;
+                let mut kv_lock = kv.write().await;
+                kv_lock.set(
+                    PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric).into(),
+                    blob.into(),
+                )?;
             }
         }
 

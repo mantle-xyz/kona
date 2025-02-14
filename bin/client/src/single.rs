@@ -17,6 +17,7 @@ use kona_proof::{
 };
 use thiserror::Error;
 use tracing::{error, info};
+use kona_proof::l1::OracleEigenDaProvider;
 
 /// An error that can occur when running the fault proof program.
 #[derive(Error, Debug)]
@@ -63,6 +64,8 @@ where
     let mut l2_provider =
         OracleL2ChainProvider::new(safe_head_hash, rollup_config.clone(), oracle.clone());
     let beacon = OracleBlobProvider::new(oracle.clone());
+    let eigen_da_provider = OracleEigenDaProvider::new(oracle.clone());
+
 
     // Fetch the safe head's block header.
     let safe_head = l2_provider
@@ -109,6 +112,7 @@ where
         cursor.clone(),
         oracle.clone(),
         beacon,
+        eigen_da_provider,
         l1_provider.clone(),
         l2_provider.clone(),
     );

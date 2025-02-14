@@ -1,6 +1,6 @@
 //! Protocol constants for the executor.
 
-use alloy_primitives::{address, Address};
+use alloy_primitives::{address, b256, Address, B256};
 
 /// The address of the fee recipient.
 pub(crate) const FEE_RECIPIENT: Address = address!("4200000000000000000000000000000000000011");
@@ -13,3 +13,7 @@ pub(crate) const OUTPUT_ROOT_VERSION: u8 = 0;
 
 /// The version byte for the Holocene extra data.
 pub(crate) const HOLOCENE_EXTRA_DATA_VERSION: u8 = 0x00;
+
+/// Empty SHA-256 hash.
+pub(crate) const SHA256_EMPTY: B256 =
+    b256!("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470");

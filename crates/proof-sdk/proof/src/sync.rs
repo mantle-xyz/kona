@@ -6,6 +6,7 @@ use crate::{
 };
 use alloc::sync::Arc;
 use alloy_consensus::{Header, Sealed};
+use op_alloy_genesis::RollupConfig;
 use alloy_primitives::B256;
 use core::fmt::Debug;
 use kona_derive::traits::ChainProvider;

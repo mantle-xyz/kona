@@ -14,6 +14,7 @@ workspace = true
 [dependencies]
 # Workspace
 kona-derive.workspace = true
+kona-executor.workspace = true
 
 # Alloy
 alloy-rlp.workspace = true

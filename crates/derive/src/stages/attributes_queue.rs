@@ -12,7 +12,8 @@ use alloc::{boxed::Box, sync::Arc};
 use async_trait::async_trait;
 use core::fmt::Debug;
 use op_alloy_genesis::RollupConfig;
-use op_alloy_protocol::{BlockInfo, L2BlockInfo, SingleBatch};
+use op_alloy_protocol::{BlockInfo, L2BlockInfo};
+use op_alloy_protocol::SingleBatch;
 use op_alloy_rpc_types_engine::{OpAttributesWithParent, OpPayloadAttributes};
 
 /// [AttributesQueue] accepts batches from the [BatchQueue] stage
@@ -207,8 +208,6 @@ mod tests {
                 prev_randao: B256::default(),
                 withdrawals: None,
                 parent_beacon_block_root: None,
-                target_blobs_per_block: None,
-                max_blobs_per_block: None,
             },
             no_tx_pool: Some(false),
             transactions: None,
