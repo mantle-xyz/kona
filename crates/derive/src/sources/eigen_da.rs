@@ -247,7 +247,8 @@ where
     }
 
     fn clear(&mut self) {
-        todo!()
+        self.data.clear();
+        self.open = false;
     }
 }
 
