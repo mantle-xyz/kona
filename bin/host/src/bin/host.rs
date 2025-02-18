@@ -51,6 +51,5 @@ async fn main() -> Result<()> {
         }
     }
 
-    info!("Exiting host program.");
     Ok(())
 }

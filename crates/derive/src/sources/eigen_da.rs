@@ -106,7 +106,6 @@ where
                 _ => continue,
             };
             let Some(to) = tx_kind else { continue };
-
             if to != self.batcher_address {
                 number += blob_hashes.map_or(0, |h| h.len() as u64);
                 continue;
@@ -150,7 +149,6 @@ where
                                 warn!(target: "eigen-da-source", "decoded frame ref contains no quorum IDs");
                                 continue;
                             }
-                            info!(target: "eigen-da", "decoded frame contains frame ref");
                             let blob_data = self.eigen_da_provider
                                 .retrieve_blob_with_commitment( &frame_ref.commitment, frame_ref.blob_length)
                                 .await.map_err(|e|EigenDAProviderError::Status(e.to_string()))?;

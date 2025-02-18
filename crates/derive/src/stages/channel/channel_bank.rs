@@ -189,7 +189,6 @@ where
     P: NextFrameProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
 {
     async fn next_data(&mut self) -> PipelineResult<Option<Bytes>> {
-        info!("channel_bank next_data");
         match self.read() {
             Err(e) => {
                 if !matches!(e, PipelineErrorKind::Temporary(PipelineError::Eof)) {

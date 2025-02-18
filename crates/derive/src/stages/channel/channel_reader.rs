@@ -116,7 +116,6 @@ where
     }
 
     async fn next_batch(&mut self) -> PipelineResult<Batch> {
-        info!("channel_reader next_batch");
         if let Err(e) = self.set_batch_reader().await {
             debug!(target: "channel-reader", "Failed to set batch reader: {:?}", e);
             self.next_channel();
@@ -200,7 +199,6 @@ impl BatchReader {
 
     /// Pulls out the next batch from the reader.
     pub(crate) fn next_batch(&mut self, cfg: &RollupConfig) -> Option<Batch> {
-        info!(target: "batch_reader", "next_batch");
 
         if let Some(data) = self.data.take() {
             // Peek at the data to determine the compression type.

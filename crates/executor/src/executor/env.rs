@@ -1,9 +1,9 @@
 //! Environment preparation for the executor.
 
-use super::{ StatelessL2BlockExecutor};
+use super::StatelessL2BlockExecutor;
 use crate::{constants::FEE_RECIPIENT, ExecutorError, ExecutorResult, TrieDBProvider};
 use alloy_consensus::Header;
-use alloy_eips::{eip1559::BaseFeeParams};
+use alloy_eips::eip1559::BaseFeeParams;
 use alloy_eips::eip7840::BlobParams;
 use alloy_primitives::{TxKind, U256};
 use kona_mpt::TrieHinter;
