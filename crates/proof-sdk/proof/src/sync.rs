@@ -6,12 +6,12 @@ use crate::{
 };
 use alloc::sync::Arc;
 use alloy_consensus::{Header, Sealed};
-use op_alloy_genesis::RollupConfig;
 use alloy_primitives::B256;
 use core::fmt::Debug;
 use kona_derive::traits::ChainProvider;
 use kona_driver::{PipelineCursor, TipCursor};
 use kona_preimage::CommsClient;
+use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::BatchValidationProvider;
 use spin::RwLock;
 

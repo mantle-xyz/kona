@@ -10,9 +10,7 @@ use alloc::{boxed::Box, sync::Arc};
 use alloy_primitives::{hex, Bytes};
 use async_trait::async_trait;
 use core::fmt::Debug;
-use op_alloy_genesis::{
-    RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK,
-};
+use op_alloy_genesis::{RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK};
 use op_alloy_protocol::{BlockInfo, Channel};
 
 /// The [ChannelAssembler] stage is responsible for assembling the [Frame]s from the [FrameQueue]
@@ -187,9 +185,7 @@ mod test {
         test_utils::{CollectingLayer, TestNextFrameProvider, TraceStorage},
     };
     use alloc::{sync::Arc, vec};
-    use op_alloy_genesis::{
-        RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK,
-    };
+    use op_alloy_genesis::{RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK};
     use op_alloy_protocol::BlockInfo;
     use tracing::Level;
     use tracing_subscriber::layer::SubscriberExt;

@@ -36,7 +36,6 @@ pub fn convert_by_padding_empty_byte(data: &[u8]) -> Vec<u8> {
     valid_data
 }
 
-
 /// RemoveEmptyByteFromPaddedBytes takes bytes and remove the first byte from every 32 bytes.
 /// This reverses the change made by the function ConvertByPaddingEmptyByte.
 /// The function does not assume the input is a multiple of BYTES_PER_SYMBOL(32 bytes).
@@ -60,8 +59,7 @@ pub fn remove_empty_byte_from_padded_bytes(data: &[u8]) -> Vec<u8> {
             valid_len = end - start + i * put_size;
         }
 
-        valid_data[i * put_size..(i + 1) * put_size]
-            .copy_from_slice(&data[start..end]);
+        valid_data[i * put_size..(i + 1) * put_size].copy_from_slice(&data[start..end]);
     }
 
     valid_data.truncate(valid_len);

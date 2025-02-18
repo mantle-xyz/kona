@@ -1,9 +1,9 @@
-use alloc::string::ToString;
-use alloc::vec::Vec;
-use alloc::boxed::Box;
-use async_trait::async_trait;
 use crate::errors::EigenDAProviderError;
 use crate::traits::EigenDAProvider;
+use alloc::boxed::Box;
+use alloc::string::ToString;
+use alloc::vec::Vec;
+use async_trait::async_trait;
 
 /// A mock blob provider for testing.
 #[derive(Debug, Clone, Default)]
@@ -18,7 +18,11 @@ pub struct TestEigenDaProvider {
 impl EigenDAProvider for TestEigenDaProvider {
     type Error = EigenDAProviderError;
 
-    async fn retrieve_blob_with_commitment(&mut self, commitment: &[u8], blob_len: u32) -> Result<Vec<u8>, Self::Error> {
+    async fn retrieve_blob_with_commitment(
+        &mut self,
+        commitment: &[u8],
+        blob_len: u32,
+    ) -> Result<Vec<u8>, Self::Error> {
         if self.should_error {
             return Err(EigenDAProviderError::Blob("error".to_string()));
         }

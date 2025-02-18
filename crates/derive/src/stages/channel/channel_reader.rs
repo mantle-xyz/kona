@@ -12,9 +12,7 @@ use alloy_rlp::Decodable;
 use async_trait::async_trait;
 use core::fmt::Debug;
 use miniz_oxide::inflate::decompress_to_vec_zlib;
-use op_alloy_genesis::{
-    RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK,
-};
+use op_alloy_genesis::{RollupConfig, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK};
 use op_alloy_protocol::{Batch, BlockInfo};
 use tracing::{debug, error, info, warn};
 
@@ -116,7 +114,6 @@ where
     }
 
     async fn next_batch(&mut self) -> PipelineResult<Batch> {
-        info!("channel_reader next_batch");
         if let Err(e) = self.set_batch_reader().await {
             debug!(target: "channel-reader", "Failed to set batch reader: {:?}", e);
             self.next_channel();
@@ -200,8 +197,6 @@ impl BatchReader {
 
     /// Pulls out the next batch from the reader.
     pub(crate) fn next_batch(&mut self, cfg: &RollupConfig) -> Option<Batch> {
-        info!(target: "batch_reader", "next_batch");
-
         if let Some(data) = self.data.take() {
             // Peek at the data to determine the compression type.
             if data.is_empty() {
@@ -209,14 +204,12 @@ impl BatchReader {
                 return None;
             }
 
-
             self.decompressed = decompress_to_vec_zlib(&data).ok()?;
 
             // Check the size of the decompressed channel RLP.
             if self.decompressed.len() > self.max_rlp_bytes_per_channel {
                 return None;
             }
-
         }
 
         // Decompress and RLP decode the batch data, before finally decoding the batch itself.
@@ -267,10 +260,8 @@ mod test {
     async fn test_flush_channel_reader() {
         let mock = TestChannelReaderProvider::new(vec![Ok(Some(new_compressed_batch_data()))]);
         let mut reader = ChannelReader::new(mock, Arc::new(RollupConfig::default()));
-        reader.next_batch = Some(BatchReader::new(
-            new_compressed_batch_data(),
-            MAX_RLP_BYTES_PER_CHANNEL as usize,
-        ));
+        reader.next_batch =
+            Some(BatchReader::new(new_compressed_batch_data(), MAX_RLP_BYTES_PER_CHANNEL as usize));
         reader.signal(Signal::FlushChannel).await.unwrap();
         assert!(reader.next_batch.is_none());
     }
@@ -279,10 +270,8 @@ mod test {
     async fn test_reset_channel_reader() {
         let mock = TestChannelReaderProvider::new(vec![Ok(None)]);
         let mut reader = ChannelReader::new(mock, Arc::new(RollupConfig::default()));
-        reader.next_batch = Some(BatchReader::new(
-            vec![0x00, 0x01, 0x02],
-            MAX_RLP_BYTES_PER_CHANNEL as usize,
-        ));
+        reader.next_batch =
+            Some(BatchReader::new(vec![0x00, 0x01, 0x02], MAX_RLP_BYTES_PER_CHANNEL as usize));
         assert!(!reader.prev.reset);
         reader.signal(ResetSignal::default().signal()).await.unwrap();
         assert!(reader.next_batch.is_none());

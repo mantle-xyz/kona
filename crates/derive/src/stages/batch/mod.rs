@@ -22,8 +22,6 @@ pub use batch_stream::{BatchStream, BatchStreamProvider};
 mod batch_queue;
 pub use batch_queue::BatchQueue;
 
-
-
 mod batch_provider;
 pub use batch_provider::BatchProvider;
 
@@ -37,10 +35,7 @@ pub trait NextBatchProvider {
     ///
     /// [ChannelReader]: crate::stages::ChannelReader
     /// [PipelineError::Eof]: crate::errors::PipelineError::Eof
-    async fn next_batch(
-        &mut self,
-    ) -> PipelineResult<Batch>;
-
+    async fn next_batch(&mut self) -> PipelineResult<Batch>;
 
     /// Allows the stage to flush the buffer in the [crate::stages::BatchStream]
     /// if an invalid single batch is found. Pre-holocene hardfork, this will be a no-op.

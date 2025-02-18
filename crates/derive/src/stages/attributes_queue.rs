@@ -12,8 +12,8 @@ use alloc::{boxed::Box, sync::Arc};
 use async_trait::async_trait;
 use core::fmt::Debug;
 use op_alloy_genesis::RollupConfig;
-use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_protocol::SingleBatch;
+use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::{OpAttributesWithParent, OpPayloadAttributes};
 
 /// [AttributesQueue] accepts batches from the [BatchQueue] stage
@@ -83,8 +83,7 @@ where
                 return Err(e);
             }
         };
-        let populated_attributes =
-            OpAttributesWithParent { attributes, parent };
+        let populated_attributes = OpAttributesWithParent { attributes, parent };
 
         // Clear out the local state once payload attributes are prepared.
         self.batch = None;
@@ -372,10 +371,8 @@ mod tests {
         // It should also reset the last in span flag and clear the batch.
         let attributes = aq.next_attributes(L2BlockInfo::default()).await.unwrap();
         pa.no_tx_pool = Some(true);
-        let populated_attributes = OpAttributesWithParent {
-            attributes: pa,
-            parent: L2BlockInfo::default(),
-        };
+        let populated_attributes =
+            OpAttributesWithParent { attributes: pa, parent: L2BlockInfo::default() };
         assert_eq!(attributes, populated_attributes);
         assert!(aq.batch.is_none());
     }

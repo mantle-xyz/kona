@@ -38,7 +38,6 @@ impl OriginProvider for TestNextBatchProvider {
 
 #[async_trait]
 impl NextBatchProvider for TestNextBatchProvider {
-
     async fn next_batch(&mut self) -> PipelineResult<Batch> {
         self.batches.pop().ok_or(PipelineError::Eof.temp())?
     }

@@ -1,17 +1,17 @@
 //! Contains the [EthereumDataSource], which is a concrete implementation of the
 //! [DataAvailabilityProvider] trait for the Ethereum protocol.
 
+use crate::sources::eigen_da::EigenDaSource;
 use crate::{
-    types::PipelineResult,
     sources::{BlobSource, CalldataSource},
-    traits::{BlobProvider, ChainProvider, EigenDAProvider, DataAvailabilityProvider},
+    traits::{BlobProvider, ChainProvider, DataAvailabilityProvider, EigenDAProvider},
+    types::PipelineResult,
 };
 use alloc::{boxed::Box, fmt::Debug};
 use alloy_primitives::{Address, Bytes};
 use async_trait::async_trait;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::BlockInfo;
-use crate::sources::eigen_da::EigenDaSource;
 
 /// A factory for creating an Ethereum data source provider.
 #[derive(Debug, Clone)]
@@ -27,7 +27,6 @@ where
     pub eigen_da_source: EigenDaSource<C, B, E>,
     /// Mantle da switch
     pub mantle_da_switch: bool,
-
 }
 
 impl<C, B, E> EthereumDataSource<C, B, E>
@@ -51,7 +50,13 @@ where
             cfg.genesis.system_config.as_ref().map(|sc| sc.batcher_address).unwrap_or_default();
         Self {
             calldata_source: CalldataSource::new(provider.clone(), cfg.batch_inbox_address, signer),
-            eigen_da_source: EigenDaSource::new(provider,blobs,eigen_da_provider,cfg.batch_inbox_address,signer),
+            eigen_da_source: EigenDaSource::new(
+                provider,
+                blobs,
+                eigen_da_provider,
+                cfg.batch_inbox_address,
+                signer,
+            ),
             mantle_da_switch: cfg.mantle_da_switch,
         }
     }
@@ -67,9 +72,8 @@ where
     type Item = Bytes;
 
     async fn next(&mut self, block_ref: &BlockInfo) -> PipelineResult<Self::Item> {
-
         if self.mantle_da_switch {
-           self.eigen_da_source.next(block_ref).await
+            self.eigen_da_source.next(block_ref).await
         } else {
             self.calldata_source.next(block_ref).await
         }
@@ -84,6 +88,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::TestEigenDaProvider;
     use crate::{
         sources::BlobData,
         test_utils::{TestBlobProvider, TestChainProvider},
@@ -93,7 +98,6 @@ mod tests {
     use alloy_primitives::{address, Address};
     use op_alloy_genesis::{RollupConfig, SystemConfig};
     use op_alloy_protocol::BlockInfo;
-    use crate::test_utils::TestEigenDaProvider;
 
     fn default_test_blob_source() -> BlobSource<TestChainProvider, TestBlobProvider> {
         let chain_provider = TestChainProvider::default();
@@ -112,10 +116,10 @@ mod tests {
         let mut calldata = CalldataSource::new(chain.clone(), Address::ZERO, Address::ZERO);
         calldata.calldata.insert(0, Default::default());
         calldata.open = true;
-        let mut eigen = EigenDaSource::new(chain,blob,eigen_da,Address::ZERO,Address::ZERO);
+        let mut eigen = EigenDaSource::new(chain, blob, eigen_da, Address::ZERO, Address::ZERO);
         eigen.data = vec![Default::default()];
         eigen.open = true;
-        let mut data_source = EthereumDataSource::new( calldata, eigen, &cfg);
+        let mut data_source = EthereumDataSource::new(calldata, eigen, &cfg);
 
         data_source.clear();
         assert!(data_source.eigen_da_source.data.is_empty());
@@ -123,7 +127,6 @@ mod tests {
         assert!(data_source.calldata_source.calldata.is_empty());
         assert!(!data_source.calldata_source.open);
     }
-
 
     #[tokio::test]
     async fn test_open_ethereum_calldata_source_pre_ecotone() {
@@ -148,4 +151,3 @@ mod tests {
         assert_eq!(calldata_batch.len(), 119823);
     }
 }
-

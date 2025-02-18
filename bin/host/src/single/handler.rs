@@ -351,7 +351,6 @@ impl HintHandler for SingleChainHintHandler {
             HintType::EigenDa => {
                 ensure!(hint.data.len() > 32, "Invalid hint data length");
 
-
                 let commitment = hint.data.to_vec();
                 // Fetch the blob from the eigen da provider.
                 let blob = providers
@@ -361,7 +360,7 @@ impl HintHandler for SingleChainHintHandler {
                     .map_err(|e| anyhow!("Failed to fetch blob: {e}"))?;
                 let mut kv_lock = kv.write().await;
                 kv_lock.set(
-                    PreimageKey::new(*keccak256(commitment),PreimageKeyType::GlobalGeneric).into(),
+                    PreimageKey::new(*keccak256(commitment), PreimageKeyType::GlobalGeneric).into(),
                     blob.into(),
                 )?;
             }

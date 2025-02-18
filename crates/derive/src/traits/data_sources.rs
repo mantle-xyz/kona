@@ -38,9 +38,7 @@ pub trait EigenDAProvider {
 
     /// Weather use mantle eigen-da indexer service
     fn da_indexer_enable(&mut self) -> bool;
-
 }
-
 
 /// Describes the functionality of a data source that can provide data availability information.
 #[async_trait]

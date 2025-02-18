@@ -27,7 +27,7 @@ pub mod stages;
 pub mod traits;
 pub mod types;
 
+pub mod da;
+mod proto;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils;
-mod proto;
-pub mod da;

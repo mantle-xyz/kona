@@ -3,7 +3,7 @@
 use super::NextBatchProvider;
 use crate::{
     errors::PipelineError,
-    stages::{BatchQueue},
+    stages::BatchQueue,
     traits::{AttributesProvider, L2ChainProvider, OriginAdvancer, OriginProvider, SignalReceiver},
     types::{PipelineResult, Signal},
 };
@@ -55,8 +55,7 @@ where
         if let Some(prev) = self.prev.take() {
             // On the first call to `attempt_update`, we need to determine the active stage to
             // initialize the mux with.
-            self.batch_queue =
-                    Some(BatchQueue::new(self.cfg.clone(), prev));
+            self.batch_queue = Some(BatchQueue::new(self.cfg.clone(), prev));
         }
         Ok(())
     }
@@ -98,7 +97,7 @@ where
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         self.attempt_update()?;
 
-         if let Some(batch_queue) = self.batch_queue.as_mut() {
+        if let Some(batch_queue) = self.batch_queue.as_mut() {
             batch_queue.signal(signal).await
         } else {
             Err(PipelineError::NotEnoughData.temp())
@@ -111,7 +110,6 @@ impl<P> AttributesProvider for BatchProvider<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug + Send,
 {
-
     async fn next_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch> {
         self.attempt_update()?;
 
@@ -139,7 +137,7 @@ mod test {
     fn test_batch_provider_validator_active() {
         let provider = TestNextBatchProvider::new(vec![]);
         let l2_provider = TestL2ChainProvider::default();
-        let cfg = Arc::new(RollupConfig {  ..Default::default() });
+        let cfg = Arc::new(RollupConfig { ..Default::default() });
         let mut batch_provider = BatchProvider::new(cfg, provider);
 
         assert!(batch_provider.attempt_update().is_ok());
@@ -190,7 +188,6 @@ mod test {
 
         batch_provider.attempt_update().unwrap();
 
-
         // Update the L1 origin to Holocene activation.
         if let Some(ref mut stage) = batch_provider.batch_queue {
             stage.prev.origin = Some(BlockInfo { number: 1, timestamp: 2, ..Default::default() });
@@ -237,6 +234,5 @@ mod test {
 
         // Reset the batch provider.
         batch_provider.signal(ResetSignal::default().signal()).await.unwrap();
-
     }
 }

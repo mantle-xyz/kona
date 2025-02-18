@@ -4,7 +4,7 @@ use crate::types::PipelineResult;
 use alloc::boxed::Box;
 use alloy_eips::BlockNumHash;
 use async_trait::async_trait;
-use op_alloy_protocol::{L2BlockInfo};
+use op_alloy_protocol::L2BlockInfo;
 use op_alloy_protocol::SingleBatch;
 use op_alloy_rpc_types_engine::{OpAttributesWithParent, OpPayloadAttributes};
 
@@ -15,7 +15,6 @@ use op_alloy_rpc_types_engine::{OpAttributesWithParent, OpPayloadAttributes};
 pub trait AttributesProvider {
     /// Returns the next valid batch upon the given safe head.
     async fn next_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch>;
-
 }
 
 /// [NextAttributes] defines the interface for pulling attributes from

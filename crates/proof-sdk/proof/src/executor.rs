@@ -5,7 +5,9 @@ use alloy_consensus::{Header, Sealed};
 use alloy_primitives::B256;
 use async_trait::async_trait;
 use kona_driver::Executor;
-use kona_executor::{ExecutionArtifacts, KonaHandleRegister, StatelessL2BlockExecutor, TrieDBProvider};
+use kona_executor::{
+    ExecutionArtifacts, KonaHandleRegister, StatelessL2BlockExecutor, TrieDBProvider,
+};
 use kona_mpt::TrieHinter;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
@@ -83,12 +85,10 @@ where
         &mut self,
         attributes: OpPayloadAttributes,
     ) -> Result<ExecutionArtifacts, Self::Error> {
-        self.inner
-            .as_mut()
-            .map_or_else(
-                || Err(kona_executor::ExecutorError::MissingExecutor),
-                |e| e.execute_payload(attributes),
-            )
+        self.inner.as_mut().map_or_else(
+            || Err(kona_executor::ExecutorError::MissingExecutor),
+            |e| e.execute_payload(attributes),
+        )
     }
 
     /// Computes the output root.

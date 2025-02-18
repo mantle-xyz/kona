@@ -13,4 +13,4 @@ mod sources;
 pub use sources::{BlobDecodingError, BlobProviderError};
 
 mod da;
-pub use da::{EigenDAProxyError, EigenDAProviderError};
+pub use da::{EigenDAProviderError, EigenDAProxyError};

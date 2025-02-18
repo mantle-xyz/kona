@@ -8,7 +8,6 @@ use core::{
 
 use kona_executor::ExecutionArtifacts;
 
-
 use alloc::string::ToString;
 use alloy_consensus::{Header, Sealed};
 use alloy_primitives::B256;

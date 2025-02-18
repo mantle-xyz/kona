@@ -14,7 +14,6 @@ pub use disk::DiskKeyValueStore;
 mod split;
 pub use split::SplitKeyValueStore;
 
-
 /// A type alias for a shared key-value store.
 pub type SharedKeyValueStore = Arc<RwLock<dyn KeyValueStore + Send + Sync>>;
 

@@ -1,11 +1,10 @@
-use alloc::vec::Vec;
-use core::fmt::Display;
-use async_trait::async_trait;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
+use async_trait::async_trait;
+use core::fmt::Display;
 
 #[async_trait]
 pub trait IEigenDA {
-
     /// The error type for the [IEigenDA].
     type Error: Display;
 
@@ -14,5 +13,4 @@ pub trait IEigenDA {
         &self,
         commitment: &[u8],
     ) -> Result<Vec<u8>, Self::Error>;
-
 }

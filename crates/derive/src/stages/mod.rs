@@ -31,9 +31,7 @@ pub use channel::{
 };
 
 mod batch;
-pub use batch::{
-    BatchProvider, BatchQueue, BatchStream, BatchStreamProvider, NextBatchProvider,
-};
+pub use batch::{BatchProvider, BatchQueue, BatchStream, BatchStreamProvider, NextBatchProvider};
 
 mod attributes_queue;
 pub use attributes_queue::AttributesQueue;

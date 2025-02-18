@@ -118,11 +118,7 @@ impl<T: CommsClient + Send + Sync> BatchValidationProvider for OracleL2ChainProv
 
         let optimism_block = OpBlock {
             header,
-            body: BlockBody {
-                transactions,
-                ommers: Vec::new(),
-                withdrawals: None,
-            },
+            body: BlockBody { transactions, ommers: Vec::new(), withdrawals: None },
         };
         Ok(optimism_block)
     }

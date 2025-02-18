@@ -93,7 +93,10 @@ impl<B: BeaconClient> OnlineBlobProvider<B> {
 
         // Validate the correct number of blob sidecars were retrieved.
         if blob_hashes.len() != filtered.len() {
-            return Err(BlobProviderError::SidecarLengthMismatch(blob_hashes.len(), filtered.len()));
+            return Err(BlobProviderError::SidecarLengthMismatch(
+                blob_hashes.len(),
+                filtered.len(),
+            ));
         }
 
         Ok(filtered

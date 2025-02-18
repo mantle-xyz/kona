@@ -59,7 +59,6 @@ where
             // On the first call to `attempt_update`, we need to determine the active stage to
             // initialize the mux with.
             self.channel_bank = Some(ChannelBank::new(self.cfg.clone(), prev));
-
         }
         Ok(())
     }
@@ -124,7 +123,6 @@ where
     P: NextFrameProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
 {
     async fn next_data(&mut self) -> PipelineResult<Option<Bytes>> {
-        info!("channel provider next_data");
         self.attempt_update()?;
 
         if let Some(channel_assembler) = self.channel_assembler.as_mut() {

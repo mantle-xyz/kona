@@ -27,7 +27,6 @@ pub use builder::{KonaHandleRegister, StatelessL2BlockExecutorBuilder};
 
 mod env;
 
-
 /// The [ExecutionArtifacts] holds the produced block header and receipts from the execution of a
 /// block.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -151,8 +150,8 @@ where
             // The sum of the transaction’s gas limit, Tg, and the gas utilized in this block prior,
             // must be no greater than the block’s gasLimit.
             let block_available_gas = (gas_limit - cumulative_gas_used) as u128;
-            if (transaction.gas_limit() as u128) > block_available_gas &&
-                (is_regolith || !transaction.is_system_transaction())
+            if (transaction.gas_limit() as u128) > block_available_gas
+                && (is_regolith || !transaction.is_system_transaction())
             {
                 return Err(ExecutorError::BlockGasLimitExceeded);
             }
@@ -209,12 +208,10 @@ where
                 depositor
                     .as_ref()
                     .map(|depositor| depositor.account_info().unwrap_or_default().nonce),
-                depositor
-                    .is_some()
-                    .then_some(0)
+                None,
             );
             // Ensure the receipt is not an EIP-7702 receipt.
-            if matches!(receipt, OpReceiptEnvelope::Eip7702(_))  {
+            if matches!(receipt, OpReceiptEnvelope::Eip7702(_)) {
                 panic!(
                     "EIP-7702 receipts are not supported by the fault proof program before Isthmus"
                 );
@@ -318,9 +315,7 @@ where
     pub fn compute_output_root(&mut self) -> ExecutorResult<B256> {
         // Fetch the L2 to L1 message passer account from the cache or underlying trie.
         let storage_root = match self.trie_db.storage_roots().get(&L2_TO_L1_BRIDGE) {
-            Some(storage_root) => {
-                storage_root.blind()
-            }
+            Some(storage_root) => storage_root.blind(),
             None => {
                 self.trie_db
                     .get_trie_account(&L2_TO_L1_BRIDGE)?
@@ -328,7 +323,6 @@ where
                     .storage_root
             }
         };
-
         let parent_header = self.trie_db.parent_block_header();
 
         info!(
