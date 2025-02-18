@@ -60,7 +60,8 @@ where
 mod tests {
     use super::*;
     use alloy_primitives::hex;
-    use eigen_da::{EigenDaConfig, EigenDaProxy};
+    use eigen_da::{EigenDaConfig};
+    use crate::EigenDaProxy;
 
     #[tokio::test]
     async fn test_get_blob() {

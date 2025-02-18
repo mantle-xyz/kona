@@ -1,7 +1,6 @@
 mod config;
 pub use config::*;
 
-mod eigen_da_proxy;
 mod certificate;
 mod eigenda_data;
 mod constant;
@@ -12,5 +11,3 @@ pub use constant::STALE_GAP;
 pub use eigenda_data::EigenDABlobData;
 
 pub use certificate::BlobInfo;
-
-pub use eigen_da_proxy::*;
