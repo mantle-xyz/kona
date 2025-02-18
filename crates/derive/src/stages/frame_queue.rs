@@ -53,9 +53,6 @@ where
         Self { prev, queue: VecDeque::new(), rollup_config: cfg }
     }
 
-
-
-
     /// Loads more frames into the [FrameQueue].
     pub async fn load_frames(&mut self) -> PipelineResult<()> {
         // Skip loading frames if the queue is not empty.
@@ -199,7 +196,7 @@ pub(crate) mod tests {
             .with_origin(BlockInfo::default())
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -215,7 +212,7 @@ pub(crate) mod tests {
             .with_origin(BlockInfo::default())
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -226,7 +223,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        
+
         assert.missing_origin().await;
     }
 
@@ -243,7 +240,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -256,7 +253,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -278,7 +275,7 @@ pub(crate) mod tests {
             .with_expected_frames(&[&frames[0..3], &frames[4..]].concat())
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -297,7 +294,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames[0..2])
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -319,7 +316,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames[4..])
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -344,7 +341,7 @@ pub(crate) mod tests {
             .with_expected_frames(&[&frames[0..4], &frames[6..]].concat())
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -366,7 +363,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames[0..4])
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -389,7 +386,7 @@ pub(crate) mod tests {
             .with_expected_frames(&[&frames[0..2], &frames[4..]].concat())
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -412,7 +409,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames[4..])
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 
@@ -435,7 +432,7 @@ pub(crate) mod tests {
             .with_expected_frames(&[&frames[1..2], &frames[3..]].concat())
             .with_frames(&frames)
             .build();
-        
+
         assert.next_frames().await;
     }
 }

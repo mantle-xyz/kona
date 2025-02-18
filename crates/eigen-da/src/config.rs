@@ -1,5 +1,5 @@
-use {String, ToString};
 use core::time::Duration;
+use {String, ToString};
 
 /// The EigenDa configuration
 pub struct EigenDaConfig {

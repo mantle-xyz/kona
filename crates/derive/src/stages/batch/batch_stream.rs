@@ -40,7 +40,6 @@ where
 {
     /// The previous stage in the derivation pipeline.
     prev: P,
-
 }
 
 impl<P> BatchStream<P>
@@ -51,7 +50,6 @@ where
     pub const fn new(prev: P) -> Self {
         Self { prev }
     }
-
 }
 
 #[async_trait]
@@ -59,14 +57,11 @@ impl<P> NextBatchProvider for BatchStream<P>
 where
     P: BatchStreamProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send + Debug,
 {
-
     fn flush(&mut self) {
         // mantle have no holocene version
     }
 
-    async fn next_batch(
-        &mut self,
-    ) -> PipelineResult<Batch> {
+    async fn next_batch(&mut self) -> PipelineResult<Batch> {
         self.prev.next_batch().await
     }
 }
@@ -109,9 +104,8 @@ mod test {
         types::ResetSignal,
     };
     use alloc::vec;
-    use op_alloy_protocol::{SingleBatch};
+    use op_alloy_protocol::SingleBatch;
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 
     #[tokio::test]
     async fn test_batch_stream_reset() {
@@ -133,14 +127,12 @@ mod test {
         assert!(stream.prev.flushed);
     }
 
-
     #[tokio::test]
     async fn test_single_batch_pass_through() {
         let data = vec![Ok(Batch::Single(SingleBatch::default()))];
         let config = Arc::new(RollupConfig { ..RollupConfig::default() });
         let prev = TestBatchStreamProvider::new(data);
         let mut stream = BatchStream::new(prev);
-
 
         // The next batch should be passed through to the [BatchQueue] stage.
         let batch = stream.next_batch().await.unwrap();

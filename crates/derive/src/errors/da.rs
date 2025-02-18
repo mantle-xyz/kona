@@ -46,5 +46,4 @@ pub enum EigenDAProviderError {
     RLPDecodeError(String),
     #[error("Failed to decode proto buf, error: {0}")]
     ProtoDecodeError(String),
-
 }

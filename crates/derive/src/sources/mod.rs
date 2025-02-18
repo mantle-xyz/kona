@@ -14,7 +14,7 @@ mod ethereum;
 pub use ethereum::EthereumDataSource;
 
 mod blobs;
-pub use blobs::{BlobSource};
+pub use blobs::BlobSource;
 
 mod calldata;
 pub use calldata::CalldataSource;
@@ -22,4 +22,3 @@ pub use calldata::CalldataSource;
 mod eigen_da;
 
 pub use eigen_da::EigenDaSource;
-

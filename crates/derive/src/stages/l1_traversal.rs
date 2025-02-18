@@ -89,10 +89,10 @@ impl<F: ChainProvider + Send> OriginAdvancer for L1Traversal<F> {
         let receipts =
             self.data_source.receipts_by_hash(next_l1_origin.hash).await.map_err(Into::into)?;
 
-        if let Err(e) = self.system_config.update_with_receipts(
-            receipts.as_slice(),
-            self.rollup_config.l1_system_config_address,
-        ) {
+        if let Err(e) = self
+            .system_config
+            .update_with_receipts(receipts.as_slice(), self.rollup_config.l1_system_config_address)
+        {
             return Err(PipelineError::SystemConfigUpdate(e).crit());
         }
 
@@ -114,8 +114,8 @@ impl<F: ChainProvider> OriginProvider for L1Traversal<F> {
 impl<F: ChainProvider + Send> SignalReceiver for L1Traversal<F> {
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         match signal {
-            Signal::Reset(ResetSignal { l1_origin, system_config, .. }) |
-            Signal::Activation(ActivationSignal { l1_origin, system_config, .. }) => {
+            Signal::Reset(ResetSignal { l1_origin, system_config, .. })
+            | Signal::Activation(ActivationSignal { l1_origin, system_config, .. }) => {
                 self.block = Some(l1_origin);
                 self.done = false;
                 self.system_config = system_config.expect("System config must be provided.");

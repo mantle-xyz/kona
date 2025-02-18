@@ -59,7 +59,6 @@ where
             // On the first call to `attempt_update`, we need to determine the active stage to
             // initialize the mux with.
             self.channel_bank = Some(ChannelBank::new(self.cfg.clone(), prev));
-
         }
         Ok(())
     }

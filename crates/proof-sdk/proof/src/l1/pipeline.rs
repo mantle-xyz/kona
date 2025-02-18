@@ -4,6 +4,8 @@ use crate::{l1::OracleL1ChainProvider, l2::OracleL2ChainProvider, FlushableCache
 use alloc::{boxed::Box, sync::Arc};
 use async_trait::async_trait;
 use core::fmt::Debug;
+use kona_derive::prelude::EigenDaSource;
+use kona_derive::traits::EigenDAProvider;
 use kona_derive::{
     attributes::StatefulAttributesBuilder,
     errors::PipelineErrorKind,
@@ -21,8 +23,6 @@ use kona_preimage::CommsClient;
 use op_alloy_genesis::{RollupConfig, SystemConfig};
 use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::OpAttributesWithParent;
-use kona_derive::prelude::EigenDaSource;
-use kona_derive::traits::EigenDAProvider;
 use spin::RwLock;
 
 /// An oracle-backed derivation pipeline.
@@ -89,8 +89,12 @@ where
             chain_provider.clone(),
         );
 
-        let dap = EthereumDataSource::new_from_parts(chain_provider.clone(), blob_provider.clone(), eigen_da_provider.clone(), &cfg);
-
+        let dap = EthereumDataSource::new_from_parts(
+            chain_provider.clone(),
+            blob_provider.clone(),
+            eigen_da_provider.clone(),
+            &cfg,
+        );
 
         let pipeline = PipelineBuilder::new()
             .rollup_config(cfg)

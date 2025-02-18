@@ -66,7 +66,7 @@ where
     // if !config.is_ecotone_active(timestamp) {
     //     return Ok(());
     // }
-    return  Ok(());
+    return Ok(());
 
     let parent_beacon_block_root =
         parent_beacon_block_root.ok_or(ExecutorError::MissingParentBeaconBlockRoot)?;

@@ -9,9 +9,9 @@ use kona_derive::{
     errors::{PipelineError, PipelineErrorKind},
     traits::L2ChainProvider,
 };
+use op_alloy_consensus::OpBlock;
 use op_alloy_genesis::{RollupConfig, SystemConfig};
 use op_alloy_protocol::{to_system_config, BatchValidationProvider, L2BlockInfo};
-use op_alloy_consensus::OpBlock;
 use std::sync::Arc;
 
 /// The [AlloyL2ChainProvider] is a concrete implementation of the [L2ChainProvider] trait,

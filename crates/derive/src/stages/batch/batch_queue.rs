@@ -57,15 +57,8 @@ where
     /// Creates a new [BatchQueue] stage.
     #[allow(clippy::missing_const_for_fn)]
     pub fn new(cfg: Arc<RollupConfig>, prev: P) -> Self {
-        Self {
-            cfg,
-            prev,
-            origin: None,
-            l1_blocks: Default::default(),
-            batches: Default::default(),
-        }
+        Self { cfg, prev, origin: None, l1_blocks: Default::default(), batches: Default::default() }
     }
-
 
     /// Derives the next batch to apply on top of the current L2 safe head.
     /// Follows the validity rules imposed on consecutive batches.
@@ -109,8 +102,7 @@ where
         let mut remaining = Vec::new();
         for i in 0..self.batches.len() {
             let batch = &self.batches[i];
-            let validity =
-                batch.check_batch(&self.cfg, &self.l1_blocks, parent).await;
+            let validity = batch.check_batch(&self.cfg, &self.l1_blocks, parent).await;
             match validity {
                 BatchValidity::Future => {
                     self.prev.flush();
@@ -206,8 +198,7 @@ where
         let origin = self.origin.ok_or(PipelineError::MissingOrigin.crit())?;
         let data = BatchWithInclusionBlock { inclusion_block: origin, batch };
         // If we drop the batch, validation logs the drop reason with WARN level.
-        let validity =
-            data.check_batch(&self.cfg, &self.l1_blocks, parent).await;
+        let validity = data.check_batch(&self.cfg, &self.l1_blocks, parent).await;
         // Post-Holocene, future batches are dropped due to prevent gaps.
         let drop = validity.is_drop();
         if drop {
@@ -240,8 +231,6 @@ where
     /// Returns the next valid batch upon the given safe head.
     /// Also returns the boolean that indicates if the batch is the last block in the batch.
     async fn next_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch> {
-
-
         // If the epoch is advanced, update the l1 blocks.
         // Advancing epoch must be done after the pipeline successfully applies the entire span
         // batch to the chain.
@@ -399,7 +388,6 @@ mod tests {
         BatchReader::new(bytes, MAX_RLP_BYTES_PER_CHANNEL_BEDROCK as usize)
     }
 
-
     #[tokio::test]
     async fn test_batch_queue_flush() {
         let cfg = Arc::new(RollupConfig::default());
@@ -416,7 +404,6 @@ mod tests {
         assert!(bq.batches.is_empty());
         assert!(!bq.l1_blocks.is_empty());
     }
-
 
     #[tokio::test]
     async fn test_add_batch_drop() {
@@ -638,7 +625,6 @@ mod tests {
         let warn_str = "Dropping batch with parent";
         assert!(logs[0].contains(warn_str));
     }
-
 
     #[tokio::test]
     async fn test_next_batch_clear_next_spans() {

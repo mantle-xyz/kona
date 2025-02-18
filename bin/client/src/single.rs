@@ -7,6 +7,7 @@ use core::fmt::Debug;
 use kona_driver::{Driver, DriverError};
 use kona_executor::{ExecutorError, KonaHandleRegister, TrieDBProvider};
 use kona_preimage::{CommsClient, HintWriterClient, PreimageKey, PreimageOracleClient};
+use kona_proof::l1::OracleEigenDaProvider;
 use kona_proof::{
     errors::OracleProviderError,
     executor::KonaExecutor,
@@ -17,7 +18,6 @@ use kona_proof::{
 };
 use thiserror::Error;
 use tracing::{error, info};
-use kona_proof::l1::OracleEigenDaProvider;
 
 /// An error that can occur when running the fault proof program.
 #[derive(Error, Debug)]
@@ -65,7 +65,6 @@ where
         OracleL2ChainProvider::new(safe_head_hash, rollup_config.clone(), oracle.clone());
     let beacon = OracleBlobProvider::new(oracle.clone());
     let eigen_da_provider = OracleEigenDaProvider::new(oracle.clone());
-
 
     // Fetch the safe head's block header.
     let safe_head = l2_provider

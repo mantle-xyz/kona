@@ -83,10 +83,7 @@ where
             if let Some(tb) = target {
                 if tip_cursor.l2_safe_head.block_info.number >= tb {
                     info!(target: "client", "Derivation complete, reached L2 safe head.");
-                    return Ok((
-                        tip_cursor.l2_safe_head,
-                        tip_cursor.l2_safe_head_output_root,
-                    ));
+                    return Ok((tip_cursor.l2_safe_head, tip_cursor.l2_safe_head_output_root));
                 }
             }
 

@@ -13,8 +13,8 @@ use alloy_rlp::Encodable;
 use alloy_rpc_types_engine::PayloadAttributes;
 use async_trait::async_trait;
 use op_alloy_genesis::RollupConfig;
-use op_alloy_protocol::{decode_deposit, L1BlockInfoTx, DEPOSIT_EVENT_ABI_HASH};
 use op_alloy_protocol::L2BlockInfo;
+use op_alloy_protocol::{decode_deposit, L1BlockInfoTx, DEPOSIT_EVENT_ABI_HASH};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 
 /// The sequencer fee vault address.
@@ -89,10 +89,7 @@ where
                     .await
                     .map_err(|e| PipelineError::BadEncoding(e).crit())?;
             sys_config
-                .update_with_receipts(
-                    &receipts,
-                    self.rollup_cfg.l1_system_config_address,
-                )
+                .update_with_receipts(&receipts, self.rollup_cfg.l1_system_config_address)
                 .map_err(|e| PipelineError::SystemConfigUpdate(e).crit())?;
             l1_header = header;
             deposit_transactions = deposits;
@@ -127,7 +124,6 @@ where
             ));
         }
 
-
         // Build and encode the L1 info transaction for the current payload.
         let (_, l1_info_tx_envelope) = L1BlockInfoTx::try_new_with_deposit_tx(
             &self.rollup_cfg,
@@ -142,8 +138,7 @@ where
         let mut encoded_l1_info_tx = Vec::with_capacity(l1_info_tx_envelope.length());
         l1_info_tx_envelope.encode_2718(&mut encoded_l1_info_tx);
 
-        let mut txs =
-            Vec::with_capacity(1 + deposit_transactions.len());
+        let mut txs = Vec::with_capacity(1 + deposit_transactions.len());
         txs.push(encoded_l1_info_tx.into());
         txs.extend(deposit_transactions);
 
@@ -210,8 +205,8 @@ mod tests {
     use alloy_consensus::Header;
     use alloy_primitives::{Log, LogData, B256, U256, U64};
     use op_alloy_genesis::SystemConfig;
-    use op_alloy_protocol::{DepositError};
     use op_alloy_protocol::BlockInfo;
+    use op_alloy_protocol::DepositError;
     use proptest::num::u128;
 
     fn generate_valid_log() -> Log {
@@ -439,5 +434,4 @@ mod tests {
         assert_eq!(payload, expected);
         assert_eq!(payload.transactions.unwrap().len(), 1);
     }
-
 }
