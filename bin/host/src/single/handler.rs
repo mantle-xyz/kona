@@ -20,9 +20,8 @@ use kona_proof::{Hint, HintType};
 use op_alloy_protocol::BlockInfo;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use std::collections::HashMap;
-use kzg_rs_bn254::Bn254KZG;
-use rust_kzg_bn254::consts::BYTES_PER_FIELD_ELEMENT;
-use eigen_da::{BlobInfo, EigenDABlobData};
+use hokulea_cryptography::witness::EigenDABlobWitness;
+use eigen_da::{BlobInfo, EigenDABlobData, BYTES_PER_FIELD_ELEMENT};
 
 /// The [HintHandler] for the [SingleChainHost].
 #[derive(Debug, Clone, Copy)]
@@ -372,11 +371,8 @@ impl HintHandler for SingleChainHintHandler {
 
                 let eigenda_blob = EigenDABlobData::encode(blob.as_ref());
 
-                if eigenda_blob.blob.len() != blob_length as usize * BYTES_PER_FIELD_ELEMENT {
-                    return Err(
-                        anyhow!("data size from cert  does not equal to reconstructed data codec_rollup_data_len {} blob size {}",
-                        eigenda_blob.blob.len(), blob_length as usize * BYTES_PER_FIELD_ELEMENT));
-                }
+                assert_eq!(eigenda_blob.blob.len(), blob_length as usize * BYTES_PER_FIELD_ELEMENT, "data size from cert  does not equal to reconstructed data");
+
 
                 // Write all the field elements to the key-value store.
                 // The preimage oracle key for each field element is the keccak256 hash of
@@ -386,6 +382,7 @@ impl HintHandler for SingleChainHintHandler {
                 let mut blob_key = [0u8; 96];
                 blob_key[..32].copy_from_slice(cert_blob_info.blob_header.commitment.x.as_ref());
                 blob_key[32..64].copy_from_slice(cert_blob_info.blob_header.commitment.y.as_ref());
+
 
                 for i in 0..blob_length {
                     blob_key[88..].copy_from_slice(i.to_be_bytes().as_ref());
@@ -402,33 +399,37 @@ impl HintHandler for SingleChainHintHandler {
                 }
 
                 // proof is at the random point
-                // Write the KZG Proof as the last element, needed for ZK
-                blob_key[88..].copy_from_slice((blob_length).to_be_bytes().as_ref());
-                let blob_key_hash = keccak256(blob_key.as_ref());
+                //TODO
+                // Because the blob_length in EigenDA is variable-length, KZG proofs cannot be cached at the position corresponding to blob_length
+                // For now, they are placed at the position corresponding to commit x y. Further optimization will follow the EigenLayer approach
+                let mut kzg_proof_key = [0u8; 64];
+                kzg_proof_key[..64].copy_from_slice(blob_key[..64].as_ref());
+                let kzg_proof_key_hash = keccak256(kzg_proof_key.as_ref());
 
-                let output = match Bn254KZG::compute_bn254_kzg_proof(eigenda_blob.blob.as_ref()) {
-                    Ok(o) => o,
-                    Err(e) => panic!("cannot produce bn254 proof {:?}", e),
-                };
+                let mut witness = EigenDABlobWitness::new();
+
+                let _ = witness.push_witness(&blob).map_err(|e| anyhow!("eigen da blob push witness error {e}"));
+
+                let last_commitment = witness.commitments.last().unwrap();
 
                 // make sure locally computed proof equals to returned proof from the provider
-                if output[..32] != cert_blob_info.blob_header.commitment.x[..] ||
-                    output[32..64] != cert_blob_info.blob_header.commitment.y[..]{
-                    return Err(anyhow!("proxy commitment is different from computed commitment proxy {:x?} {:x?}, local {:x?}",
-                        cert_blob_info.blob_header.commitment.x,
-                        cert_blob_info.blob_header.commitment.y,
-                        output,
+                if last_commitment[..32] != cert_blob_info.blob_header.commitment.x[..]
+                    || last_commitment[32..64] != cert_blob_info.blob_header.commitment.y[..]
+                {
+                    return Err(
+                        anyhow!("proxy commitment is different from computed commitment proxy",
                     ));
-                }
+                };
+                let proof:Vec<u8> = witness.proofs.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
 
                 kv_lock.set(
-                    PreimageKey::new(*blob_key_hash, PreimageKeyType::Keccak256).into(),
-                    blob_key.into(),
+                    PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::Keccak256).into(),
+                    kzg_proof_key.into(),
                 )?;
                 // proof to be done
                 kv_lock.set(
-                    PreimageKey::new(*blob_key_hash, PreimageKeyType::GlobalGeneric).into(),
-                    output[64..].to_vec(),
+                    PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::GlobalGeneric).into(),
+                    proof,
                 )?;
             }
         }
