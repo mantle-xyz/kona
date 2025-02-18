@@ -1764,11 +1764,9 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
- "async-trait",
  "bytes",
  "hex",
  "kona-derive",
- "reqwest",
  "rust-kzg-bn254-primitives 0.1.1",
  "serde_json",
  "tracing",
