@@ -17,9 +17,6 @@ exclude.workspace = true
 alloy-primitives = { workspace = true, features = ["rlp", "k256", "serde"] }
 alloy-rlp = { workspace = true}
 
-async-trait.workspace = true
-reqwest.workspace = true
-
 # Workspace
 kona-derive = { workspace = true, features = ["serde"] }
 
