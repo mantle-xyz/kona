@@ -365,15 +365,11 @@ impl HintHandler for SingleChainHintHandler {
                 // the fourth because 0x01010000 in the beginning is metadata
                 let cert_blob_info = BlobInfo::decode(&mut &commitment[3..])
                     .map_err(|e| anyhow!("Failed to decode blob info: {e}"))?;
-
+                tracing::info!(" blob data len: {:?}", blob.len());
                 // Proxy should return a cert whose data_length measured in symbol (i.e. 32 Bytes)
                 let blob_length = cert_blob_info.blob_header.data_length as u64;
 
-                assert_eq!(blob.len() as u64 >= blob_length, true, "blob length from cert header is bigger than blob size");
-
-                let mut t_blob =  vec![0u8; blob_length as usize];
-                t_blob.copy_from_slice(&blob[..blob_length as usize]);
-                let eigenda_blob = EigenDABlobData::encode(t_blob.as_ref());
+                let eigenda_blob = EigenDABlobData::encode(blob.as_ref());
 
                 assert_eq!(eigenda_blob.blob.len(), blob_length as usize * BYTES_PER_FIELD_ELEMENT, "data size from cert  does not equal to reconstructed data");
 

@@ -99,9 +99,10 @@ mod tests {
 
     #[test]
     fn test_encode_and_decode_success() {
-        let rollup_data = vec![1, 2, 3, 4];
+        let rollup_data = vec![0u8;50000];
         let eigenda_blob = EigenDABlobData::encode(&rollup_data);
         let data_len = eigenda_blob.blob.len();
+
         assert!(data_len % BYTES_PER_FIELD_ELEMENT == 0);
 
         let result = eigenda_blob.decode();
