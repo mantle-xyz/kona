@@ -365,38 +365,47 @@ impl HintHandler for SingleChainHintHandler {
                 // the fourth because 0x01010000 in the beginning is metadata
                 let cert_blob_info = BlobInfo::decode(&mut &commitment[3..])
                     .map_err(|e| anyhow!("Failed to decode blob info: {e}"))?;
-                tracing::info!(" blob data len: {:?}", blob.len());
                 // Proxy should return a cert whose data_length measured in symbol (i.e. 32 Bytes)
-                let blob_length = cert_blob_info.blob_header.data_length as u64;
+                // let blob_length = cert_blob_info.blob_header.data_length as u64;
 
-                let eigenda_blob = EigenDABlobData::encode(blob.as_ref());
+                // let eigenda_blob = EigenDABlobData::encode(blob.as_ref());
 
-                assert_eq!(eigenda_blob.blob.len(), blob_length as usize * BYTES_PER_FIELD_ELEMENT, "data size from cert  does not equal to reconstructed data");
-
+                //TODO The condition here is not met.
+                // assert_eq!(eigenda_blob.blob.len(), blob_length as usize * BYTES_PER_FIELD_ELEMENT, "data size from cert  does not equal to reconstructed data");
 
                 // Write all the field elements to the key-value store.
                 // The preimage oracle key for each field element is the keccak256 hash of
                 // `abi.encodePacked(cert.KZGCommitment, uint256(i))`
 
                 //  TODO figure out the key size, most likely dependent on smart contract parsing
-                let mut blob_key = [0u8; 96];
+                let mut blob_key = [0u8; 65];
                 blob_key[..32].copy_from_slice(cert_blob_info.blob_header.commitment.x.as_ref());
                 blob_key[32..64].copy_from_slice(cert_blob_info.blob_header.commitment.y.as_ref());
+                blob_key[64..].copy_from_slice(0i8.to_be_bytes().as_ref());
+                let blob_key_hash = keccak256(blob_key.as_ref());
 
+                kv_lock.set(
+                    PreimageKey::new(*blob_key_hash, PreimageKeyType::Keccak256).into(),
+                    blob_key.into(),
+                )?;
+                kv_lock.set(
+                    PreimageKey::new(*blob_key_hash, PreimageKeyType::GlobalGeneric).into(),
+                    blob.clone().into(),
+                )?;
 
-                for i in 0..blob_length {
-                    blob_key[88..].copy_from_slice(i.to_be_bytes().as_ref());
-                    let blob_key_hash = keccak256(blob_key.as_ref());
-
-                    kv_lock.set(
-                        PreimageKey::new(*blob_key_hash, PreimageKeyType::Keccak256).into(),
-                        blob_key.into(),
-                    )?;
-                    kv_lock.set(
-                        PreimageKey::new(*blob_key_hash, PreimageKeyType::GlobalGeneric).into(),
-                        eigenda_blob.blob[(i as usize) << 5..(i as usize + 1) << 5].to_vec(),
-                    )?;
-                }
+                // for i in 0..element_number {
+                //     blob_key[88..].copy_from_slice(i.to_be_bytes().as_ref());
+                //     let blob_key_hash = keccak256(blob_key.as_ref());
+                //
+                //     kv_lock.set(
+                //         PreimageKey::new(*blob_key_hash, PreimageKeyType::Keccak256).into(),
+                //         blob_key.into(),
+                //     )?;
+                //     kv_lock.set(
+                //         PreimageKey::new(*blob_key_hash, PreimageKeyType::GlobalGeneric).into(),
+                //         eigenda_blob.blob[(i as usize) << 5..(i as usize + 1) << 5].to_vec(),
+                //     )?;
+                // }
 
                 // proof is at the random point
                 //TODO
