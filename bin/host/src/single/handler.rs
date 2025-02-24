@@ -21,6 +21,7 @@ use op_alloy_protocol::BlockInfo;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use std::collections::HashMap;
 use hokulea_cryptography::witness::EigenDABlobWitness;
+use tracing::info;
 use eigen_da::{BlobInfo, EigenDABlobData, BYTES_PER_FIELD_ELEMENT};
 
 /// The [HintHandler] for the [SingleChainHost].
@@ -416,6 +417,8 @@ impl HintHandler for SingleChainHintHandler {
                 let kzg_proof_key_hash = keccak256(kzg_proof_key.as_ref());
 
                 let mut witness = EigenDABlobWitness::new();
+
+                info!("blob len {:?}", blob.len());
 
                 let _ = witness.push_witness(&blob).map_err(|e| anyhow!("eigen da blob push witness error {e}"));
 
