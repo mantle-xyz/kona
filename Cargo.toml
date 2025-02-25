@@ -161,5 +161,9 @@ hex = "0.4.3"
 rlp = "0.6.1"
 
 #eigenlayer
-rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", branch = "master", default-features = false }
-hokulea-cryptography = { git = "https://github.com/Layr-Labs/hokulea.git", rev = "14aad446793b1636fb7029ec6b30637baa105549"}
+rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "b3e532e9aad533009849755d5ad7b9578a16bfb2", default-features = false }
+rust-kzg-bn254-prover = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "b3e532e9aad533009849755d5ad7b9578a16bfb2", default-features = false }
+
+ark-bn254 = "0.5.0"
+ark-ff = { version = "0.5.0", features = ["parallel"] }
+num = "0.4"

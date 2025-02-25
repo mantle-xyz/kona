@@ -18,3 +18,5 @@ pub mod eth;
 
 #[cfg(feature = "single")]
 pub mod single;
+mod witness;
+pub use witness::{EigenDABlobWitness};
