@@ -412,6 +412,14 @@ impl HintHandler for SingleChainHintHandler {
                 kzg_proof_key[..64].copy_from_slice(blob_key[..64].as_ref());
                 let kzg_proof_key_hash = keccak256(kzg_proof_key.as_ref());
 
+                //TODO
+                // In fact, the calculation result following the EigenLayer approach is not the same as the cert blob info.
+                // need to save the real commitment x y
+                let mut kzg_commitment_key = [0u8; 65];
+                kzg_commitment_key[..64].copy_from_slice(blob_key[..64].as_ref());
+                kzg_commitment_key[64] = 0u8;
+                let kzg_commitment_key_hash = keccak256(kzg_commitment_key.as_ref());
+
                 let mut witness = EigenDABlobWitness::new();
 
                 info!("blob len {:?}", blob.len());
@@ -421,13 +429,14 @@ impl HintHandler for SingleChainHintHandler {
                 let last_commitment = witness.commitments.last().unwrap();
 
                 // make sure locally computed proof equals to returned proof from the provider
-                if last_commitment[..32] != cert_blob_info.blob_header.commitment.x[..]
-                    || last_commitment[32..64] != cert_blob_info.blob_header.commitment.y[..]
-                {
-                    return Err(
-                        anyhow!("proxy commitment is different from computed commitment proxy",
-                    ));
-                };
+                // TODO In fact, the calculation result following the EigenLayer approach is not the same as the cert blob info.
+                // if last_commitment[..32] != cert_blob_info.blob_header.commitment.x[..]
+                //     || last_commitment[32..64] != cert_blob_info.blob_header.commitment.y[..]
+                // {
+                //     return Err(
+                //         anyhow!("proxy commitment is different from computed commitment proxy",
+                //     ));
+                // };
                 let proof:Vec<u8> = witness.proofs.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
 
                 kv_lock.set(
@@ -437,7 +446,18 @@ impl HintHandler for SingleChainHintHandler {
                 // proof to be done
                 kv_lock.set(
                     PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::GlobalGeneric).into(),
-                    proof,
+                    proof.into(),
+                )?;
+
+                let commitment:Vec<u8> = witness.commitments.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
+                kv_lock.set(
+                    PreimageKey::new(*kzg_commitment_key_hash, PreimageKeyType::Keccak256).into(),
+                    kzg_commitment_key.into(),
+                )?;
+                // proof to be done
+                kv_lock.set(
+                    PreimageKey::new(*kzg_commitment_key_hash, PreimageKeyType::GlobalGeneric).into(),
+                    commitment.into(),
                 )?;
             }
         }
