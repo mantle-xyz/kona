@@ -388,6 +388,7 @@ impl HintHandler for SingleChainHintHandler {
                         PreimageKey::new(*blob_key_hash, PreimageKeyType::Keccak256).into(),
                         blob_key.into(),
                     )?;
+                    info!("save block key, hash {:?}", blob_key_hash);
                     let start = (i as usize) << 5;
                     let end = start + 32;
                     let actual_end = eigenda_blob.blob.len().min(end);
@@ -402,6 +403,8 @@ impl HintHandler for SingleChainHintHandler {
                         PreimageKey::new(*blob_key_hash, PreimageKeyType::GlobalGeneric).into(),
                         data_slice.into(),
                     )?;
+                    info!("save blob slice, hash {:?}", blob_key_hash);
+
                 }
 
                 // proof is at the random point
@@ -422,11 +425,9 @@ impl HintHandler for SingleChainHintHandler {
 
                 let mut witness = EigenDABlobWitness::new();
 
-                info!("blob len {:?}", blob.len());
-
                 let _ = witness.push_witness(&blob).map_err(|e| anyhow!("eigen da blob push witness error {e}"))?;
 
-                let last_commitment = witness.commitments.last().unwrap();
+                // let last_commitment = witness.commitments.last().unwrap();
 
                 // make sure locally computed proof equals to returned proof from the provider
                 // TODO In fact, the calculation result following the EigenLayer approach is not the same as the cert blob info.
@@ -443,22 +444,28 @@ impl HintHandler for SingleChainHintHandler {
                     PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::Keccak256).into(),
                     kzg_proof_key.into(),
                 )?;
+                info!("save proof key, hash {:?}", kzg_proof_key_hash);
                 // proof to be done
                 kv_lock.set(
                     PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::GlobalGeneric).into(),
                     proof.into(),
                 )?;
+                info!("save proof value, hash {:?}", kzg_proof_key_hash);
+
 
                 let commitment:Vec<u8> = witness.commitments.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
                 kv_lock.set(
                     PreimageKey::new(*kzg_commitment_key_hash, PreimageKeyType::Keccak256).into(),
                     kzg_commitment_key.into(),
                 )?;
+                info!("save commitment key, hash {:?}", kzg_commitment_key_hash);
+
                 // proof to be done
                 kv_lock.set(
                     PreimageKey::new(*kzg_commitment_key_hash, PreimageKeyType::GlobalGeneric).into(),
                     commitment.into(),
                 )?;
+                info!("save commitment value, hash {:?}", kzg_commitment_key_hash);
             }
         }
 

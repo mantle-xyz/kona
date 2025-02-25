@@ -75,7 +75,7 @@ impl EigenDABlobWitness {
         self.eigenda_blobs.push(blob);
         self.commitments.push(commitment);
         self.proofs.push(proof);
-        info!("added a blob");
+        info!("added a blob in witness");
     }
 }
 
