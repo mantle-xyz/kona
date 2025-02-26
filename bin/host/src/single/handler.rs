@@ -17,7 +17,7 @@ use kona_proof::{Hint, HintType};
 use op_alloy_protocol::BlockInfo;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use std::collections::HashMap;
-use tracing::info;
+use tracing::{debug, info};
 use eigen_da::{BlobInfo, EigenDABlobData, BYTES_PER_FIELD_ELEMENT};
 
 /// The [HintHandler] for the [SingleChainHost].
@@ -388,7 +388,7 @@ impl HintHandler for SingleChainHintHandler {
                         PreimageKey::new(*blob_key_hash, PreimageKeyType::Keccak256).into(),
                         blob_key.into(),
                     )?;
-                    info!("save block key, hash {:?}", blob_key_hash);
+                    debug!("save block key, hash {:?}", blob_key_hash);
                     let start = (i as usize) << 5;
                     let end = start + 32;
                     let actual_end = eigenda_blob.blob.len().min(end);
@@ -403,7 +403,7 @@ impl HintHandler for SingleChainHintHandler {
                         PreimageKey::new(*blob_key_hash, PreimageKeyType::GlobalGeneric).into(),
                         data_slice.into(),
                     )?;
-                    info!("save blob slice, hash {:?}", blob_key_hash);
+                    debug!("save blob slice, hash {:?}", blob_key_hash);
 
                 }
 
@@ -444,13 +444,13 @@ impl HintHandler for SingleChainHintHandler {
                     PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::Keccak256).into(),
                     kzg_proof_key.into(),
                 )?;
-                info!("save proof key, hash {:?}", kzg_proof_key_hash);
+                debug!("save proof key, hash {:?}", kzg_proof_key_hash);
                 // proof to be done
                 kv_lock.set(
                     PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::GlobalGeneric).into(),
                     proof.into(),
                 )?;
-                info!("save proof value, hash {:?}", kzg_proof_key_hash);
+                debug!("save proof value, hash {:?}", kzg_proof_key_hash);
 
 
                 let commitment:Vec<u8> = witness.commitments.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
@@ -458,14 +458,14 @@ impl HintHandler for SingleChainHintHandler {
                     PreimageKey::new(*kzg_commitment_key_hash, PreimageKeyType::Keccak256).into(),
                     kzg_commitment_key.into(),
                 )?;
-                info!("save commitment key, hash {:?}", kzg_commitment_key_hash);
+                debug!("save commitment key, hash {:?}", kzg_commitment_key_hash);
 
                 // proof to be done
                 kv_lock.set(
                     PreimageKey::new(*kzg_commitment_key_hash, PreimageKeyType::GlobalGeneric).into(),
                     commitment.into(),
                 )?;
-                info!("save commitment value, hash {:?}", kzg_commitment_key_hash);
+                debug!("save commitment value, hash {:?}", kzg_commitment_key_hash);
             }
         }
 
