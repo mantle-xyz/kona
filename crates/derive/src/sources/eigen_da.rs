@@ -109,6 +109,7 @@ where
                 _ => continue,
             };
             let Some(to) = tx_kind else { continue };
+            info!("to {:?}", to);
             if to != self.batcher_address {
                 number += blob_hashes.map_or(0, |h| h.len() as u64);
                 continue;
