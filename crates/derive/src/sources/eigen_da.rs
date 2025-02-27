@@ -198,11 +198,13 @@ where
                         BlobDecodingError::MissingData.to_string(),
                     ));
                 }
+                info!("blob vec size {}", blob.to_vec().len());
                 whole_blob_data.extend(blob.to_vec().clone());
             }
             let rlp_blob: VecOfBytes = decode(&whole_blob_data)
                 .map_err(|e| EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
             for blob in rlp_blob.0 {
+                info!("rlp decode blob vec size {}", blob.len());
                 blob_data.push(Bytes::from(blob));
             }
         }
