@@ -92,7 +92,6 @@ where
         let mut number: u64 = 0;
 
         for tx in txs {
-            info!("tx type {:?}", tx.tx_type());
             let (tx_kind, calldata, blob_hashes) = match &tx {
                 TxEnvelope::Legacy(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
                 TxEnvelope::Eip2930(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
@@ -109,7 +108,6 @@ where
                 _ => continue,
             };
             let Some(to) = tx_kind else { continue };
-            info!("to {:?}", to);
             if to != self.batcher_address {
                 number += blob_hashes.map_or(0, |h| h.len() as u64);
                 continue;
@@ -208,6 +206,7 @@ where
             }
         }
         self.open = true;
+        info!(target: "eigen_da", "loaded eigen blobs blob data len {}", blob_data.len());
         self.data = blob_data;
         Ok(())
     }
