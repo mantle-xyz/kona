@@ -191,6 +191,7 @@ where
                     )
                 })?;
             let mut whole_blob_data = Vec::new();
+            info!("loading eigen blobs blob data len {}", blobs.len());
             for blob in blobs {
                 if blob.is_empty() {
                     return Err(EigenDAProviderError::RLPDecodeError(
