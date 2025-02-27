@@ -1,13 +1,12 @@
-use vec;
+use crate::BYTES_PER_FIELD_ELEMENT;
 use alloy_primitives::Bytes;
 use bytes::buf::Buf;
 use kona_derive::errors::BlobDecodingError;
 use rust_kzg_bn254_primitives::helpers;
 use tracing::{debug, info};
-use crate::BYTES_PER_FIELD_ELEMENT;
+use vec;
 
 pub const BLOB_ENCODING_VERSION_0: u8 = 0x0;
-
 
 #[derive(Default, Clone, Debug)]
 /// Represents the data structure for EigenDA Blob.
@@ -17,7 +16,6 @@ pub struct EigenDABlobData {
 }
 
 impl EigenDABlobData {
-
     pub fn new(blob: Bytes) -> Self {
         Self { blob }
     }
@@ -34,7 +32,7 @@ impl EigenDABlobData {
 
         // see https://github.com/Layr-Labs/eigenda/blob/f8b0d31d65b29e60172507074922668f4ca89420/api/clients/codecs/default_blob_codec.go#L44
         let content_size = blob.slice(2..6).get_u32();
-        info!(target: "eigenda-datasource", "content_size {:?}", content_size);
+        debug!(target: "eigenda-datasource", "content_size {:?}", content_size);
 
         // the first 32 Bytes are reserved as the header field element
         let codec_data = blob.slice(32..);
@@ -84,22 +82,20 @@ impl EigenDABlobData {
         raw_blob[BYTES_PER_FIELD_ELEMENT..(BYTES_PER_FIELD_ELEMENT + blob_payload_size as usize)]
             .copy_from_slice(&codec_rollup_data);
 
-        Self {
-            blob: Bytes::from(raw_blob),
-        }
+        Self { blob: Bytes::from(raw_blob) }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vec;
     use alloy_primitives::Bytes;
     use kona_derive::errors::BlobDecodingError;
+    use vec;
 
     #[test]
     fn test_encode_and_decode_success() {
-        let rollup_data = vec![0u8;50000];
+        let rollup_data = vec![0u8; 50000];
         let eigenda_blob = EigenDABlobData::encode(&rollup_data);
         let data_len = eigenda_blob.blob.len();
 

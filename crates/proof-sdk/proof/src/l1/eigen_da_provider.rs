@@ -1,19 +1,19 @@
-use alloc::sync::Arc;
-use alloc::vec::Vec;
 use alloc::boxed::Box;
 use alloc::string::ToString;
+use alloc::sync::Arc;
 use alloc::vec;
+use alloc::vec::Vec;
 use alloy_primitives::{keccak256, Bytes};
 use alloy_rlp::Decodable;
 use async_trait::async_trait;
 use eigen_da::{BlobInfo, EigenDABlobData, BYTES_PER_FIELD_ELEMENT};
 // use tokio::io::AsyncReadExt;
-use kona_derive::traits::EigenDAProvider;
-use kona_preimage::{CommsClient, PreimageKey, PreimageKeyType};
-use kona_preimage::errors::PreimageOracleError;
-use kona_preimage::PreimageKeyType::Precompile;
 use crate::errors::OracleProviderError;
 use crate::HintType;
+use kona_derive::traits::EigenDAProvider;
+use kona_preimage::errors::PreimageOracleError;
+use kona_preimage::PreimageKeyType::Precompile;
+use kona_preimage::{CommsClient, PreimageKey, PreimageKeyType};
 
 #[derive(Debug, Clone)]
 pub struct OracleEigenDaProvider<T: CommsClient> {
@@ -35,9 +35,12 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
     /// ## Returns
     /// - `Ok(blob)`: The blob.
     /// - `Err(e)`: The blob could not be retrieved.
-    async fn get_blob(&self, commitment: &[u8], blob_len: u32) -> Result<Vec<u8>, OracleProviderError> {
+    async fn get_blob(
+        &self,
+        commitment: &[u8],
+        blob_len: u32,
+    ) -> Result<Vec<u8>, OracleProviderError> {
         HintType::EigenDa.with_data(&[commitment.as_ref()]).send(self.oracle.as_ref()).await?;
-
 
         // the fourth because 0x010000 in the beginning is metadata
         // cert should at least contain 32 bytes for header + 3 bytes for commitment type metadata
@@ -51,7 +54,7 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
         // see https://github.com/Layr-Labs/eigenda-proxy/blob/main/commitments/mode.go#L39
         // the first byte my guess is the OP
         let cert_blob_info = BlobInfo::decode(&mut &commitment[3..]).unwrap();
-        tracing::info!("cert_blob_info {:?}", cert_blob_info);
+        tracing::debug!("cert_blob_info {:?}", cert_blob_info);
 
         // data_length measurs in field element, multiply to get num bytes
         let mut blob: Vec<u8> =
@@ -69,12 +72,11 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
         // number of bytes.
         let data_length = cert_blob_info.blob_header.data_length as u64;
 
-        tracing::info!("cert_blob_info.blob_header.data_length {:?}", data_length);
+        tracing::debug!("cert_blob_info.blob_header.data_length {:?}", data_length);
 
         // the common key
         blob_key[..32].copy_from_slice(&cert_blob_info.blob_header.commitment.x);
         blob_key[32..64].copy_from_slice(&cert_blob_info.blob_header.commitment.y);
-
 
         // + 1 for the proof
         for i in 0..data_length {
@@ -100,14 +102,14 @@ impl<T: CommsClient> OracleEigenDaProvider<T> {
             blob[(i as usize) << 5..(i as usize + 1) << 5].copy_from_slice(field_element.as_ref());
         }
 
-        tracing::info!(target: "client_oracle", "Retrieved blob from eigen da with commitment {commitment:?} from the oracle.");
+        tracing::debug!(target: "client_oracle", "Retrieved blob from eigen da with commitment {commitment:?} from the oracle.");
         let eigenda_blob_data = EigenDABlobData::new(Bytes::copy_from_slice(&blob));
         let blobs = eigenda_blob_data.decode();
 
         blobs
             .map_err(|err| {
-            OracleProviderError::Preimage(PreimageOracleError::Other(err.to_string()))
-        })
+                OracleProviderError::Preimage(PreimageOracleError::Other(err.to_string()))
+            })
             .map(|blob_data| blob_data.to_vec())
     }
 }

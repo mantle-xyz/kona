@@ -157,9 +157,9 @@ where
             }
 
             // Prevent EIP-7702 transactions pre-isthmus hardfork.
-            // if !is_isthmus && matches!(transaction, OpTxEnvelope::Eip7702(_)) {
-            //     return Err(ExecutorError::UnsupportedTransactionType(transaction.tx_type() as u8));
-            // }
+            if matches!(transaction, OpTxEnvelope::Eip7702(_)) {
+                return Err(ExecutorError::UnsupportedTransactionType(transaction.tx_type() as u8));
+            }
 
             // Modify the transaction environment with the current transaction.
             evm = evm

@@ -3,12 +3,12 @@ use alloc::vec::Vec;
 use alloy_primitives::Bytes;
 use ark_bn254::{Fq, G1Affine};
 use ark_ff::PrimeField;
+use num::BigUint;
 use rust_kzg_bn254_primitives::blob::Blob;
+use rust_kzg_bn254_primitives::errors::KzgError;
 use rust_kzg_bn254_prover::kzg::KZG;
 use rust_kzg_bn254_prover::srs::SRS;
 use tracing::info;
-use num::BigUint;
-use rust_kzg_bn254_primitives::errors::KzgError;
 
 /// stores  
 #[derive(Debug, Clone, Default)]
@@ -18,7 +18,7 @@ pub struct EigenDABlobWitness {
     pub proofs: Vec<Bytes>,
 }
 
-/// 
+///
 impl EigenDABlobWitness {
     pub fn new() -> Self {
         EigenDABlobWitness {
@@ -66,7 +66,11 @@ impl EigenDABlobWitness {
         append_left_padded_biguint_be(&mut proof_bytes, &proof_y_bigint);
 
         // push data into witness
-        self.write(Bytes::copy_from_slice(blob), Bytes::copy_from_slice(&commitment_bytes), proof_bytes.into());
+        self.write(
+            Bytes::copy_from_slice(blob),
+            Bytes::copy_from_slice(&commitment_bytes),
+            proof_bytes.into(),
+        );
 
         Ok(())
     }
@@ -75,10 +79,8 @@ impl EigenDABlobWitness {
         self.eigenda_blobs.push(blob);
         self.commitments.push(commitment);
         self.proofs.push(proof);
-        info!("added a blob in witness");
     }
 }
-
 
 /// This function convert a BigUint into 32Bytes vector in big endian format
 pub fn append_left_padded_biguint_be(vec: &mut Vec<u8>, biguint: &BigUint) {

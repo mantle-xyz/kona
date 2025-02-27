@@ -178,32 +178,32 @@ where
                 };
                 Ok(env)
             }
-            // OpTxEnvelope::Eip7702(signed_tx) => {
-            //     let tx = signed_tx.tx();
-            //     env.caller = signed_tx.recover_signer().map_err(ExecutorError::SignatureError)?;
-            //     env.gas_limit = tx.gas_limit;
-            //     env.gas_price = U256::from(tx.max_fee_per_gas);
-            //     env.gas_priority_fee = Some(U256::from(tx.max_priority_fee_per_gas));
-            //     env.transact_to = TransactTo::Call(tx.to);
-            //     env.value = tx.value;
-            //     env.data = tx.input.clone();
-            //     env.chain_id = Some(tx.chain_id);
-            //     env.nonce = Some(tx.nonce);
-            //     env.access_list = tx.access_list.to_vec();
-            //     env.blob_hashes.clear();
-            //     env.max_fee_per_blob_gas.take();
-            //     env.authorization_list =
-            //         Some(AuthorizationList::Signed(tx.authorization_list.to_vec()));
-            //     env.optimism = OptimismFields {
-            //         source_hash: None,
-            //         mint: None,
-            //         is_system_transaction: Some(false),
-            //         enveloped_tx: Some(encoded_transaction.to_vec().into()),
-            //         eth_value: None,
-            //         eth_tx_value: None,
-            //     };
-            //     Ok(env)
-            // }
+            OpTxEnvelope::Eip7702(signed_tx) => {
+                let tx = signed_tx.tx();
+                env.caller = signed_tx.recover_signer().map_err(ExecutorError::SignatureError)?;
+                env.gas_limit = tx.gas_limit;
+                env.gas_price = U256::from(tx.max_fee_per_gas);
+                env.gas_priority_fee = Some(U256::from(tx.max_priority_fee_per_gas));
+                env.transact_to = TransactTo::Call(tx.to);
+                env.value = tx.value;
+                env.data = tx.input.clone();
+                env.chain_id = Some(tx.chain_id);
+                env.nonce = Some(tx.nonce);
+                env.access_list = tx.access_list.to_vec();
+                env.blob_hashes.clear();
+                env.max_fee_per_blob_gas.take();
+                env.authorization_list =
+                    Some(AuthorizationList::Signed(tx.authorization_list.to_vec()));
+                env.optimism = OptimismFields {
+                    source_hash: None,
+                    mint: None,
+                    is_system_transaction: Some(false),
+                    enveloped_tx: Some(encoded_transaction.to_vec().into()),
+                    eth_value: None,
+                    eth_tx_value: None,
+                };
+                Ok(env)
+            }
             OpTxEnvelope::Deposit(tx) => {
                 env.caller = tx.from;
                 env.access_list.clear();
