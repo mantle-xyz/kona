@@ -92,6 +92,7 @@ where
         let mut number: u64 = 0;
 
         for tx in txs {
+            info!("tx type {:?}", tx.tx_type());
             let (tx_kind, calldata, blob_hashes) = match &tx {
                 TxEnvelope::Legacy(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
                 TxEnvelope::Eip2930(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
