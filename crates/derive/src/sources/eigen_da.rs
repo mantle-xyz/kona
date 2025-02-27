@@ -202,7 +202,10 @@ where
                 whole_blob_data.extend(blob.to_vec().clone());
             }
             let rlp_blob: VecOfBytes = decode(&whole_blob_data)
-                .map_err(|e| EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
+                .map_err(|e| EigenDAProviderError::RLPDecodeError(e.to_string()))?;
+
+            info!("rlp blob data len {}", rlp_blob.0.len());
+
             for blob in rlp_blob.0 {
                 info!("rlp decode blob vec size {}", blob.len());
                 blob_data.push(Bytes::from(blob));
