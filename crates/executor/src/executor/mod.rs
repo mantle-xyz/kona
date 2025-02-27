@@ -198,7 +198,7 @@ where
 
             // Accumulate the gas used by the transaction.
             cumulative_gas_used += result.gas_used();
-
+            info!("tx type: {:?}", transaction.tx_type());
             // Create receipt envelope.
             let receipt = OpReceiptEnvelope::<Log>::from_parts(
                 result.is_success(),
