@@ -117,10 +117,8 @@ impl HintHandler for SingleChainHintHandler {
                     blob_key[72..].copy_from_slice(i.to_be_bytes().as_ref());
                     let blob_key_hash = keccak256(blob_key.as_ref());
 
-                    info!("blob key {:?}", PreimageKey::new_keccak256(*blob_key_hash));
                     kv_lock
                         .set(PreimageKey::new_keccak256(*blob_key_hash).into(), blob_key.into())?;
-                    info!("blob value {:?}", PreimageKey::new(*blob_key_hash, PreimageKeyType::Blob));
 
                     kv_lock.set(
                         PreimageKey::new(*blob_key_hash, PreimageKeyType::Blob).into(),
@@ -131,14 +129,11 @@ impl HintHandler for SingleChainHintHandler {
                 // Write the KZG Proof as the 4096th element.
                 blob_key[72..].copy_from_slice((FIELD_ELEMENTS_PER_BLOB).to_be_bytes().as_ref());
                 let blob_key_hash = keccak256(blob_key.as_ref());
-                info!("proof key {:?}", PreimageKey::new_keccak256(*blob_key_hash));
                 kv_lock.set(PreimageKey::new_keccak256(*blob_key_hash).into(), blob_key.into())?;
                 kv_lock.set(
                     PreimageKey::new(*blob_key_hash, PreimageKeyType::Blob).into(),
                     sidecar.kzg_proof.to_vec(),
                 )?;
-                info!("proof value {:?}", PreimageKey::new(*blob_key_hash, PreimageKeyType::Blob));
-
             }
             HintType::L1Precompile => {
                 ensure!(hint.data.len() >= 20, "Invalid hint data length");

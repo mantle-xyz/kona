@@ -46,7 +46,6 @@ impl<T: CommsClient> OracleBlobProvider<T> {
 
         // Fetch the blob commitment.
         let mut commitment = [0u8; 48];
-        tracing::info!("get commitment preimagekey {:?}", PreimageKey::new(*blob_hash.hash, PreimageKeyType::Sha256));
         self.oracle
             .get_exact(PreimageKey::new(*blob_hash.hash, PreimageKeyType::Sha256), &mut commitment)
             .await
@@ -58,7 +57,6 @@ impl<T: CommsClient> OracleBlobProvider<T> {
         field_element_key[..48].copy_from_slice(commitment.as_ref());
         for i in 0..FIELD_ELEMENTS_PER_BLOB {
             field_element_key[72..].copy_from_slice(i.to_be_bytes().as_ref());
-            tracing::info!("get blob preimagekey {:?}", PreimageKey::new(*keccak256(field_element_key), PreimageKeyType::Blob));
 
             let mut field_element = [0u8; 32];
             self.oracle
