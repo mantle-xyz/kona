@@ -101,7 +101,6 @@ impl HintHandler for SingleChainHintHandler {
                 // Acquire a lock on the key-value store and set the preimages.
                 let mut kv_lock = kv.write().await;
 
-                info!("commitment preimagekey {:?}", PreimageKey::new(*hash, PreimageKeyType::Sha256));
                 // Set the preimage for the blob commitment.
                 kv_lock.set(
                     PreimageKey::new(*hash, PreimageKeyType::Sha256).into(),
@@ -119,7 +118,6 @@ impl HintHandler for SingleChainHintHandler {
 
                     kv_lock
                         .set(PreimageKey::new_keccak256(*blob_key_hash).into(), blob_key.into())?;
-
                     kv_lock.set(
                         PreimageKey::new(*blob_key_hash, PreimageKeyType::Blob).into(),
                         sidecar.blob[(i as usize) << 5..(i as usize + 1) << 5].to_vec(),
