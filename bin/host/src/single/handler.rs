@@ -127,7 +127,6 @@ impl HintHandler for SingleChainHintHandler {
                 // Write the KZG Proof as the 4096th element.
                 blob_key[72..].copy_from_slice((FIELD_ELEMENTS_PER_BLOB).to_be_bytes().as_ref());
                 let blob_key_hash = keccak256(blob_key.as_ref());
-
                 kv_lock.set(PreimageKey::new_keccak256(*blob_key_hash).into(), blob_key.into())?;
                 kv_lock.set(
                     PreimageKey::new(*blob_key_hash, PreimageKeyType::Blob).into(),

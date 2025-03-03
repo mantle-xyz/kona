@@ -11,12 +11,14 @@ use alloy_primitives::B256;
 use alloy_provider::RootProvider;
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use eigen_da::{EigenDaConfig};
+use eigen_da::EigenDaConfig;
 use kona_preimage::{
     BidirectionalChannel, Channel, HintReader, HintWriter, OracleReader, OracleServer,
 };
 use kona_proof::HintType;
-use kona_providers_alloy::{EigenDaProxy, OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDaProvider};
+use kona_providers_alloy::{
+    EigenDaProxy, OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDaProvider,
+};
 use kona_std_fpvm::{FileChannel, FileDescriptor};
 use op_alloy_genesis::RollupConfig;
 use op_alloy_network::Optimism;
