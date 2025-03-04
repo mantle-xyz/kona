@@ -1,0 +1,1388 @@
+<!DOCTYPE HTML>
+<html lang="en" class="ferra" dir="ltr">
+
+<head>
+    <!-- Book generated using mdBook -->
+    <meta charset="UTF-8">
+    <title>The Kona Book</title>
+    <meta name="robots" content="noindex">
+
+
+    <!-- Custom HTML head -->
+    
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
+
+    <link rel="icon" href="favicon.svg">
+    <link rel="shortcut icon" href="favicon.png">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/general.css">
+    <link rel="stylesheet" href="css/chrome.css">
+    <link rel="stylesheet" href="css/print.css" media="print">
+
+    <!-- Fonts -->
+    <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+    <link rel="stylesheet" href="fonts/fonts.css">
+
+    <!-- Highlight.js Stylesheets -->
+    <link rel="stylesheet" href="highlight.css">
+    <link rel="stylesheet" href="tomorrow-night.css">
+    <link rel="stylesheet" href="ayu-highlight.css">
+
+    <!-- Custom theme stylesheets -->
+    <link rel="stylesheet" href="custom.css">
+
+</head>
+
+<body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "ferra" : "ferra";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch (e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('ferra')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch (e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="fpp-dev/intro.html"><strong aria-hidden="true">2.</strong> Fault Proof Program Development</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="fpp-dev/env.html"><strong aria-hidden="true">2.1.</strong> Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="fpp-dev/targets.html"><strong aria-hidden="true">2.1.1.</strong> Supported Targets</a></li></ol></li><li class="chapter-item expanded "><a href="fpp-dev/prologue.html"><strong aria-hidden="true">2.2.</strong> Prologue</a></li><li class="chapter-item expanded "><a href="fpp-dev/execution.html"><strong aria-hidden="true">2.3.</strong> Execution</a></li><li class="chapter-item expanded "><a href="fpp-dev/epilogue.html"><strong aria-hidden="true">2.4.</strong> Epilogue</a></li></ol></li><li class="chapter-item expanded "><a href="sdk/intro.html"><strong aria-hidden="true">3.</strong> Kona SDK</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="sdk/fpvm-backend.html"><strong aria-hidden="true">3.1.</strong> FPVM Backend</a></li><li class="chapter-item expanded "><a href="sdk/custom-backend.html"><strong aria-hidden="true">3.2.</strong> Custom Backend</a></li><li class="chapter-item expanded "><a href="sdk/exec-ext.html"><strong aria-hidden="true">3.3.</strong> kona-executor Extensions</a></li><li class="chapter-item expanded "><a href="sdk/pipeline/intro.html"><strong aria-hidden="true">3.4.</strong> kona-derive Pipeline</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="sdk/pipeline/providers.html"><strong aria-hidden="true">3.4.1.</strong> Custom Providers</a></li><li class="chapter-item expanded "><a href="sdk/pipeline/stages.html"><strong aria-hidden="true">3.4.2.</strong> Stage Swapping</a></li><li class="chapter-item expanded "><a href="sdk/pipeline/signaling.html"><strong aria-hidden="true">3.4.3.</strong> Signaling</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="glossary.html"><strong aria-hidden="true">4.</strong> Glossary</a></li><li class="chapter-item expanded "><a href="CONTRIBUTING.html"><strong aria-hidden="true">5.</strong> Contributing</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function (e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor"
+                            title="Toggle Table of Contents" aria-label="Toggle Table of Contents"
+                            aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme"
+                            aria-label="Change theme" aria-haspopup="true" aria-expanded="false"
+                            aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ferra">Ferra</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)"
+                            aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S"
+                            aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Kona Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/op-rs/kona" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..."
+                            aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function (link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="kona-book"><a class="header" href="#kona-book">Kona Book</a></h1>
+<p><em>Documentation for the Kona project.</em></p>
+<p><a href="https://github.com/op-rs/kona"><img src="https://img.shields.io/badge/GitHub%20Repo-kona-green?logo=github"></a></p>
+<blockquote>
+<p>📖 <code>kona</code> is in active development, and is not yet ready for use in production. During development, this book will evolve quickly and may contain inaccuracies.</p>
+<p>Please <a href="https://github.com/op-rs/kona/issues/new">open an issue</a> if you find any errors or have any suggestions for improvements, and also feel free to <a href="https://github.com/op-rs/kona/tree/main/CONTRIBUTING.md">contribute</a> to the project!</p>
+</blockquote>
+<h2 id="introduction"><a class="header" href="#introduction">Introduction</a></h2>
+<p>Kona is a suite of libraries and build pipelines for developing verifiable Rust programs targeting
+<a href="./glossary.html#fault-proof-vm">Fault Proof VMs</a>
+.</p>
+<p>It is built and maintained by members of <a href="https://github.com/ethereum-optimism">OP Labs</a> as well as open source contributors, and is licensed under the MIT License.</p>
+<p>Kona provides tooling and abstractions around low-level syscalls, memory management, and other common structures that authors of verifiable programs
+will need to interact with. It also provides build pipelines for compiling <code>no_std</code> Rust programs to a format that can be executed by supported
+Fault Proof VM targets.</p>
+<h2 id="goals-of-kona"><a class="header" href="#goals-of-kona">Goals of Kona</a></h2>
+<p><strong>1. Composability</strong></p>
+<p>Kona provides a common set of tools and abstractions for developing verifiable Rust programs on top of several supported Fault Proof VM targets. This is done
+to ensure that programs written for one supported FPVM can be easily ported to another supported FPVM, and that the ecosystem of programs built on top of these targets
+can be easily shared and reused.</p>
+<p><strong>2. Safety</strong></p>
+<p>Through standardization of these low-level system interfaces and build pipelines, Kona seeks to increase coverage over the low-level operations that are
+required to build on top of a FPVM.</p>
+<p><strong>3. Developer Experience</strong></p>
+<p>Building on top of custom Rust targets can be difficult, especially when the target is nascent and tooling is not yet mature. Kona seeks to improve this
+experience by standardizing and streamlining the process of developing and compiling verifiable Rust programs, targeted at supported FPVMs.</p>
+<p><strong>4. Performance</strong></p>
+<p>Kona is opinionated in that it favors <code>no_std</code> Rust programs for embedded FPVM development, for both performance and portability. In contrast with alternative approaches, such
+as the <a href="https://github.com/ethereum-optimism/optimism/tree/develop/op-program"><code>op-program</code></a> using the Golang <code>MIPS32</code> target, <code>no_std</code> Rust programs produce much smaller binaries, resulting in fewer instructions
+that need to be executed on the FPVM. In addition, this offers developers more low-level control over interactions with the FPVM kernel, which can be useful
+for optimizing performance-critical code.</p>
+<h2 id="development-status"><a class="header" href="#development-status">Development Status</a></h2>
+<p><strong>Kona is currently in active development, and is not yet ready for use in production.</strong></p>
+<h2 id="contributing"><a class="header" href="#contributing">Contributing</a></h2>
+<p>Contributors are welcome! Please see the <a href="https://github.com/op-rs/kona/tree/main/CONTRIBUTING.md">contributing guide</a> for more information.</p>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="fault-proof-program-development"><a class="header" href="#fault-proof-program-development">Fault Proof Program Development</a></h1>
+<p>This chapter provides an overview of <a href="fpp-dev/../glossary.html#fault-proof-program">Fault Proof Program</a>
+development
+on top of the custom FPVM targets supported by <a href="https://github.com/op-rs/kona">Kona</a>.</p>
+<p>At a high level, a Fault Proof Program is not much different from a regular <code>no_std</code> Rust program. A custom entrypoint is provided, and the program
+is compiled down to a custom target, which is then executed on the FPVM.</p>
+<p>Fault Proof Programs are structured with 3 stages:</p>
+<ol>
+<li><strong>Prologue</strong>: The bootstrapping stage, where the program is loaded into memory and the initial state is set up. During this phase, the program's initial
+state is written to the FPVM's memory, and the program's entrypoint is set.</li>
+<li><strong>Execution</strong>: The main execution stage, where the program is executed on the FPVM. During this phase, the program's entrypoint is called, and the
+program is executed until it exits.</li>
+<li><strong>Epilogue</strong>: The finalization stage, where the program's final state is read from the FPVM's memory. During this phase, the program's final state is
+inspected and properties of the state transition are verified.</li>
+</ol>
+<p>The following sections will provide a more in-depth overview of each of these stages, as well as the tools and abstractions provided by Kona for
+developing your own Fault Proof Programs.</p>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="environment"><a class="header" href="#environment">Environment</a></h1>
+<p>Before kicking off the development of your own <a href="fpp-dev/../glossary.html#fault-proof-program">Fault Proof Program</a>
+,
+it's important to understand the environment that your program will be running in.</p>
+<p>The FPP runs on top of a custom FPVM target, which is typically a VM with a modified subset of an existing reduced instruction set architecture and a subset of Linux syscalls. The FPVM is designed to
+execute verifiable programs, and commonly modifies the instruction set it is derived from as well as the internal representation of memory to support verifiable memory access, <code>client</code> (program)
+communication with the <code>host</code> (the FPVM), and other implementation-specific features.</p>
+<h2 id="host---client-communication"><a class="header" href="#host---client-communication">Host &lt;-&gt; Client Communication</a></h2>
+<p>While the program is running on top of the FPVM, it is considered to be in the <code>client</code> role, while the VM is in the <code>host</code> role. The only way for the <code>client</code> and <code>host</code>
+to communicate with one another is synchronously through the <a href="fpp-dev/../glossary.html#preimage-abi">Preimage ABI</a>
+(<a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">specification</a>).</p>
+<p>In order for the <code>client</code> to read from the <code>host</code>, the <code>read</code> and <code>write</code> syscalls are modified within the FPVM to allow the <code>client</code> to request preparation of and read foreign data.</p>
+<h3 id="reading"><a class="header" href="#reading">Reading</a></h3>
+<p>When the <code>client</code> wants to read data from the <code>host</code>, it must first send a "hint" to the <code>host</code> through the hint file descriptor, which signals a request for the <code>host</code> to prepare the data for reading. The <code>host</code> will then
+prepare the data, and send a hint acknowledgement back to the <code>client</code>. The <code>client</code> can then read the data from the host through the designated file descriptor.</p>
+<p>The preparation step ("hinting") is an optimization that allows the <code>host</code> to know ahead of time the intents of the <code>client</code> and the data it requires for execution. This can allow
+for lazy loading of data, and also prevent the need for unnecessary allocations within the <code>host</code>'s memory. This step is a no-op on-chain, and is only ran locally
+when the <code>host</code> is the native implementation of the FPVM.</p>
+<center>
+<pre class="mermaid">sequenceDiagram
+    Client-&gt;&gt;+Host: Hint preimage (no-op on-chain / read-only mode)
+    Host--&gt;&gt;-Client: Hint acknowledgement
+    Client--&gt;&gt;+Host: Preimage Request
+    Host--&gt;&gt;Host: Prepare Preimage
+    Host--&gt;&gt;-Client: Preimage Data
+</pre>
+</center>
+<h2 id="full-example"><a class="header" href="#full-example">Full Example</a></h2>
+<p>Below, we have a full architecture diagram of the <a href="https://github.com/ethereum-optimism/optimism/tree/develop/op-program"><code>op-program</code></a> (source: <a href="https://specs.optimism.io/experimental/fault-proof/index.html">fault proof specs</a>), the reference implementation for the OP Stack's Fault Proof Program,
+which has the objective of verifying claims about the state of an <a href="https://github.com/ethereum-optimism/optimism">OP Stack</a> layer two.</p>
+<p><img src="fpp-dev/../assets/op-program-fpp.svg" alt="op-program-architecture" /></p>
+<p>In this program, execution and derivation of the L2 chain is performed within it, and ultimately the claimed state of the L2 chain is verified in the <a href="fpp-dev/./prologue.html">prologue</a> stage.</p>
+<p>It communicates with the <code>host</code> for two reasons:</p>
+<ol>
+<li>To request preparation of L1 and L2 state data preimages.</li>
+<li>To read the L1 and L2 state data preimages that were prepared after the above requests.</li>
+</ol>
+<p>The <code>host</code> is responsible for:</p>
+<ol>
+<li>Preparing and maintaining a store of the L1 and L2 state data preimages, as well as localized bootstrap k/v pairs.</li>
+<li>Providing the L1 and L2 state data preimages to the <code>client</code> for reading.</li>
+</ol>
+<p>Other programs (<code>clients</code>) may have different requirements for communication with the <code>host</code>, but the above is a common pattern for programs built on top of a FPVMs. In general:</p>
+<ol>
+<li>The <code>client</code> program is a state machine that is responsible for bootstrapping itself from the inputs, executing the program logic, and verifying the outcome.</li>
+<li>The <code>host</code> is responsible for providing the <code>client</code> with data it wasn't bootstrapped with, and for executing the program itself.</li>
+</ol>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="supported-targets"><a class="header" href="#supported-targets">Supported Targets</a></h1>
+<p>Kona seeks to support all FPVM targets that LLVM and <code>rustc</code> can offer introductory support for. Below is a matrix of features that Kona offers
+for each FPVM target:</p>
+<div class="table-wrapper"><table><thead><tr><th>Target</th><th>Build Pipeline</th><th>IO</th><th>malloc</th></tr></thead><tbody>
+<tr><td><code>cannon</code> &amp; <code>cannon-rs</code></td><td>✅</td><td>✅</td><td>✅</td></tr>
+<tr><td><code>asterisc</code></td><td>✅</td><td>✅</td><td>✅</td></tr>
+</tbody></table>
+</div>
+<p>If there is a feature that you would like to see supported, please <a href="https://github.com/op-rs/kona/issues/new">open an issue</a> or <a href="https://github.com/op-rs/kona/tree/main/CONTRIBUTING.md">consider contributing</a>!</p>
+<h2 id="asterisc-risc-v"><a class="header" href="#asterisc-risc-v">Asterisc (RISC-V)</a></h2>
+<p>Asterisc is based off of the <code>rv64gc</code> target architecture, which defines the following extensions:</p>
+<ul>
+<li><code>RV32I</code> support - 32 bit base instruction set
+<ul>
+<li><code>FENCE</code>, <code>ECALL</code>, <code>EBREAK</code> are hardwired to implement a minimal subset of systemcalls of the linux kernel
+<ul>
+<li>Work in progress. All syscalls used by the Golang <code>risc64</code> runtime.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>RV64I</code> support</li>
+<li><code>RV32M</code>+<code>RV64M</code>: Multiplication support</li>
+<li><code>RV32A</code>+<code>RV64A</code>: Atomics support</li>
+<li><code>RV{32,64}{D,F,Q}</code>: no-op: No floating points support (since no IEEE754 determinism with rounding modes etc., nor worth the complexity)</li>
+<li><code>Zifencei</code>: <code>FENCE.I</code> no-op: No need for <code>FENCE.I</code></li>
+<li><code>Zicsr</code>: no-op: some support for Control-and-status registers may come later though.</li>
+<li><code>Ztso</code>: no-op: no need for Total Store Ordering</li>
+<li>other: revert with error code on unrecognized instructions</li>
+</ul>
+<p><code>asterisc</code> supports a plethora of syscalls, documented <a href="https://github.com/ethereum-optimism/asterisc/blob/master/docs/golang.md#linux-syscalls-used-by-go">in the repository</a>. <code>kona</code> offers an interface for
+programs to directly invoke a select few syscalls:</p>
+<ol>
+<li><code>EXIT</code> - Terminate the process with the provided exit code.</li>
+<li><code>WRITE</code> - Write the passed buffer to the passed file descriptor.</li>
+<li><code>READ</code> - Read the specified number of bytes from the passed file descriptor.</li>
+</ol>
+<h2 id="cannon-mips32r2"><a class="header" href="#cannon-mips32r2">Cannon (MIPS32r2)</a></h2>
+<p>Cannon is based off of the <code>mips32r2</code> target architecture, specified in <a href="https://www.cs.cornell.edu/courses/cs3410/2013sp/MIPS_Vol3.pdf"><em>MIPS32™ Architecture For Programmers Volume III: The MIPS32™ Privileged Resource Architecture</em></a></p>
+<h3 id="syscalls"><a class="header" href="#syscalls">Syscalls</a></h3>
+<p>Syscalls supported by <code>cannon</code> can be found within the <code>cannon</code> specification <a href="https://specs.optimism.io/fault-proof/cannon-fault-proof-vm.html#syscalls">here</a>.</p>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="prologue"><a class="header" href="#prologue">Prologue</a></h1>
+<p>The prologue stage of the program is commonly responsible for bootstrapping the program with inputs from an external
+source, pulled in through the <a href="fpp-dev/./env.html#host---client-communication">Host &lt;-&gt; Client communication</a> implementation.</p>
+<p>As a rule of thumb, the prologue implementation should be kept minimal, and should not do much more than establish
+the inputs for the <a href="fpp-dev/./execution.html">execution phase</a>.</p>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<p>As an example, the prologue stage of the <code>kona-client</code> program runs through several steps:</p>
+<ol>
+<li>Pull in the boot information over the <a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">Preimage Oracle ABI</a>, containing:
+<ul>
+<li>The L1 head hash containing all data required to reproduce the L2 safe chain at the claimed block height.</li>
+<li>The latest finalized <a href="https://specs.optimism.io/protocol/proposals.html#l2-output-commitment-construction">L2 output root</a>.</li>
+<li>The <a href="https://specs.optimism.io/protocol/proposals.html#l2-output-commitment-construction">L2 output root</a> claim.</li>
+<li>The block number of the <a href="https://specs.optimism.io/protocol/proposals.html#l2-output-commitment-construction">L2 output root</a> claim.</li>
+<li>The L2 chain ID.</li>
+</ul>
+</li>
+<li>Pull in the <code>RollupConfig</code> and <code>L2ChainConfig</code> corresponding to the passed L2 chain ID.</li>
+<li>Validate these values.</li>
+<li>Pass the boot information to the execution phase.</li>
+</ol>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="execution"><a class="header" href="#execution">Execution</a></h1>
+<p>The execution phase of the program is commonly the heaviest portion of the fault proof program, where the computation
+that is being verified is performed.</p>
+<p>This phase consumes the outputs of the <a href="fpp-dev/./prologue.html">prologue phase</a>, and performs the bulk of the verifiable
+computation. After execution has concluded, the outputs are passed along to the <a href="fpp-dev/./epilogue.html">epilogue phase</a> for
+final verification.</p>
+<h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
+<p>At a high-level, in the <code>kona-client</code> program, the execution phase:</p>
+<ol>
+<li>Derives the inputs to the L2 derivation pipeline by unrolling the L1 head hash fetched in the epilogue.</li>
+<li>Passes the inputs to the L2 derivation pipeline, producing the L2 execution payloads required to reproduce
+the L2 safe chain at the claimed height.</li>
+<li>Executes the payloads produced by the L2 derivation pipeline, producing the <a href="https://specs.optimism.io/protocol/proposals.html#l2-output-commitment-construction">L2 output root</a> at the
+L2 claim height.</li>
+</ol>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="epilogue"><a class="header" href="#epilogue">Epilogue</a></h1>
+<p>The epilogue stage of the program is intended to perform the final validation on the outputs from the
+<a href="fpp-dev/./execution.html">execution phase</a>. In most programs, this entails comparing the outputs of the execution phase
+to portions of the bootstrap data made available during the <a href="fpp-dev/./prologue.html">prologue phase</a>.</p>
+<p>Generally, this phase should consist almost entirely of validation steps.</p>
+<h2 id="example-2"><a class="header" href="#example-2">Example</a></h2>
+<p>In the <code>kona-client</code> program, the prologue phase only contains two directives:</p>
+<ol>
+<li>Validate that the L2 safe chain could be produced at the claimed L2 block height.</li>
+<li>The constructed output root is equivalent to the claimed <a href="https://specs.optimism.io/protocol/proposals.html#l2-output-commitment-construction">L2 output root</a>.</li>
+</ol>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="kona-sdk"><a class="header" href="#kona-sdk">Kona SDK</a></h1>
+<p>Welcome to the Kona SDK, a powerful set of libraries designed to revolutionize the way developers build proofs for the
+OP Stack STF on top of the OP Stack's FPVMs and other verifiable backends like <a href="https://github.com/succinct-labs/sp-1">SP-1</a>, <a href="https://github.com/risc0/risc0">Risc0</a>,
+<a href="https://www.intel.com/content/www/us/en/developer/tools/trust-domain-extensions/documentation.html">Intel TDX</a>, and <a href="https://www.amd.com/en/developer/sev.html">AMD SEV-SNP</a>. At its core, Kona is built on the principles of modularity, extensibility,
+and developer empowerment.</p>
+<h2 id="a-foundation-of-flexibility"><a class="header" href="#a-foundation-of-flexibility">A Foundation of Flexibility</a></h2>
+<p>The kona repository is more than a fault proof program for the OP Stack — it's an ecosystem of interoperable components,
+each crafted with reusability and extensibility as primary goals. While we provide
+<a href="sdk/./glossary.html#fault-proof-vm">Fault Proof VM</a>
+and "online" backends
+for key components like <code>kona-derive</code> and <code>kona-executor</code>, the true power of <code>kona</code> lies in its adaptability.</p>
+<h2 id="extend-without-forking"><a class="header" href="#extend-without-forking">Extend Without Forking</a></h2>
+<p>One of Kona's standout features is its ability to support custom features and data sources without requiring you to fork
+the entire project. Through careful use of Rust's powerful trait system and abstract interfaces, we've created a
+framework that allows you to plug in your own features and ideas seamlessly.</p>
+<h2 id="what-youll-learn"><a class="header" href="#what-youll-learn">What You'll Learn</a></h2>
+<p>In this section of the developer book, we'll dive deep into the Kona SDK, covering:</p>
+<ul>
+<li><strong>Building on the FPVM Backend</strong>: Learn how to leverage the Fault Proof VM tooling to create your own fault proof programs.</li>
+<li><strong>Creating Custom Backends</strong>: Discover the process of designing and implementing your own backend to run <code>kona-client</code> or a variation of it on different targets.</li>
+<li><strong>Extending Core Components</strong>: Explore techniques for creating new constructs that integrate smoothly with crates like <code>kona-derive</code> and <code>kona-executor</code>.</li>
+</ul>
+<p>Whether you're looking to use Kona as-is, extend its functionality, or create entirely new programs based on its libraries,
+this guide is intended to provide you with the knowledge and tools you need to succeed.</p>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="fpvm-backend"><a class="header" href="#fpvm-backend">FPVM Backend</a></h1>
+<blockquote>
+<p>📖 Before reading this section of the book, it is advised to read the <a href="sdk/../fpp-dev/env.html">Fault Proof Program Environment</a>
+section to familiarize yourself with the PreimageOracle IO pattern.</p>
+</blockquote>
+<p>Kona is effectively split into three parts:</p>
+<ul>
+<li>OP Stack state transition logic (<code>kona-derive</code>, <code>kona-executor</code>, <code>kona-mpt</code>)</li>
+<li>OP Stack state transition proof SDK (<code>kona-preimage</code>, <code>kona-proof</code>)</li>
+<li><a href="sdk/./glossary.html#fault-proof-vm">Fault Proof VM</a>
+IO and utilities
+(<code>kona-std-fpvm</code>, <code>kona-std-fpvm-proc</code>)</li>
+</ul>
+<p>This section of the book focuses on the usage of <code>kona-std-fpvm</code> and <code>kona-preimage</code> to facilitate host&lt;-&gt;client
+communication for programs running on top of the <a href="sdk/../fpp-dev/env.html">FPVM targets</a>.</p>
+<h2 id="host---client-communication-api"><a class="header" href="#host---client-communication-api">Host &lt;-&gt; Client Communication API</a></h2>
+<p>The FPVM system API is built on several layers. In this document, we'll cover these layers, from lowest-level to
+highest-level API.</p>
+<h3 id="kona-std-fpvm"><a class="header" href="#kona-std-fpvm"><code>kona-std-fpvm</code></a></h3>
+<p><code>kona-std-fpvm</code> implements raw syscall dispatch, a default global memory allocator, and a blocking async runtime.
+<code>kona-std-fpvm</code> relies on a minimal linux backend to function, supporting only the syscalls required to implement the
+<a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">PreimageOracle ABI</a> (<code>read</code>, <code>write</code>, <code>exit_group</code>).</p>
+<p>These syscalls are exposed to the user through the <code>io</code> module directly, with each supported platform implementing the
+<a href="https://docs.rs/kona-std-fpvm/latest/kona_std_fpvm/trait.BasicKernelInterface.html"><code>BasicKernelInterface</code></a> trait.</p>
+<p>To directly dispatch these syscalls, the <a href="https://docs.rs/kona-std-fpvm/latest/kona_std_fpvm/io/index.html"><code>io</code></a> module
+exposes a safe API:</p>
+<pre><code class="language-rs">use kona_std_fpvm::{io, FileDescriptor};
+
+// Print to `stdout`. Infallible, will panic if dispatch fails.
+io::print("Hello, world!");
+
+// Print to `stderr`. Infallible, will panic if dispatch fails.
+io::print_err("Goodbye, world!");
+
+// Read from or write to a specified file descriptor. Returns a result with the
+// return value or syscall errno.
+let _ = io::write(FileDescriptor::StdOut, "Hello, world!".as_bytes());
+let mut buf = Vec::with_capacity(8);
+let _ = io::read(FileDescriptor::StdIn, buf.as_mut_slice());
+
+// Exit the program with a specified exit code.
+io::exit(0);
+</code></pre>
+<p>With this library, you can implement a custom host&lt;-&gt;client communication protocol, or extend the existing
+<a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">PreimageOracle ABI</a>. However, for most developers, we recommend sticking with <code>kona-preimage</code>
+when developing programs that target the <a href="sdk/../fpp-dev/env.html">FPVMs</a>, barring needs like printing directly to
+<code>stdout</code>.</p>
+<h3 id="kona-preimage"><a class="header" href="#kona-preimage"><code>kona-preimage</code></a></h3>
+<p><code>kona-preimage</code> is an implementation of the <a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">PreimageOracle ABI</a>. This crate enables synchronous
+communication between the host and client program, described in
+<a href="sdk/../fpp-dev/env.html#host---client-communication">Host &lt;-&gt; Client Communication</a> in the FPP Dev environment section of the
+book.</p>
+<p>The crate is built around the <a href="https://docs.rs/kona-preimage/latest/kona_preimage/trait.Channel.html"><code>Channel</code></a> trait,
+which serves as a single end of a bidirectional pipe (see: <a href="https://man7.org/linux/man-pages/man2/pipe.2.html"><code>pipe</code> manpage</a>).</p>
+<p>Through this handle, the higher-level constructs can read and write data to the counterparty holding on to the other end
+of the channel, following the protocol below:</p>
+<center>
+<pre class="mermaid">sequenceDiagram
+    Client-&gt;&gt;+Host: Hint preimage (no-op on-chain / read-only mode)
+    Host--&gt;&gt;-Client: Hint acknowledgement
+    Client--&gt;&gt;+Host: Preimage Request
+    Host--&gt;&gt;Host: Prepare Preimage
+    Host--&gt;&gt;-Client: Preimage Data
+</pre>
+</center>
+<p>The interfaces of each part of the above protocol are described by the following traits:</p>
+<ul>
+<li><a href="https://docs.rs/kona-preimage/latest/kona_preimage/trait.PreimageOracleClient.html"><code>PreimageOracleClient</code></a>
+<ul>
+<li>To-spec implementation: <a href="https://docs.rs/kona-preimage/latest/kona_preimage/struct.OracleReader.html"><code>OracleReader</code></a></li>
+</ul>
+</li>
+<li><a href="https://docs.rs/kona-preimage/latest/kona_preimage/trait.HintWriterClient.html"><code>HintWriterClient</code></a>
+<ul>
+<li>To-spec implementation: <a href="https://docs.rs/kona-preimage/latest/kona_preimage/struct.HintWriter.html"><code>HintWriter</code></a></li>
+</ul>
+</li>
+<li><a href="https://docs.rs/kona-preimage/latest/kona_preimage/trait.PreimageOracleServer.html"><code>PreimageOracleServer</code></a>
+<ul>
+<li>To-spec implementation: <a href="https://docs.rs/kona-preimage/latest/kona_preimage/struct.OracleServer.html"><code>OracleServer</code></a></li>
+</ul>
+</li>
+<li><a href="https://docs.rs/kona-preimage/latest/kona_preimage/trait.HintReaderServer.html"><code>HintReaderServer</code></a>
+<ul>
+<li>To-spec implementation: <a href="https://docs.rs/kona-preimage/latest/kona_preimage/struct.HintReader.html"><code>HintReader</code></a></li>
+</ul>
+</li>
+</ul>
+<p>Each of these traits, however, can be re-implemented to redefine the host&lt;-&gt;client communication protocol if the needs
+of the consumer are not covered by the to-<a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">spec</a> implementations.</p>
+<h3 id="kona-proof---oracle-backed-sources-example"><a class="header" href="#kona-proof---oracle-backed-sources-example"><code>kona-proof</code> - Oracle-backed sources (example)</a></h3>
+<p>Finally, in <code>kona-proof</code>, implementations of data source traits from <code>kona-derive</code> and <code>kona-executor</code> are provided
+to pull in untyped data from the host by <code>PreimageKey</code>. These data source traits are covered in more detail within
+the <a href="sdk/./custom-backend.html">Custom Backend</a> section, but we'll quickly gloss over them here to build intuition.</p>
+<p>Let's take, for example, <a href="https://github.com/op-rs/kona/blob/40a8d7ec3def4a1eeb26492a1e4338d8b032e428/bin/client/src/l1/chain_provider.rs#L16-L23"><code>OracleL1ChainProvider</code></a>.
+The <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.ChainProvider.html"><code>ChainProvider</code></a> trait in <code>kona-derive</code>
+defines a simple interface for fetching information about the L1 chain. In the <code>OracleL1ChainProvider</code>, this information
+is pulled in over the <a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">PreimageOracle ABI</a>. There are many other examples of these data source traits,
+namely the <code>L2ChainProvider</code>, <code>BlobProvider</code>, <code>TrieProvider</code>, and <code>TrieHinter</code>, which enable the creation of different
+data-source backends.</p>
+<p>As an example, let's look at <code>OracleL1ChainProvider::header_by_hash</code>, built on top of the <code>CommsClient</code> trait, which
+is a composition trait of the <code>PreimageOracleClient + HintReaderServer</code> traits outlined above.</p>
+<pre><code class="language-rs">#[async_trait]
+impl&lt;T: CommsClient + Sync + Send&gt; ChainProvider for OracleL1ChainProvider&lt;T&gt; {
+    type Error = anyhow::Error;
+
+    async fn header_by_hash(&amp;mut self, hash: B256) -&gt; Result&lt;Header&gt; {
+        // Send a hint for the block header.
+        self.oracle.write(&amp;HintType::L1BlockHeader.encode_with(&amp;[hash.as_ref()])).await?;
+
+        // Fetch the header RLP from the oracle.
+        let header_rlp =
+            self.oracle.get(PreimageKey::new(*hash, PreimageKeyType::Keccak256)).await?;
+
+        // Decode the header RLP into a Header.
+        Header::decode(&amp;mut header_rlp.as_slice())
+            .map_err(|e| anyhow!("Failed to decode header RLP: {e}"))
+    }
+
+    // - snip -
+}
+</code></pre>
+<p>In <code>header_by_hash</code>, we use the inner <code>HintWriter</code> to send a hint to the host to prepare the block hash preimage.
+Then, once we've received an acknowledgement from the host that the preimage has been prepared, we reach out for
+the RLP (which is the preimage of the hash). After the RLP is received, we decode the <code>Header</code> type, and return
+it to the user.</p>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="custom-backends"><a class="header" href="#custom-backends">Custom Backends</a></h1>
+<h2 id="understanding-the-op-stack-stf"><a class="header" href="#understanding-the-op-stack-stf">Understanding the OP Stack STF</a></h2>
+<p>The OP Stack state transition is comprised of two primary components:</p>
+<ul>
+<li><strong>The <a href="https://specs.optimism.io/protocol/derivation.html">derivation pipeline</a></strong> (<code>kona-derive</code>)
+<ul>
+<li>Responsible for deriving L2 chain state from the DA layer.</li>
+</ul>
+</li>
+<li><strong>The <a href="https://specs.optimism.io/protocol/exec-engine.html#l2-execution-engine">execution engine</a></strong> (<code>kona-executor</code>)
+<ul>
+<li>Responsible for the execution of transactions and state commitments.</li>
+<li>Ensures correct application of derived L2 state.</li>
+</ul>
+</li>
+</ul>
+<p>To prove the correctness of the state transition, Kona composes these two components:</p>
+<ul>
+<li>It combines the derivation of the L2 chain with its execution in the same process.</li>
+<li>It pulls in necessary data from sources to complete the STF, verifiably unrolling the input commitments along the way.</li>
+</ul>
+<p><code>kona-client</code> serves as an implementation of this process, capable of deriving and executing a single L2 block in a
+verifiable manner.</p>
+<blockquote>
+<p>📖 Why just a single block by default?</p>
+<p>On the OP Stack, we employ an interactive bisection game that narrows in on the disagreed upon block -&gt; block state
+transition before requiring a fault proof to be ran. Because of this, the default implementation only serves
+to derive and execute the single block that the participants of the bisection game landed on.</p>
+</blockquote>
+<h2 id="backend-traits"><a class="header" href="#backend-traits">Backend Traits</a></h2>
+<p>Covered in the <a href="sdk/./fpvm-backend.html">FPVM Backend</a> section of the book, <code>kona-client</code> ships with an implementation of
+<code>kona-derive</code> and <code>kona-executor</code>'s data source traits which pull in data over the <a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">PreimageOracle ABI</a>.</p>
+<p>However, running <code>kona-client</code> on top of a different verifiable environment, i.e. a zkVM or TEE, is also possible
+through custom implementations of these data source traits.</p>
+<p><a href="https://github.com/succinctlabs/op-succinct"><code>op-succinct</code></a> is an excellent example of both a custom backend and a custom
+program, implementing both <code>kona-derive</code> and <code>kona-executor</code>'s data source traits backed by <a href="https://docs.rs/sp1-lib/latest/sp1_lib/io/index.html">sp1_lib::io</a>
+in order to:</p>
+<ol>
+<li>Execute <code>kona-client</code> verbatim, proving a single block's derivation and execution on SP-1.</li>
+<li>Derive and execute an entire <a href="https://specs.optimism.io/protocol/delta/span-batches.html#span-batches">Span Batch</a>
+worth of L2 blocks, using <code>kona-derive</code> and <code>kona-executor</code>.</li>
+</ol>
+<p>This section of the book outlines how you can do the same for a different platform.</p>
+<h3 id="custom-kona-derive-sources"><a class="header" href="#custom-kona-derive-sources">Custom <code>kona-derive</code> sources</a></h3>
+<p>Before getting started, we need to create custom implementations of the following traits:</p>
+<div class="table-wrapper"><table><thead><tr><th>Trait</th><th>Description</th></tr></thead><tbody>
+<tr><td><a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.ChainProvider.html"><code>ChainProvider</code></a></td><td>The <code>ChainProvider</code> trait describes the minimal interface for fetching data from L1 during L2 chain derivation.</td></tr>
+<tr><td><a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.L2ChainProvider.html"><code>L2ChainProvider</code></a></td><td>The <code>ChainProvider</code> trait describes the minimal interface for fetching data from the safe L2 chain during L2 chain derivation.</td></tr>
+<tr><td><a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.BlobProvider.html"><code>BlobProvider</code></a></td><td>The <code>BlobProvider</code> trait describes an interface for fetching EIP-4844 blobs from the L1 consensus layer during L2 chain derivation.</td></tr>
+</tbody></table>
+</div>
+<p>Once these are implemented, constructing the pipeline is as simple as passing in the data sources to the <code>PipelineBuilder</code>. Keep in mind the requirements for validation of incoming data, depending on your platform. For example, programs
+targeting zkVMs must constrain that the incoming data is indeed valid, whereas fault proof programs can offload this validation to the on-chain implementation of the host.</p>
+<pre><code class="language-rs">let chain_provider = ...;
+let l2_chain_provider = ...;
+let blob_provider = ...;
+let l1_origin = ...;
+
+let cfg = Arc::new(RollupConfig::default());
+let attributes = StatefulAttributesBuilder::new(
+   cfg.clone(),
+   l2_chain_provider.clone(),
+   chain_provider.clone(),
+);
+let dap = EthereumDataSource::new(
+   chain_provider.clone(),
+   blob_provider,
+   cfg.as_ref()
+);
+
+// Construct a new derivation pipeline.
+let pipeline = PipelineBuilder::new()
+   .rollup_config(cfg)
+   .dap_source(dap)
+   .l2_chain_provider(l2_chain_provider)
+   .chain_provider(chain_provider)
+   .builder(attributes)
+   .origin(l1_origin)
+   .build();
+</code></pre>
+<p>From here, a custom derivation driver is needed to produce the desired execution payload(s). An example of this for
+<code>kona-client</code> can be found in the <a href="https://github.com/op-rs/kona/blob/main/bin/client/src/l1/driver.rs#L77">DerivationDriver</a>.</p>
+<h3 id="kona-mpt--kona-executor-sources"><a class="header" href="#kona-mpt--kona-executor-sources"><code>kona-mpt</code> / <code>kona-executor</code> sources</a></h3>
+<p>Before getting started, we need to create custom implementations of the following traits:</p>
+<div class="table-wrapper"><table><thead><tr><th>Trait</th><th>Description</th></tr></thead><tbody>
+<tr><td><a href="https://docs.rs/kona-mpt/latest/kona_mpt/trait.TrieDBFetcher.html"><code>TrieDBFetcher</code></a></td><td>The <code>TrieDBFetcher</code> trait describes the interface for fetching trie node preimages and chain information while executing a payload on the L2 chain.</td></tr>
+<tr><td><a href="https://docs.rs/kona-mpt/latest/kona_mpt/trait.TrieDBHinter.html"><code>TrieDBHinter</code></a></td><td>The <code>TrieDBHinter</code> trait describes the interface for requesting the host program to prepare trie proof preimages for the client's consumption. For targets with upfront witness generation, i.e. zkVMs, a no-op hinter is exported as <a href="https://docs.rs/kona-mpt/latest/kona_mpt/struct.NoopTrieDBHinter.html"><code>NoopTrieDBHinter</code></a>.</td></tr>
+</tbody></table>
+</div>
+<p>Once we have those, the <code>StatelessL2BlockExecutor</code> can be constructed like so:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let cfg = RollupConfig::default();
+let provider = ...;
+let hinter = ...;
+
+let executor = StatelessL2BlockExecutor::builder(&amp;cfg, provider, hinter)
+   .with_parent_header(...)
+   .build();
+
+let header = executor.execute_payload(...).expect("Failed execution");
+<span class="boring">}</span></code></pre></pre>
+<h3 id="bringing-it-together"><a class="header" href="#bringing-it-together">Bringing it Together</a></h3>
+<p>Once your custom backend traits for both <code>kona-derive</code> and <code>kona-executor</code> have been implemented,
+your final binary may look something like <a href="https://github.com/op-rs/kona/blob/main/bin/client/src/kona.rs">that of <code>kona-client</code>'s</a>.
+Alternatively, if you're looking to prove a wider range of blocks, <a href="https://github.com/succinctlabs/op-succinct/tree/main/programs/range"><code>op-succinct</code>'s <code>range</code> program</a>
+offers a good example of running the pipeline and executor across a string of contiguous blocks.</p>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="kona-executor-extensions"><a class="header" href="#kona-executor-extensions"><code>kona-executor</code> Extensions</a></h1>
+<p>The <code>kona-executor</code> crate offers a to-spec, stateless implementation of the OP Stack STF. However, due to the
+power of <a href="https://github.com/bluealloy/revm"><code>revm</code></a>'s Handler abstractions, the logic of the STF can be easily modified.</p>
+<p>To register a custom handler, for example to add a custom precompile, modify the behavior of an EVM opcode,
+or change the fee handling, <code>StatelessL2BlockExecutorBuilder::with_handle_register</code> is your friend. It accepts a
+<a href="https://docs.rs/kona-executor/latest/kona_executor/type.KonaHandleRegister.html"><code>KonaHandleRegister</code></a>, which
+can be used to take full advantage of <a href="https://github.com/bluealloy/revm/blob/f57e3e639ee157c7e659e740bd175a7357003570/documentation/src/crates/revm/handler.md#handler"><code>revm</code>'s Handler API</a>.</p>
+<h2 id="example---custom-precompile"><a class="header" href="#example---custom-precompile">Example - Custom Precompile</a></h2>
+<pre><code class="language-rs">const MY_PRECOMPILE_ADDRESS: Address = u64_to_address(0xFF);
+
+fn my_precompile(input: &amp;Bytes, gas_limit: u64) -&gt; PrecompileResult {
+   Ok(PrecompileOutput::new(50, "hello, world!".as_bytes().into()))
+}
+
+fn custom_handle_register&lt;F, H&gt;(
+    handler: &amp;mut EvmHandler&lt;'_, (), &amp;mut State&lt;&amp;mut TrieDB&lt;F, H&gt;&gt;&gt;,
+) where
+   F: TrieProvider,
+   H: TrieHinter,
+{
+   let spec_id = handler.cfg.spec_id;
+
+   handler.pre_execution.load_precompiles = Arc::new(move || {
+      let mut ctx_precompiles = spec_to_generic!(spec_id, {
+         revm::optimism::load_precompiles::&lt;SPEC, (), &amp;mut State&lt;&amp;mut TrieDB&lt;F, H&gt;&gt;&gt;()
+      });
+
+      let precompile = PrecompileWithAddress(
+         MY_PRECOMPILE_ADDRESS,
+         Precompile::Standard(my_precompile)
+      );
+      ctx_precompiles.extend([precompile]);
+
+      ctx_precompiles
+   });
+}
+
+// - snip -
+
+let cfg = RollupConfig::default();
+let provider = ...;
+let hinter = ...;
+
+let executor = StatelessL2BlockExecutor::builder(&amp;cfg, provider, hinter)
+   .with_parent_header(...)
+   .with_handle_register(custom_handle_register)
+   .build();
+</code></pre>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="the-kona-derive-derivation-pipeline"><a class="header" href="#the-kona-derive-derivation-pipeline">The <code>kona-derive</code> Derivation Pipeline</a></h1>
+<p><a href="https://crates.io/crates/kona-derive"><code>kona-derive</code></a> defines an entirely trait-abstracted, <code>no_std</code> derivation
+pipeline for the OP Stack. It can be used through the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.Pipeline.html"><code>Pipeline</code></a> trait,
+which is implemented for the concrete <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a> object.</p>
+<p>This document dives into the inner workings of the derivation pipeline, its
+stages, and how to build and interface with Kona's pipeline. Other documents
+in this section will provide a comprehensive overview of Derivation Pipeline
+extensibility including trait-abstracted providers, custom stages, signaling,
+and hardfork activation including multiplexed stages.</p>
+<ul>
+<li><a href="sdk/pipeline/./stages.html">Swapping out a stage</a></li>
+<li><a href="sdk/pipeline/./providers.html">Defining a custom Provider</a></li>
+<li><a href="sdk/pipeline/./signals.html">Extending Pipeline Signals</a></li>
+<li><a href="sdk/pipeline/./hardforks.html">Implementing Hardfork Activations</a></li>
+</ul>
+<h2 id="what-is-a-derivation-pipeline"><a class="header" href="#what-is-a-derivation-pipeline">What is a Derivation Pipeline?</a></h2>
+<p>Simply put, an OP Stack Derivation Pipeline transforms data on L1 into L2
+payload attributes that can be executed to produce the canonical L2 block.</p>
+<p>Within a pipeline, there are a set of stages that break up this transformation
+further. When composed, these stages operate over the input data, sequentially
+producing payload attributes.</p>
+<p>In <a href="https://crates.io/crates/kona-derive"><code>kona-derive</code></a>, stages are architected using composition - each sequential
+stage owns the previous one, forming a stack. For example, let's define stage A
+as the first stage, accepting raw L1 input data, and stage C produces the pipeline
+output - payload attributes. Stage B "owns" stage A, and stage C then owns stage B.
+Using this example, the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a> type in <a href="https://crates.io/crates/kona-derive"><code>kona-derive</code></a> only
+holds stage C, since ownership of the other stages is nested within stage C.</p>
+<blockquote>
+<p>[!NOTE]</p>
+<p>In a future architecture of the derivation pipeline, stages could be made
+standalone such that communication between stages happens through channels.
+In a multi-threaded, non-fault-proof environment, these stages can then
+run in parallel since stage ownership is decoupled.</p>
+</blockquote>
+<h2 id="konas-derivation-pipeline"><a class="header" href="#konas-derivation-pipeline">Kona's Derivation Pipeline</a></h2>
+<p>The top-level stage in <a href="https://crates.io/crates/kona-derive"><code>kona-derive</code></a> that produces
+<a href="https://docs.rs/op-alloy-rpc-types-engine/latest/op_alloy_rpc_types_engine/struct.OpAttributesWithParent.html"><code>OpAttributesWithParent</code></a> is the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.AttributesQueue.html"><code>AttributesQueue</code></a>.</p>
+<p>Post-Holocene (the Holocene hardfork), the following stages are composed by
+the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a>.</p>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.AttributesQueue.html"><code>AttributesQueue</code></a>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.BatchProvider.html"><code>BatchProvider</code></a>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.BatchStream.html"><code>BatchStream</code></a>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.ChannelReader.html"><code>ChannelReader</code></a>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.ChannelProvider.html"><code>ChannelProvider</code></a>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.FrameQueue.html"><code>FrameQueue</code></a>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Retrieval.html"><code>L1Retrieval</code></a>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Traversal.html"><code>L1Traversal</code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>Notice, from top to bottom, each stage owns the stage nested below it.
+Where the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Traversal.html"><code>L1Traversal</code></a> stage iterates over L1 data, the
+<a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.AttributesQueue.html"><code>AttributesQueue</code></a> stage produces
+<a href="https://docs.rs/op-alloy-rpc-types-engine/latest/op_alloy_rpc_types_engine/struct.OpAttributesWithParent.html"><code>OpAttributesWithParent</code></a>, creating a function that transforms
+L1 data into payload attributes.</p>
+<h2 id="the-pipeline-interface"><a class="header" href="#the-pipeline-interface">The <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.Pipeline.html"><code>Pipeline</code></a> interface</a></h2>
+<p>Now that we've broken down the stages inside the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a>
+type, let's move up another level to break down how the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a>
+type functions itself. At the highest level, <a href="https://crates.io/crates/kona-derive"><code>kona-derive</code></a> defines the
+interface for working with the pipeline through the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.Pipeline.html"><code>Pipeline</code></a> trait.</p>
+<p><a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.Pipeline.html"><code>Pipeline</code></a> provides two core methods.</p>
+<ul>
+<li><code>peek() -&gt; Option&lt;&amp;OpAttributesWithParent&gt;</code></li>
+<li><code>async step() -&gt; StepResult</code></li>
+</ul>
+<p>Functionally, a pipeline can be "stepped" on, which attempts to derive
+payload attributes from input data. Steps do not guarantee that payload attributes
+are produced, they only attempt to advance the stages within the pipeline.</p>
+<p>The <code>peek()</code> method provides a way to check if attributes are prepared.
+Beyond <code>peek()</code> returning <code>Option::Some(&amp;OpAttributesWithParent)</code>, the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.Pipeline.html"><code>Pipeline</code></a>
+extends the <a href="https://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html">Iterator</a> trait, providing a way to consume the generated payload
+attributes.</p>
+<h2 id="constructing-a-derivation-pipeline"><a class="header" href="#constructing-a-derivation-pipeline">Constructing a Derivation Pipeline</a></h2>
+<p><a href="https://crates.io/crates/kona-derive"><code>kona-derive</code></a> provides a <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.PipelineBuilder.html"><code>PipelineBuilder</code></a> to abstract the complexity
+of generics away from the downstream consumers. Below we provide an example for using
+the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.PipelineBuilder.html"><code>PipelineBuilder</code></a> to instantiate a <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a>.</p>
+<pre><code class="language-rust ignore">// Imports
+use std::sync::Arc;
+use op_alloy_protocol::BlockInfo;
+use op_alloy_genesis::RollupConfig;
+use hilo_providers_alloy::*;
+
+// Use a default rollup config.
+let rollup_config = Arc::new(RollupConfig::default());
+
+// Providers are instantiated to with localhost urls (`127.0.0.1`)
+let chain_provider =
+    AlloyChainProvider::new_http("http://127.0.0.1:8545".try_into().unwrap());
+let l2_chain_provider = AlloyL2ChainProvider::new_http(
+    "http://127.0.0.1:9545".try_into().unwrap(),
+    rollup_config.clone(),
+);
+let beacon_client = OnlineBeaconClient::new_http("http://127.0.0.1:5555".into());
+let blob_provider = OnlineBlobProvider::new(beacon_client, None, None);
+let blob_provider = OnlineBlobProviderWithFallback::new(blob_provider, None);
+let dap_source =
+    EthereumDataSource::new(chain_provider.clone(), blob_provider, &amp;rollup_config);
+let builder = StatefulAttributesBuilder::new(
+    rollup_config.clone(),
+    l2_chain_provider.clone(),
+    chain_provider.clone(),
+);
+
+// This is the starting L1 block for the pipeline.
+//
+// To get the starting L1 block for a given L2 block,
+// use the `AlloyL2ChainProvider::l2_block_info_by_number`
+// method to get the `L2BlockInfo.l1_origin`. This l1_origin
+// is the origin that can be passed here.
+let origin = BlockInfo::default();
+
+// Build the pipeline using the `PipelineBuilder`.
+// Alternatively, use the `new_online_pipeline` helper
+// method provided by the `kona-derive-alloy` crate.
+let pipeline = PipelineBuilder::new()
+   .rollup_config(rollup_config.clone())
+   .dap_source(dap_source)
+   .l2_chain_provider(l2_chain_provider)
+   .chain_provider(chain_provider)
+   .builder(builder)
+   .origin(origin)
+   .build();
+
+assert_eq!(pipeline.rollup_config, rollup_config);
+assert_eq!(pipeline.origin(), Some(origin));</code></pre>
+<h2 id="producing-payload-attributes"><a class="header" href="#producing-payload-attributes">Producing Payload Attributes</a></h2>
+<p>Since the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.Pipeline.html"><code>Pipeline</code></a> trait extends the <a href="https://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html"><code>Iterator</code></a> trait,
+producing <a href="https://docs.rs/op-alloy-rpc-types-engine/latest/op_alloy_rpc_types_engine/struct.OpAttributesWithParent.html"><code>OpAttributesWithParent</code></a> is as simple as as calling
+<a href="https://doc.rust-lang.org/nightly/core/iter/trait.Iterator.html#tymethod.next"><code>Iterator::next()</code></a> method on the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a>.</p>
+<p>Extending the example from above, producing the attributes is shown below.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Import the iterator trait to show where `.next` is sourced.
+use core::iter::Iterator;
+
+// ...
+// example from above constructing the pipeline
+// ...
+
+let attributes = pipeline.next();
+
+// Since we haven't stepped on the pipeline,
+// there shouldn't be any payload attributes prepared.
+assert!(attributes.is_none());
+<span class="boring">}</span></code></pre></pre>
+<p>As demonstrated, the pipeline won't have any payload attributes
+without having been "stepped" on. Naively, we can continuously
+step on the pipeline until attributes are ready, and then consume them.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Import the iterator trait to show where `.next` is sourced.
+use core::iter::Iterator;
+
+// ...
+// example from constructing the pipeline
+// ...
+
+// Continuously step on the pipeline until attributes are prepared.
+let l2_safe_head = L2BlockInfo::default();
+loop {
+   if matches!(pipeline.step(l2_safe_head).await, StepResult::PreparedAttributes) {
+      // The pipeline has successfully prepared payload attributes, break the loop.
+      break;
+   }
+}
+
+// Since the loop is only broken once attributes are prepared,
+// this must be `Option::Some`.
+let attributes = pipeline.next().expect("Must contain payload attributes");
+
+// The parent of the prepared payload attributes should be
+// the l2 safe head that we "stepped on".
+assert_eq!(attributes.parent, l2_safe_head);
+<span class="boring">}</span></code></pre></pre>
+<p>Importantly, the above is not sufficient logic to produce payload attributes and drive
+the derivation pipeline. There are multiple different <code>StepResult</code>s to handle when
+stepping on the pipeline, including advancing the origin, re-orgs, and pipeline resets.
+In the next section, pipeline resets are outlined.</p>
+<p>For an up-to-date driver that runs the derivation pipeline as part of the fault proof
+program, reference kona's <a href="https://github.com/op-rs/kona/blob/main/bin/client/src/l1/driver.rs#L74">client driver</a>.</p>
+<h2 id="resets"><a class="header" href="#resets">Resets</a></h2>
+<p>When stepping on the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a> produces a reset error, the driver
+of the pipeline must perform a reset on the pipeline. This is done by sending a "signal"
+through the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a>. Below demonstrates this.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Import the iterator trait to show where `.next` is sourced.
+use core::iter::Iterator;
+
+// ...
+// example from constructing the pipeline
+// ...
+
+// Continuously step on the pipeline until attributes are prepared.
+let l2_safe_head = L2BlockInfo::default();
+loop {
+   match pipeline.step(l2_safe_head).await {
+      StepResult::StepFailed(e) | StepResult::OriginAdvanceErr(e) =&gt; {
+         match e {
+            PipelineErrorKind::Reset(e) =&gt; {
+               // Get the system config from the provider.
+               let system_config = l2_chain_provider
+                  .system_config_by_number(
+                     l2_safe_head.block_info.number,
+                     rollup_config.clone(),
+                  )
+                  .await?;
+               // Reset the pipeline to the initial L2 safe head and L1 origin.
+               self.pipeline
+                  .signal(
+                      ResetSignal {
+                          l2_safe_head: l2_safe_head,
+                          l1_origin: pipeline
+                              .origin()
+                              .ok_or_else(|| anyhow!("Missing L1 origin"))?,
+                          system_config: Some(system_config),
+                      }
+                      .signal(),
+                  )
+                  .await?;
+               // ...
+            }
+            _ =&gt; { /* Handling left to the driver */ }
+         }
+      }
+      _ =&gt; { /* Handling left to the driver */ }
+   }
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="learn-more"><a class="header" href="#learn-more">Learn More</a></h2>
+<p><a href="https://crates.io/crates/kona-derive"><code>kona-derive</code></a> is one implementation of the OP Stack derivation pipeline.</p>
+<p>To learn more, it is highly encouraged to read the <a href="https://github.com/ethereum-optimism/optimism/tree/develop/op-node/rollup/derive">"first" derivation pipeline</a>
+written in <a href="https://go.dev/">golang</a>. It is often colloquially referred to as the "reference"
+implementation and provides the basis for how much of Kona's derivation pipeline
+was built.</p>
+<h2 id="provenance"><a class="header" href="#provenance">Provenance</a></h2>
+<blockquote>
+<p>The lore do be bountiful.</p>
+<ul>
+<li>Bard XVIII of the Logic Gates</li>
+</ul>
+</blockquote>
+<p>The kona project spawned out of the need to build a secondary fault proof for the OP Stack.
+Initially, we sought to re-use <a href="https://github.com/a16z/magi">magi</a>'s derivation pipeline, but the ethereum-rust
+ecosystem moves quickly and <a href="https://github.com/a16z/magi">magi</a> was behind by a generation of types - using
+<a href="https://github.com/gakonst/ethers-rs">ethers-rs</a> instead of new <a href="https://github.com/alloy-rs/alloy">alloy</a> types. Additionally, <a href="https://github.com/a16z/magi">magi</a>'s derivation
+pipeline was not <code>no_std</code> compatible - a hard requirement for running a rust fault proof
+program on top of the RISCV or MIPS ISAs.</p>
+<p>So, <a href="https://github.com/clabby">@clabby</a> and <a href="https://github.com/refcell">@refcell</a> stood up <a href="https://github.com/op-rs/kona">kona</a> in a few months.</p>
+<!-- Links -->
+<!-- Pipeline Stages -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="trait-abstracted-providers"><a class="header" href="#trait-abstracted-providers">Trait-abstracted Providers</a></h1>
+<p>Kona's derivation pipeline pulls in data from sources that are trait
+abstracted so the pipeline can be generic over various data sources.
+Note, "data sources" is used interchangeably with "trait-abstracted
+providers" for the purpose of this document.</p>
+<p>The key traits required for the pipeline are the following.</p>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.ChainProvider.html"><code>ChainProvider</code></a></li>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.L2ChainProvider.html"><code>L2ChainProvider</code></a></li>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.DataAvailabilityProvider.html"><code>DataAvailabilityProvider</code></a></li>
+</ul>
+<p>The <a href="https://crates.io/crates/kona-derive-alloy"><code>kona-derive-alloy</code></a> crate provides <code>std</code> implementations
+of these traits using <a href="https://github.com/alloy-rs/alloy">Alloy</a>'s <code>reqwest</code>-backed providers.</p>
+<h2 id="provider-usage"><a class="header" href="#provider-usage">Provider Usage</a></h2>
+<p>Although trait-abstracted Providers are used throughout the pipeline and
+its stages, the <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.PipelineBuilder.html"><code>PipelineBuilder</code></a> makes constructing the pipeline
+generic over the providers. An example is shown below, where the three
+required trait implementations are the providers stubbed with <code>todo!()</code>.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use op_alloy_genesis::RollupConfig;
+use kona_derive::pipeline::PipelineBuilder;
+use kona_derive::attributes::StatefulAttributesBuilder;
+
+// The rollup config for your chain.
+let cfg = Arc::new(RollupConfig::default());
+
+// Must implement the `ChainProvider` trait.
+let chain_provider = todo!("your chain provider");
+
+// Must implement the `L2ChainProvider` trait.
+let l2_chain_provider = todo!("your l2 chain provider");
+
+// Must implement the `DataAvailabilityProvider` trait.
+let dap = todo!("your data availability provider");
+
+// Generic over the providers.
+let attributes = StatefulAttributesBuilder::new(
+   cfg.clone(),
+   l2_chain_provider.clone(),
+   chain_provider.clone(),
+);
+
+// Construct a new derivation pipeline.
+let pipeline = PipelineBuilder::new()
+   .rollup_config(cfg)
+   .dap_source(dap)
+   .l2_chain_provider(l2_chain_provider)
+   .chain_provider(chain_provider)
+   .builder(attributes)
+   .origin(BlockInfo::default())
+   .build();
+<span class="boring">}</span></code></pre></pre>
+<h2 id="implementing-a-custom-data-availability-provider"><a class="header" href="#implementing-a-custom-data-availability-provider">Implementing a Custom Data Availability Provider</a></h2>
+<blockquote>
+<p>Notice</p>
+<p>The only required method for the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.DataAvailabilityProvider.html"><code>DataAvailabilityProvider</code></a>
+trait is the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.DataAvailabilityProvider.html#tymethod.next"><code>next</code></a> method.</p>
+</blockquote>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use async_trait::async_trait;
+use alloy_primitives::Bytes;
+use op_alloy_protocol::BlockInfo;
+use kona_derive::traits::DataAvailabilityProvider;
+use kona_derive::errors::PipelineResult;
+
+/// ExampleAvail
+///
+/// An example implementation of the `DataAvailabilityProvider` trait.
+#[derive(Debug)]
+pub struct ExampleAvail {
+   // Place your data in here
+}
+
+#[async_trait]
+impl DataAvailabilityProvider for ExampleAvail {
+   type Item = Bytes;
+
+   async fn next(&amp;self, block_ref: &amp;BlockInfo) -&gt; PipelineResult&lt;Self::Item&gt; {
+      todo!("return an AsyncIterator implementation here")
+   }
+}
+<span class="boring">}</span></code></pre></pre>
+<!-- Links -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="swapping-out-a-stage"><a class="header" href="#swapping-out-a-stage">Swapping out a Stage</a></h1>
+<p>In the <a href="sdk/pipeline/./intro.html">introduction to the derivation pipeline</a>, the derivation pipeline
+is broken down to demonstrate the composition of stages, forming the transformation
+function from L1 data into L2 payload attributes.</p>
+<p>What makes kona's derivation pipeline extensible is that stages are composed using
+trait-abstraction. That is, each successive stage composes the previous stage as
+a generic. As such as long as a stage satisfies two rules, it can be swapped into
+the pipeline seamlessly.</p>
+<ol>
+<li>The stage implements the trait required by the next stage.</li>
+<li>The stage uses the same trait for the previous stage as the
+current stage to be swapped out.</li>
+</ol>
+<p>Below provides a concrete example, swapping out the <code>L1Retrieval</code> stage.</p>
+<h2 id="example-3"><a class="header" href="#example-3">Example</a></h2>
+<p>In the current, post-Holocene hardfork <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a>, the bottom three
+stages of the pipeline are as follows (from top down).</p>
+<ul>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.FrameQueue.html"><code>FrameQueue</code></a></li>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Retrieval.html"><code>L1Retrieval</code></a></li>
+<li><a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Traversal.html"><code>L1Traversal</code></a></li>
+</ul>
+<p>In this set of stages, the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Traversal.html"><code>L1Traversal</code></a> stage sits at the bottom.
+It implements the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Retrieval.html"><code>L1Retrieval</code></a> trait called the
+<a href="https://docs.rs/kona-derive/latest/kona_derive/stages/trait.L1RetrievalProvider.html"><code>L1RetrievalProvider</code></a>. This provides generic methods that
+allow the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Retrieval.html"><code>L1Retrieval</code></a> stage to call those methods on the generic
+previous stage that implements this provider trait.</p>
+<p>As we go up a level, the same trait abstraction occurs. The <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Retrieval.html"><code>L1Retrieval</code></a>
+stage implements the provider trait that the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.FrameQueue.html"><code>FrameQueue</code></a> stage requires.
+This trait is the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/trait.FrameQueueProvider.html"><code>FrameQueueProvider</code></a>.</p>
+<p>Now that we understand the trait abstractions, let's swap out the
+<a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Retrieval.html"><code>L1Retrieval</code></a> stage for a custom <code>DapRetrieval</code> stage.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// ...
+// imports
+// ...
+
+// We use the same "L1RetrievalProvider" trait here
+// in order to seamlessly use the `L1Traversal`
+
+/// DapRetrieval stage
+#[derive(Debug)]
+pub struct DapRetrieval&lt;P&gt;
+where
+    P: L1RetrievalProvider + OriginAdvancer + OriginProvider + SignalReceiver,
+{
+    /// The previous stage in the pipeline.
+    pub prev: P,
+    provider: YourDataAvailabilityProvider,
+    data: Option&lt;Bytes&gt;,
+}
+
+#[async_trait]
+impl&lt;P&gt; FrameQueueProvider for DapRetrieval&lt;P&gt;
+where
+    P: L1RetrievalProvider + OriginAdvancer + OriginProvider + SignalReceiver + Send,
+{
+    type Item = Bytes;
+
+    async fn next_data(&amp;mut self) -&gt; PipelineResult&lt;Self::Item&gt; {
+        if self.data.is_none() {
+            let next = self
+                .prev
+                .next_l1_block()
+                .await? // SAFETY: This question mark bubbles up the Eof error.
+                .ok_or(PipelineError::MissingL1Data.temp())?;
+            self.data = Some(self.provider.get_data(&amp;next).await?);
+        }
+
+        match self.data.as_mut().expect("Cannot be None").next().await {
+            Ok(data) =&gt; Ok(data),
+            Err(e) =&gt; {
+                if let PipelineErrorKind::Temporary(PipelineError::Eof) = e {
+                    self.data = None;
+                }
+                Err(e)
+            }
+        }
+    }
+}
+
+// ...
+// impl OriginAdvancer for DapRetrieval
+// impl OriginProvider for DapRetrieval
+// impl SignalReceiver for DapRetrieval
+// ..
+<span class="boring">}</span></code></pre></pre>
+<p>Notice, the <code>L1RetrievalProvider</code> is used as a trait bound so the
+<a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Traversal.html"><code>L1Traversal</code></a> stage can be used seamlessly as the "prev" stage in the pipeline.
+Concretely, an instantiation of the <code>DapRetrieval</code> stage could be the following.</p>
+<pre><code>DapRetrieval&lt;L1Traversal&lt;..&gt;&gt;
+</code></pre>
+<!-- Links -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="signals"><a class="header" href="#signals">Signals</a></h1>
+<p>Understanding signals first require a more in-depth review of the result
+returned by stepping on the derivation pipeline.</p>
+<h2 id="the-stepresult"><a class="header" href="#the-stepresult">The <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.StepResult.html"><code>StepResult</code></a></a></h2>
+<p>As briefly outlined in the <a href="sdk/pipeline/./intro.html">intro</a>, stepping on the derivation
+pipeline returns a <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.StepResult.html"><code>StepResult</code></a>. Step results provide a
+an extensible way for pipeline stages to signal different results to the
+pipeline driver. The variants of <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.StepResult.html"><code>StepResult</code></a> and what they
+signal include the following.</p>
+<ul>
+<li><code>StepResult::PreparedAttributes</code> - signals that payload attributes are
+ready to be be consumed by the pipeline driver.</li>
+<li><code>StepResult::AdvancedOrigin</code> - signals that the pipeline has derived all
+payload attributes for the given L1 block, and the origin of the pipeline
+was advanced to the next canonical L1 block.</li>
+<li><code>StepResult::OriginAdvanceErr(_)</code> - The driver failed to advance the
+origin of pipeline.</li>
+<li><code>StepResult::StepFailed(_)</code> - The step failed.</li>
+</ul>
+<p>No action is needed when the prepared attributes step result is received.
+The pipeline driver may chose to consume the payload attributes how it
+wishes. Likewise, <code>StepResult::AdvancedOrigin</code> simply notifies the driver
+that the pipeline advanced its origin - the driver may continue stepping
+on the pipeline. Now, it becomes more involved with the remaining two
+variants of <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.StepResult.html"><code>StepResult</code></a>.</p>
+<p>When either <code>StepResult::OriginAdvanceErr(_)</code> or <code>StepResult::StepFailed(_)</code>
+are received, the pipeline driver needs to introspect the error within these
+variants. Depending on the <a href="https://docs.rs/kona-derive/latest/kona_derive/errors/enum.PipelineErrorKind.html"><code>PipelineErrorKind</code></a>, the driver may
+need to send a "signal" down through the pipeline.</p>
+<p>The next section goes over pipeline signals by looking at the variants of
+the <a href="https://docs.rs/kona-derive/latest/kona_derive/errors/enum.PipelineErrorKind.html"><code>PipelineErrorKind</code></a> and the driver's response.</p>
+<h2 id="pipelineerrorkind"><a class="header" href="#pipelineerrorkind"><a href="https://docs.rs/kona-derive/latest/kona_derive/errors/enum.PipelineErrorKind.html"><code>PipelineErrorKind</code></a></a></h2>
+<p>There are three variants of the <a href="https://docs.rs/kona-derive/latest/kona_derive/errors/enum.PipelineErrorKind.html"><code>PipelineErrorKind</code></a>, each
+groups the inner error based on severity (or how they should be handled).</p>
+<ul>
+<li><code>PipelineErrorKind::Temporary</code> - This is an error that's expected, and
+is temporary. For example, not all channel data has been posted to L1
+so the pipeline doesn't have enough data yet to continue deriving
+payload attributes.</li>
+<li><code>PipelineErrorKind::Critical</code> - This is an unexpected error that breaks
+the derivation pipeline. It should cause the driver to error since this
+is behavior that is breaking the derivation of payload attributes.</li>
+<li><code>PipelineErrorKind::Reset</code> - When this is received, it effectively
+requests that the driver perform some action on the pipeline. Kona
+uses message passing so the driver can send a <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.Signal.html"><code>Signal</code></a> down
+the pipeline with whatever action that needs to be performed. By
+allowing both the driver and individual pipeline stages to define their
+own behaviour around signals, they become very extensible. More on this
+in <a href="sdk/pipeline/signaling.html#extending-the-signal-type">a later section</a>.</li>
+</ul>
+<h2 id="the-signal-type"><a class="header" href="#the-signal-type">The <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.Signal.html"><code>Signal</code></a> Type</a></h2>
+<p>Continuing from the <a href="https://docs.rs/kona-derive/latest/kona_derive/errors/enum.PipelineErrorKind.html"><code>PipelineErrorKind</code></a>, when the driver
+receives a <code>PipelineErrorKind::Reset</code>, it needs to send a signal down
+through the pipeline.</p>
+<p>Prior to the Holocene hardfork, the pipeline only needed to be reset
+when the reset pipeline error was received. Holocene activation rules
+changed this to require Holocene-specific activation logic internal to
+the pipeline stages. The way kona's driver handles this activation is
+by sending a new <code>ActivationSignal</code> if the <code>PipelineErrorKind::Reset</code>
+type is a <code>ResetError::HoloceneActivation</code>. Otherwise, it will send the
+<code>ResetSignal</code>.</p>
+<p>The last of the three <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.Signal.html"><code>Signal</code></a> variants is the <code>FlushChannel</code>
+signal. Similar to <code>ActivationSignal</code>, the flush channel signal is logic
+introduced post-Holocene. When the driver fails to execute payload
+attributes and Holocene is active, a <code>FlushChannel</code> signal needs to
+forwards invalidate the associated batch and channel, and the block
+is replaced with a deposit-only block.</p>
+<h2 id="extending-the-signal-type"><a class="header" href="#extending-the-signal-type">Extending the Signal Type</a></h2>
+<p>To extend the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.Signal.html"><code>Signal</code></a> type, all that is needed is to introduce
+a new variant to the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.Signal.html"><code>Signal</code></a> enum.</p>
+<p>Once the variant is added, the segments where signals are handled need to
+be updated. Anywhere the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/trait.SignalReceiver.html"><code>SignalReceiver</code></a> trait is
+implemented, handling needs to be updated for the new signal variant. Most
+notably, this is on the top-level <a href="https://docs.rs/kona-derive/latest/kona_derive/pipeline/struct.DerivationPipeline.html"><code>DerivationPipeline</code></a> type, as well
+as all <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/index.html">the pipeline stages</a>.</p>
+<h4 id="an-example"><a class="header" href="#an-example">An Example</a></h4>
+<p>Let's create a new <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.Signal.html"><code>Signal</code></a> variant that updates the <code>RollupConfig</code>
+in the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Traversal.html"><code>L1Traversal</code></a> stage. Let's call it <code>SetConfig</code>.
+The <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.Signal.html"><code>signal</code></a> type would look like the following with this new
+variant.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// A signal to send to the pipeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
+pub enum Signal {
+    /// Reset the pipeline.
+    Reset(ResetSignal),
+    /// Hardfork Activation.
+    Activation(ActivationSignal),
+    /// Flush the currently active channel.
+    FlushChannel,
+    /// Updates the rollup config in the L1Traversal stage.
+    UpdateConfig(ConfigUpdateSignal),
+}
+
+/// A signal that updates the `RollupConfig`.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct ConfigUpdateSignal(Arc&lt;RollupConfig&gt;);
+<span class="boring">}</span></code></pre></pre>
+<p>Next, all handling of the <a href="https://docs.rs/kona-derive/latest/kona_derive/traits/enum.Signal.html"><code>Signal</code></a> type needs to be updated for
+the new <code>UpdateConfig</code> variant. For the sake of this example, we'll just
+focus on updating the <a href="https://docs.rs/kona-derive/latest/kona_derive/stages/struct.L1Traversal.html"><code>L1Traversal</code></a> stage.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[async_trait]
+impl&lt;F: ChainProvider + Send&gt; SignalReceiver for L1Traversal&lt;F&gt; {
+    async fn signal(&amp;mut self, signal: Signal) -&gt; PipelineResult&lt;()&gt; {
+        match signal {
+            Signal::Reset(ResetSignal { l1_origin, system_config, .. }) |
+            Signal::Activation(ActivationSignal { l1_origin, system_config, .. }) =&gt; {
+                self.block = Some(l1_origin);
+                self.done = false;
+                self.system_config = system_config.expect("System config must be provided.");
+            }
+            Signal::UpdateConfig(inner) =&gt; {
+               self.rollup_config = Arc::clone(&amp;inner.0);
+            }
+            _ =&gt; {}
+        }
+
+        Ok(())
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<!-- Links -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="glossary"><a class="header" href="#glossary">Glossary</a></h1>
+<p><em>This document contains definitions for terms used throughout the Kona book.</em></p>
+<h4 id="fault-proof-vm"><a class="header" href="#fault-proof-vm">Fault Proof VM</a></h4>
+<p>A <code>Fault Proof VM</code> is a virtual machine, commonly supporting a subset of the Linux kernel's syscalls and a modified subset of an existing reduced instruction set architecture,
+that is designed to execute verifiable programs.</p>
+<p>Full specification for the <code>cannon</code> &amp; <code>cannon-rs</code> FPVMs, as an example, is available in the <a href="https://specs.optimism.io/experimental/fault-proof/cannon-fault-proof-vm.html#cannon-fault-proof-virtual-machine">Optimism Monorepo</a>.</p>
+<h4 id="fault-proof-program"><a class="header" href="#fault-proof-program">Fault Proof Program</a></h4>
+<p>A <code>Fault Proof Program</code> is a program, commonly written in a general-purpose language such as Golang, C, or Rust, that may be compiled down
+to a compatible <code>Fault Proof VM</code> target and provably executed on that target VM.</p>
+<p>Examples of <code>Fault Proof Programs</code> include the <a href="https://github.com/ethereum-optimism/optimism/tree/develop/op-program">OP Program</a>, which runs on top of <a href="https://github.com/ethereum-optimism/optimism/tree/develop/cannon"><code>cannon</code></a>, <a href="https://github.com/op-rs/cannon-rs"><code>cannon-rs</code></a>, and
+<a href="https://github.com/ethereum-optimism/asterisc"><code>asterisc</code></a> to verify a claim about the state of an <a href="https://github.com/ethereum-optimism/optimism">OP Stack</a> layer two.</p>
+<h4 id="preimage-abi"><a class="header" href="#preimage-abi">Preimage ABI</a></h4>
+<p>The <code>Preimage ABI</code> is a specification for a synchronous communication protocol between a <code>client</code> and a <code>host</code> that is used to request and read data from the <code>host</code>'s
+datastore. Full specifications for the <code>Preimage ABI</code> are available in the <a href="https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-oracle">Optimism Monorepo</a>.</p>
+<!-- External -->
+<!-- Kona links -->
+<!-- People -->
+<div style="break-before: page; page-break-before: always;"></div><h1 id="contributing-1"><a class="header" href="#contributing-1">Contributing</a></h1>
+<p>Thank you for wanting to contribute! Before contributing to this repository, please read through this document and
+discuss the change you wish to make via issue.</p>
+<h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
+<p>Before working with this repository locally, you'll need to install several dependencies:</p>
+<ul>
+<li><a href="https://www.docker.com/">Docker</a> for cross-compilation.</li>
+<li><a href="https://github.com/casey/just">just</a> for our command-runner scripts.</li>
+<li>The <a href="https://rustup.rs/">Rust toolchain</a></li>
+<li>The <a href="https://go.dev/dl/">Golang toolchain</a></li>
+</ul>
+<p><strong>Optional</strong></p>
+<ul>
+<li><a href="https://github.com/rust-lang/mdBook">mdbook</a> to contribute to the <a href="/">book</a>
+<ul>
+<li><a href="https://github.com/sgoudham/mdbook-template">mdbook-template</a></li>
+<li><a href="https://github.com/badboy/mdbook-mermaid">mdbook-mermaid</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="pull-request-process"><a class="header" href="#pull-request-process">Pull Request Process</a></h2>
+<ol>
+<li>Before anything, <a href="https://github.com/op-rs/kona/issues/new">create an issue</a> to discuss the change you're
+wanting to make, if it is significant or changes functionality. Feel free to skip this step for trivial changes.</li>
+<li>Once your change is implemented, ensure that all checks are passing before creating a PR. The full CI pipeline can
+be run locally via the <code>justfile</code>s in the repository.</li>
+<li>Make sure to update any documentation that has gone stale as a result of the change, in the <code>README</code> files, the [book][book],
+and in rustdoc comments.</li>
+<li>Once you have sign-off from a maintainer, you may merge your pull request yourself if you have permissions to do so.
+If not, the maintainer who approves your pull request will add it to the merge queue.</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
+
+        <script>
+            window.addEventListener('load', function () {
+                window.setTimeout(window.print, 100);
+            });
+        </script>
+
+    </div>
+</body>
+
+</html>
