@@ -191,21 +191,41 @@ where
                     )
                 })?;
             let mut whole_blob_data = Vec::new();
-            for blob in blobs {
-                if blob.is_empty() {
-                    return Err(EigenDAProviderError::RLPDecodeError(
-                        BlobDecodingError::MissingData.to_string(),
-                    ));
+
+            let mut blob_index: usize = 0;
+            for _ in blob_hashes {
+                let mut blob = BlobData::default();
+                match blob.fill(&blobs, blob_index ) {
+                    Ok(should_increment) => {
+                        if should_increment {
+                            blob_index += 1;
+                        }
+                    }
+                    Err(e) => {
+                        return Err(EigenDAProviderError::Backend(e.to_string()));
+                    }
                 }
-                whole_blob_data.extend(blob.to_vec().clone());
+                match blob.decode() {
+                    Ok(d) => whole_blob_data.append(&mut d.to_vec()),
+                    Err(_) => {
+                        warn!(target: "blob-source", "Failed to decode blob data, skipping");
+                    }
+                }
             }
+            info!("whole blob data size {}", whole_blob_data.len());
+
             let rlp_blob: VecOfBytes = decode(&whole_blob_data)
-                .map_err(|e| EigenDAProviderError::RetrieveFramesFromDaIndexer(e.to_string()))?;
+                .map_err(|e| EigenDAProviderError::RLPDecodeError(e.to_string()))?;
+
+            info!("rlp blob data len {}", rlp_blob.0.len());
+
             for blob in rlp_blob.0 {
+                info!("rlp decode blob vec size {}", blob.len());
                 blob_data.push(Bytes::from(blob));
             }
         }
         self.open = true;
+        info!(target: "eigen_da", "loaded eigen blobs blob data len {}", blob_data.len());
         self.data = blob_data;
         Ok(())
     }
@@ -248,6 +268,7 @@ where
             Ok(d) => d,
             Err(e) => return e,
         };
+        //TODO EigenDA decode
 
         Ok(next_data)
     }

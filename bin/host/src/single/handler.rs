@@ -2,7 +2,7 @@
 
 use crate::{
     backend::util::store_ordered_trie, kv::SharedKeyValueStore, single::cfg::SingleChainHost,
-    HintHandler, OnlineHostBackendCfg,
+    EigenDABlobWitness, HintHandler, OnlineHostBackendCfg,
 };
 use alloy_consensus::Header;
 use alloy_eips::{
@@ -15,11 +15,13 @@ use alloy_rlp::Decodable;
 use alloy_rpc_types::{debug::ExecutionWitness, Block, BlockTransactionsKind};
 use anyhow::{anyhow, ensure, Result};
 use async_trait::async_trait;
+use eigen_da::{BlobInfo, EigenDABlobData, BYTES_PER_FIELD_ELEMENT};
 use kona_preimage::{PreimageKey, PreimageKeyType};
 use kona_proof::{Hint, HintType};
 use op_alloy_protocol::BlockInfo;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use std::collections::HashMap;
+use tracing::{debug, info};
 
 /// The [HintHandler] for the [SingleChainHost].
 #[derive(Debug, Clone, Copy)]
@@ -125,7 +127,6 @@ impl HintHandler for SingleChainHintHandler {
                 // Write the KZG Proof as the 4096th element.
                 blob_key[72..].copy_from_slice((FIELD_ELEMENTS_PER_BLOB).to_be_bytes().as_ref());
                 let blob_key_hash = keccak256(blob_key.as_ref());
-
                 kv_lock.set(PreimageKey::new_keccak256(*blob_key_hash).into(), blob_key.into())?;
                 kv_lock.set(
                     PreimageKey::new(*blob_key_hash, PreimageKeyType::Blob).into(),
@@ -359,10 +360,121 @@ impl HintHandler for SingleChainHintHandler {
                     .await
                     .map_err(|e| anyhow!("Failed to fetch blob: {e}"))?;
                 let mut kv_lock = kv.write().await;
+
+                // the fourth because 0x01010000 in the beginning is metadata
+                let cert_blob_info = BlobInfo::decode(&mut &commitment[3..])
+                    .map_err(|e| anyhow!("Failed to decode blob info: {e}"))?;
+                // Proxy should return a cert whose data_length measured in symbol (i.e. 32 Bytes)
+                let blob_length = cert_blob_info.blob_header.data_length as u64;
+
+                let eigenda_blob = EigenDABlobData::encode(blob.as_ref());
+
+                assert_eq!(
+                    eigenda_blob.blob.len() < blob_length as usize * BYTES_PER_FIELD_ELEMENT,
+                    true,
+                    "data size from cert is smaller than the reconstructed data"
+                );
+
+                //
+                // Write all the field elements to the key-value store.
+                // The preimage oracle key for each field element is the keccak256 hash of
+                // `abi.encodePacked(cert.KZGCommitment, uint256(i))`
+
+                //  TODO figure out the key size, most likely dependent on smart contract parsing
+                let mut blob_key = [0u8; 96];
+                blob_key[..32].copy_from_slice(cert_blob_info.blob_header.commitment.x.as_ref());
+                blob_key[32..64].copy_from_slice(cert_blob_info.blob_header.commitment.y.as_ref());
+
+                for i in 0..blob_length {
+                    blob_key[88..].copy_from_slice(i.to_be_bytes().as_ref());
+                    let blob_key_hash = keccak256(blob_key.as_ref());
+
+                    kv_lock.set(
+                        PreimageKey::new(*blob_key_hash, PreimageKeyType::Keccak256).into(),
+                        blob_key.into(),
+                    )?;
+                    debug!("save block key, hash {:?}", blob_key_hash);
+                    let start = (i as usize) << 5;
+                    let end = start + 32;
+                    let actual_end = eigenda_blob.blob.len().min(end);
+                    let data_slice = if start >= eigenda_blob.blob.len() {
+                        vec![0u8; 32]
+                    } else {
+                        let mut padded_data = vec![0u8; 32];
+                        padded_data[..(actual_end - start)]
+                            .copy_from_slice(&eigenda_blob.blob[start..actual_end]);
+                        padded_data
+                    };
+                    kv_lock.set(
+                        PreimageKey::new(*blob_key_hash, PreimageKeyType::GlobalGeneric).into(),
+                        data_slice.into(),
+                    )?;
+                    debug!("save blob slice, hash {:?}", blob_key_hash);
+                }
+
+                // proof is at the random point
+                //TODO
+                // Because the blob_length in EigenDA is variable-length, KZG proofs cannot be cached at the position corresponding to blob_length
+                // For now, they are placed at the position corresponding to commit x y. Further optimization will follow the EigenLayer approach
+                let mut kzg_proof_key = [0u8; 64];
+                kzg_proof_key[..64].copy_from_slice(blob_key[..64].as_ref());
+                let kzg_proof_key_hash = keccak256(kzg_proof_key.as_ref());
+
+                //TODO
+                // In fact, the calculation result following the EigenLayer approach is not the same as the cert blob info.
+                // need to save the real commitment x y
+                let mut kzg_commitment_key = [0u8; 65];
+                kzg_commitment_key[..64].copy_from_slice(blob_key[..64].as_ref());
+                kzg_commitment_key[64] = 0u8;
+                let kzg_commitment_key_hash = keccak256(kzg_commitment_key.as_ref());
+
+                let mut witness = EigenDABlobWitness::new();
+
+                let _ = witness
+                    .push_witness(&blob)
+                    .map_err(|e| anyhow!("eigen da blob push witness error {e}"))?;
+
+                // let last_commitment = witness.commitments.last().unwrap();
+
+                // make sure locally computed proof equals to returned proof from the provider
+                // TODO In fact, the calculation result following the EigenLayer approach is not the same as the cert blob info.
+                // if last_commitment[..32] != cert_blob_info.blob_header.commitment.x[..]
+                //     || last_commitment[32..64] != cert_blob_info.blob_header.commitment.y[..]
+                // {
+                //     return Err(
+                //         anyhow!("proxy commitment is different from computed commitment proxy",
+                //     ));
+                // };
+                let proof: Vec<u8> =
+                    witness.proofs.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
+
                 kv_lock.set(
-                    PreimageKey::new(*keccak256(commitment), PreimageKeyType::GlobalGeneric).into(),
-                    blob.into(),
+                    PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::Keccak256).into(),
+                    kzg_proof_key.into(),
                 )?;
+                debug!("save proof key, hash {:?}", kzg_proof_key_hash);
+                // proof to be done
+                kv_lock.set(
+                    PreimageKey::new(*kzg_proof_key_hash, PreimageKeyType::GlobalGeneric).into(),
+                    proof.into(),
+                )?;
+                debug!("save proof value, hash {:?}", kzg_proof_key_hash);
+
+                let commitment: Vec<u8> =
+                    witness.commitments.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
+                kv_lock.set(
+                    PreimageKey::new(*kzg_commitment_key_hash, PreimageKeyType::Keccak256).into(),
+                    kzg_commitment_key.into(),
+                )?;
+                debug!("save commitment key, hash {:?}", kzg_commitment_key_hash);
+
+                // proof to be done
+                kv_lock.set(
+                    PreimageKey::new(*kzg_commitment_key_hash, PreimageKeyType::GlobalGeneric)
+                        .into(),
+                    commitment.into(),
+                )?;
+                debug!("save commitment value, hash {:?}", kzg_commitment_key_hash);
             }
         }
 

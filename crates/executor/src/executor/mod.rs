@@ -157,9 +157,9 @@ where
             }
 
             // Prevent EIP-7702 transactions pre-isthmus hardfork.
-            // if !is_isthmus && matches!(transaction, OpTxEnvelope::Eip7702(_)) {
-            //     return Err(ExecutorError::UnsupportedTransactionType(transaction.tx_type() as u8));
-            // }
+            if matches!(transaction, OpTxEnvelope::Eip7702(_)) {
+                return Err(ExecutorError::UnsupportedTransactionType(transaction.tx_type() as u8));
+            }
 
             // Modify the transaction environment with the current transaction.
             evm = evm
@@ -198,7 +198,6 @@ where
 
             // Accumulate the gas used by the transaction.
             cumulative_gas_used += result.gas_used();
-
             // Create receipt envelope.
             let receipt = OpReceiptEnvelope::<Log>::from_parts(
                 result.is_success(),

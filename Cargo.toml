@@ -108,6 +108,7 @@ op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "a
 
 
 
+
 # General
 lru = "0.12.5"
 spin = "0.9.8"
@@ -148,7 +149,7 @@ serde_json = { version = "1.0.135", default-features = false }
 
 # Ethereum
 unsigned-varint = "0.8.0"
-revm = { git = "https://github.com/mantle-xyz/revm", branch = "kona", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", branch = "dev", default-features = false }
 
 # K/V database
 rocksdb = { version = "0.22.0", default-features = false }
@@ -158,3 +159,11 @@ prost = "0.13.3"
 bytes = "1.8.0"
 hex = "0.4.3"
 rlp = "0.6.1"
+
+#eigenlayer
+rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "b3e532e9aad533009849755d5ad7b9578a16bfb2", default-features = false }
+rust-kzg-bn254-prover = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "b3e532e9aad533009849755d5ad7b9578a16bfb2", default-features = false }
+
+ark-bn254 = "0.5.0"
+ark-ff = { version = "0.5.0", features = ["parallel"] }
+num = "0.4"

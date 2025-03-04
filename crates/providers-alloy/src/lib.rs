@@ -19,5 +19,7 @@ mod l2_chain_provider;
 
 pub use l2_chain_provider::AlloyL2ChainProvider;
 mod eigen_da_provider;
+mod eigen_da_proxy;
+pub use eigen_da_proxy::EigenDaProxy;
 
 pub use eigen_da_provider::OnlineEigenDaProvider;
