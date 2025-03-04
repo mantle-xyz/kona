@@ -6,6 +6,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4](https://github.com/mantle-xyz/kona/compare/kona-proof-v0.2.3...kona-proof-v0.2.4) - 2025-03-04
+
+### Added
+
+- *(driver)* wait for engine ([#851](https://github.com/mantle-xyz/kona/pull/851))
+- *(client)* Invalidate impossibly old claims ([#852](https://github.com/mantle-xyz/kona/pull/852))
+- *(driver)* refines the executor interface for the driver ([#850](https://github.com/mantle-xyz/kona/pull/850))
+- *(workspace)* Isolate FPVM-specific platform code ([#821](https://github.com/mantle-xyz/kona/pull/821))
+- *(workspace)* `kona-proof` ([#818](https://github.com/mantle-xyz/kona/pull/818))
+
+### Fixed
+
+- bump ([#865](https://github.com/mantle-xyz/kona/pull/865))
+- fixes ([#827](https://github.com/mantle-xyz/kona/pull/827))
+- imports ([#829](https://github.com/mantle-xyz/kona/pull/829))
+
+### Other
+
+- Mantle kona mpt ([#4](https://github.com/mantle-xyz/kona/pull/4))
+- release ([#837](https://github.com/mantle-xyz/kona/pull/837))
+- update deps and clean up misc features ([#864](https://github.com/mantle-xyz/kona/pull/864))
+- *(host)* Hint Parsing Cleanup ([#844](https://github.com/mantle-xyz/kona/pull/844))
+- *(derive)* remove indexed blob hash ([#847](https://github.com/mantle-xyz/kona/pull/847))
+- L2ExecutePayloadProof Hint Type ([#832](https://github.com/mantle-xyz/kona/pull/832))
+- minor release' ([#833](https://github.com/mantle-xyz/kona/pull/833))
+- op-alloy 0.6.8 ([#830](https://github.com/mantle-xyz/kona/pull/830))
+- *(driver)* use tracing macros ([#823](https://github.com/mantle-xyz/kona/pull/823))
+
 ## [0.2.0](https://github.com/op-rs/kona/compare/kona-proof-v0.1.0...kona-proof-v0.2.0) - 2024-12-03
 
 ### Added
