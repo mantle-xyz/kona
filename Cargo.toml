@@ -62,18 +62,18 @@ lto = "fat"
 
 [workspace.dependencies]
 # Workspace
-kona-host = { path = "bin/host", version = "0.1.0", default-features = false }
-kona-client = { path = "bin/client", version = "0.1.0", default-features = false }
-kona-mpt = { path = "crates/mpt", version = "0.1.1", default-features = false }
-kona-derive = { path = "crates/derive", version = "0.2.3", default-features = false }
-kona-driver = { path = "crates/driver", version = "0.2.3", default-features = false }
-kona-providers-alloy = { path = "crates/providers-alloy", version = "0.1.0", default-features = false }
-kona-executor = { path = "crates/executor", version = "0.2.0", default-features = false }
-kona-proof = { path = "crates/proof-sdk/proof", version = "0.2.3", default-features = false }
-kona-std-fpvm = { path = "crates/proof-sdk/std-fpvm", version = "0.1.1", default-features = false }
-kona-preimage = { path = "crates/proof-sdk/preimage", version = "0.2.0", default-features = false }
-kona-std-fpvm-proc = { path = "crates/proof-sdk/std-fpvm-proc", version = "0.1.1", default-features = false }
-eigen-da = { path = "crates/eigen-da" , version = "0.1.0", default-features = false }
+kona-host = { path = "bin/host", version = "1.0.0", default-features = false }
+kona-client = { path = "bin/client", version = "1.0.0", default-features = false }
+kona-mpt = { path = "crates/mpt", version = "1.0.0", default-features = false }
+kona-derive = { path = "crates/derive", version = "1.0.0", default-features = false }
+kona-driver = { path = "crates/driver", version = "1.0.0", default-features = false }
+kona-providers-alloy = { path = "crates/providers-alloy", version = "1.0.0", default-features = false }
+kona-executor = { path = "crates/executor", version = "1.0.0", default-features = false }
+kona-proof = { path = "crates/proof-sdk/proof", version = "1.0.0", default-features = false }
+kona-std-fpvm = { path = "crates/proof-sdk/std-fpvm", version = "1.0.0", default-features = false }
+kona-preimage = { path = "crates/proof-sdk/preimage", version = "1.0.0", default-features = false }
+kona-std-fpvm-proc = { path = "crates/proof-sdk/std-fpvm-proc", version = "1.0.0", default-features = false }
+eigen-da = { path = "crates/eigen-da" , version = "1.0.0", default-features = false }
 
 
 # Alloy
@@ -100,11 +100,11 @@ alloy-sol-types = { version = "0.8.19", default-features = false }
 #op-alloy-rpc-types-engine = { version = "0.5.2", default-features = false }
 
 # Mantle Alloy
-op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", branch = "alloy-0.11.1" }
-op-alloy-protocol = { git = "https://github.com/mantle-xyz/op-alloy", branch = "alloy-0.11.1" }
-op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "alloy-0.11.1" }
-op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "alloy-0.11.1" }
-op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "alloy-0.11.1" }
+op-alloy-genesis = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v1.0.0" }
+op-alloy-protocol = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v1.0.0" }
+op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v1.0.0" }
+op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v1.0.0" }
+op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v1.0.0" }
 
 
 
@@ -149,7 +149,7 @@ serde_json = { version = "1.0.135", default-features = false }
 
 # Ethereum
 unsigned-varint = "0.8.0"
-revm = { git = "https://github.com/mantle-xyz/revm", branch = "dev", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", tag = "v1.0.0", default-features = false }
 
 # K/V database
 rocksdb = { version = "0.22.0", default-features = false }
