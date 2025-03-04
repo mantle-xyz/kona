@@ -1767,7 +1767,7 @@ dependencies = [
 
 [[package]]
 name = "eigen-da"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -2726,7 +2726,7 @@ dependencies = [
 
 [[package]]
 name = "kona-client"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -2758,7 +2758,7 @@ dependencies = [
 
 [[package]]
 name = "kona-derive"
-version = "0.2.3"
+version = "1.0.0"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -2787,7 +2787,7 @@ dependencies = [
 
 [[package]]
 name = "kona-driver"
-version = "0.2.3"
+version = "1.0.0"
 dependencies = [
  "alloy-consensus",
  "alloy-primitives",
@@ -2806,7 +2806,7 @@ dependencies = [
 
 [[package]]
 name = "kona-executor"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -2837,7 +2837,7 @@ dependencies = [
 
 [[package]]
 name = "kona-host"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -2882,7 +2882,7 @@ dependencies = [
 
 [[package]]
 name = "kona-mpt"
-version = "0.1.1"
+version = "1.0.0"
 dependencies = [
  "alloy-consensus",
  "alloy-primitives",
@@ -2905,7 +2905,7 @@ dependencies = [
 
 [[package]]
 name = "kona-preimage"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "alloy-primitives",
  "async-channel",
@@ -2919,7 +2919,7 @@ dependencies = [
 
 [[package]]
 name = "kona-proof"
-version = "0.2.3"
+version = "1.0.0"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -2947,7 +2947,7 @@ dependencies = [
 
 [[package]]
 name = "kona-providers-alloy"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -2972,7 +2972,7 @@ dependencies = [
 
 [[package]]
 name = "kona-std-fpvm"
-version = "0.1.1"
+version = "1.0.0"
 dependencies = [
  "async-trait",
  "cfg-if",
@@ -2984,7 +2984,7 @@ dependencies = [
 
 [[package]]
 name = "kona-std-fpvm-proc"
-version = "0.1.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -3381,7 +3381,7 @@ checksum = "b410bbe7e14ab526a0e86877eb47c6996a2bd7746f027ba551028c925390e4e9"
 [[package]]
 name = "op-alloy-consensus"
 version = "0.6.5"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=alloy-0.11.1#8d6fee26f2530f4d2b1745448c63ac1d05202247"
+source = "git+https://github.com/mantle-xyz/op-alloy?tag=v1.0.0#f1fd522aead9046b1ce8d1330f5958a7533e57f3"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -3396,7 +3396,7 @@ dependencies = [
 [[package]]
 name = "op-alloy-genesis"
 version = "0.6.5"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=alloy-0.11.1#8d6fee26f2530f4d2b1745448c63ac1d05202247"
+source = "git+https://github.com/mantle-xyz/op-alloy?tag=v1.0.0#f1fd522aead9046b1ce8d1330f5958a7533e57f3"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -3409,7 +3409,7 @@ dependencies = [
 [[package]]
 name = "op-alloy-network"
 version = "0.6.5"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=alloy-0.11.1#8d6fee26f2530f4d2b1745448c63ac1d05202247"
+source = "git+https://github.com/mantle-xyz/op-alloy?tag=v1.0.0#f1fd522aead9046b1ce8d1330f5958a7533e57f3"
 dependencies = [
  "alloy-consensus",
  "alloy-network",
@@ -3423,7 +3423,7 @@ dependencies = [
 [[package]]
 name = "op-alloy-protocol"
 version = "0.6.5"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=alloy-0.11.1#8d6fee26f2530f4d2b1745448c63ac1d05202247"
+source = "git+https://github.com/mantle-xyz/op-alloy?tag=v1.0.0#f1fd522aead9046b1ce8d1330f5958a7533e57f3"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -3442,7 +3442,7 @@ dependencies = [
 [[package]]
 name = "op-alloy-rpc-types"
 version = "0.6.5"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=alloy-0.11.1#8d6fee26f2530f4d2b1745448c63ac1d05202247"
+source = "git+https://github.com/mantle-xyz/op-alloy?tag=v1.0.0#f1fd522aead9046b1ce8d1330f5958a7533e57f3"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -3459,7 +3459,7 @@ dependencies = [
 [[package]]
 name = "op-alloy-rpc-types-engine"
 version = "0.6.5"
-source = "git+https://github.com/mantle-xyz/op-alloy?branch=alloy-0.11.1#8d6fee26f2530f4d2b1745448c63ac1d05202247"
+source = "git+https://github.com/mantle-xyz/op-alloy?tag=v1.0.0#f1fd522aead9046b1ce8d1330f5958a7533e57f3"
 dependencies = [
  "alloy-eips",
  "alloy-primitives",
@@ -4108,7 +4108,7 @@ dependencies = [
 [[package]]
 name = "revm"
 version = "17.0.0"
-source = "git+https://github.com/mantle-xyz/revm?branch=dev#9a355b02deb81dc367f8d764af2e4f3dd8fc8c4b"
+source = "git+https://github.com/mantle-xyz/revm?tag=v1.0.0#9a355b02deb81dc367f8d764af2e4f3dd8fc8c4b"
 dependencies = [
  "auto_impl",
  "cfg-if",
@@ -4123,7 +4123,7 @@ dependencies = [
 [[package]]
 name = "revm-interpreter"
 version = "13.0.0"
-source = "git+https://github.com/mantle-xyz/revm?branch=dev#9a355b02deb81dc367f8d764af2e4f3dd8fc8c4b"
+source = "git+https://github.com/mantle-xyz/revm?tag=v1.0.0#9a355b02deb81dc367f8d764af2e4f3dd8fc8c4b"
 dependencies = [
  "revm-primitives",
  "serde",
@@ -4132,7 +4132,7 @@ dependencies = [
 [[package]]
 name = "revm-precompile"
 version = "14.0.0"
-source = "git+https://github.com/mantle-xyz/revm?branch=dev#9a355b02deb81dc367f8d764af2e4f3dd8fc8c4b"
+source = "git+https://github.com/mantle-xyz/revm?tag=v1.0.0#9a355b02deb81dc367f8d764af2e4f3dd8fc8c4b"
 dependencies = [
  "aurora-engine-modexp",
  "blst",
@@ -4151,7 +4151,7 @@ dependencies = [
 [[package]]
 name = "revm-primitives"
 version = "13.0.0"
-source = "git+https://github.com/mantle-xyz/revm?branch=dev#9a355b02deb81dc367f8d764af2e4f3dd8fc8c4b"
+source = "git+https://github.com/mantle-xyz/revm?tag=v1.0.0#9a355b02deb81dc367f8d764af2e4f3dd8fc8c4b"
 dependencies = [
  "alloy-eip2930",
  "alloy-eip7702",
