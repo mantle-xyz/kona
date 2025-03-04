@@ -434,17 +434,17 @@ impl HintHandler for SingleChainHintHandler {
                     .push_witness(&blob)
                     .map_err(|e| anyhow!("eigen da blob push witness error {e}"))?;
 
-                // let last_commitment = witness.commitments.last().unwrap();
+                let last_commitment = witness.commitments.last().unwrap();
 
                 // make sure locally computed proof equals to returned proof from the provider
                 // TODO In fact, the calculation result following the EigenLayer approach is not the same as the cert blob info.
-                // if last_commitment[..32] != cert_blob_info.blob_header.commitment.x[..]
-                //     || last_commitment[32..64] != cert_blob_info.blob_header.commitment.y[..]
-                // {
-                //     return Err(
-                //         anyhow!("proxy commitment is different from computed commitment proxy",
-                //     ));
-                // };
+                if last_commitment[..32] != cert_blob_info.blob_header.commitment.x[..]
+                    || last_commitment[32..64] != cert_blob_info.blob_header.commitment.y[..]
+                {
+                    return Err(
+                        anyhow!("proxy commitment is different from computed commitment proxy",
+                    ));
+                };
                 let proof: Vec<u8> =
                     witness.proofs.iter().flat_map(|x| x.as_ref().iter().copied()).collect();
 

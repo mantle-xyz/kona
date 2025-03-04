@@ -36,7 +36,7 @@ impl EigenDABlobWitness {
         // Add command line to specify where are g1 and g2 path
         // In the future, it might make sense to let the proxy to return such
         // value, instead of local computation
-        let srs = SRS::new("resources/g1.32mb.point", 268435456, 1000000).unwrap();
+        let srs = SRS::new("resources/g1.point", 268435456, 1000000).unwrap();
         let mut kzg = KZG::new();
 
         let input = Blob::new(blob);
