@@ -19,6 +19,9 @@ kona-std-fpvm.workspace = true
 kona-preimage = { workspace = true, features = ["std"] }
 kona-proof = { workspace = true, features = ["std"] }
 kona-client.workspace = true
+kona-providers-alloy.workspace = true
+eigen-da.workspace = true
+
 
 # Alloy
 alloy-rlp.workspace = true
@@ -36,9 +39,18 @@ alloy-rpc-types-beacon.workspace = true
 op-alloy-genesis = { workspace = true, features = ["std", "serde"] }
 op-alloy-protocol = { workspace = true, features = ["std", "serde"] }
 op-alloy-rpc-types-engine = { workspace = true, features = ["serde"] }
+op-alloy-network.workspace = true
 
 # Revm
 revm = { workspace = true, features = ["std", "c-kzg", "secp256k1", "portable", "blst"] }
+
+# Eigenda
+rust-kzg-bn254-prover.workspace = true
+rust-kzg-bn254-primitives.workspace = true
+num.workspace = true
+ark-bn254.workspace = true
+ark-ff.workspace = true
+
 
 # General
 anyhow.workspace = true
@@ -46,11 +58,20 @@ tracing.workspace = true
 reqwest.workspace = true
 serde_json.workspace = true
 async-trait.workspace = true
+rocksdb = { workspace = true, features = ["snappy"] }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true, features = ["derive"] }
-rocksdb = { workspace = true, features = ["snappy"] }
 clap = { workspace = true, features = ["derive", "env"] }
 tracing-subscriber = { workspace = true, features = ["fmt"] }
 
 [dev-dependencies]
 proptest.workspace = true
+
+[features]
+default = ["single", "interop"]
+single = []
+interop = ["single"]
+
+[[bin]]
+name = "kona-host"
+path = "src/bin/host.rs"

@@ -12,7 +12,8 @@ use alloc::{boxed::Box, sync::Arc};
 use async_trait::async_trait;
 use core::fmt::Debug;
 use op_alloy_genesis::RollupConfig;
-use op_alloy_protocol::{BlockInfo, L2BlockInfo, SingleBatch};
+use op_alloy_protocol::SingleBatch;
+use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::{OpAttributesWithParent, OpPayloadAttributes};
 
 /// [AttributesQueue] accepts batches from the [BatchQueue] stage
@@ -38,8 +39,6 @@ where
     cfg: Arc<RollupConfig>,
     /// The previous stage of the derivation pipeline.
     prev: P,
-    /// Whether the current batch is the last in its span.
-    is_last_in_span: bool,
     /// The current batch being processed.
     batch: Option<SingleBatch>,
     /// The attributes builder.
@@ -53,7 +52,7 @@ where
 {
     /// Create a new [AttributesQueue] stage.
     pub const fn new(cfg: Arc<RollupConfig>, prev: P, builder: AB) -> Self {
-        Self { cfg, prev, is_last_in_span: false, batch: None, builder }
+        Self { cfg, prev, batch: None, builder }
     }
 
     /// Loads a [SingleBatch] from the [AttributesProvider] if needed.
@@ -61,7 +60,6 @@ where
         if self.batch.is_none() {
             let batch = self.prev.next_batch(parent).await?;
             self.batch = Some(batch);
-            self.is_last_in_span = self.prev.is_last_in_span();
         }
         self.batch.as_ref().cloned().ok_or(PipelineError::Eof.temp())
     }
@@ -85,12 +83,10 @@ where
                 return Err(e);
             }
         };
-        let populated_attributes =
-            OpAttributesWithParent { attributes, parent, is_last_in_span: self.is_last_in_span };
+        let populated_attributes = OpAttributesWithParent { attributes, parent };
 
         // Clear out the local state once payload attributes are prepared.
         self.batch = None;
-        self.is_last_in_span = false;
         Ok(populated_attributes)
     }
 
@@ -181,7 +177,6 @@ where
             s @ Signal::Reset(_) | s @ Signal::Activation(_) => {
                 self.prev.signal(s).await?;
                 self.batch = None;
-                self.is_last_in_span = false;
             }
             s @ Signal::FlushChannel => {
                 self.batch = None;
@@ -212,13 +207,11 @@ mod tests {
                 prev_randao: B256::default(),
                 withdrawals: None,
                 parent_beacon_block_root: None,
-                target_blobs_per_block: None,
-                max_blobs_per_block: None,
             },
             no_tx_pool: Some(false),
             transactions: None,
             gas_limit: None,
-            eip_1559_params: None,
+            base_fee: None,
         }
     }
 
@@ -270,7 +263,6 @@ mod tests {
         let parent = L2BlockInfo::default();
         let result = attributes_queue.load_batch(parent).await.unwrap();
         assert_eq!(result, Default::default());
-        assert!(attributes_queue.is_last_in_span);
     }
 
     #[tokio::test]
@@ -374,19 +366,14 @@ mod tests {
         // If we load the batch, we should get the last in span.
         // But it won't take it so it will be available in the next_attributes call.
         let _ = aq.load_batch(L2BlockInfo::default()).await.unwrap();
-        assert!(aq.is_last_in_span);
         assert!(aq.batch.is_some());
         // This should successfully construct the next payload attributes.
         // It should also reset the last in span flag and clear the batch.
         let attributes = aq.next_attributes(L2BlockInfo::default()).await.unwrap();
         pa.no_tx_pool = Some(true);
-        let populated_attributes = OpAttributesWithParent {
-            attributes: pa,
-            parent: L2BlockInfo::default(),
-            is_last_in_span: true,
-        };
+        let populated_attributes =
+            OpAttributesWithParent { attributes: pa, parent: L2BlockInfo::default() };
         assert_eq!(attributes, populated_attributes);
-        assert!(!aq.is_last_in_span);
         assert!(aq.batch.is_none());
     }
 }

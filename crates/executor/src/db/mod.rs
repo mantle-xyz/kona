@@ -6,15 +6,13 @@ use alloc::{string::ToString, vec::Vec};
 use alloy_consensus::{Header, Sealed, EMPTY_ROOT_HASH};
 use alloy_primitives::{keccak256, Address, B256, U256};
 use alloy_rlp::{Decodable, Encodable};
+use alloy_trie::TrieAccount;
 use kona_mpt::{Nibbles, TrieHinter, TrieNode, TrieNodeError};
 use revm::{
     db::{states::StorageSlot, BundleState},
     primitives::{AccountInfo, Bytecode, HashMap, BLOCK_HASH_HISTORY},
     Database,
 };
-
-mod account;
-pub use account::TrieAccount;
 
 mod traits;
 pub use traits::{NoopTrieDBProvider, TrieDBProvider};
@@ -48,7 +46,6 @@ pub use traits::{NoopTrieDBProvider, TrieDBProvider};
 /// ```rust
 /// use alloy_consensus::{Header, Sealable};
 /// use alloy_primitives::{Bytes, B256};
-/// use anyhow::Result;
 /// use kona_executor::{NoopTrieDBProvider, TrieDB};
 /// use kona_mpt::NoopTrieHinter;
 /// use revm::{db::states::bundle_state::BundleRetention, EvmBuilder, StateBuilder};
@@ -154,16 +151,15 @@ where
         self.update_accounts(bundle)?;
 
         // Recompute the root hash of the trie.
-        self.root_node.blind();
+        let root = self.root_node.blind();
 
         debug!(
             target: "client_executor",
-            "Recomputed state root: {commitment:?}",
-            commitment = self.root_node.blinded_commitment()
+            "Recomputed state root: {root}",
         );
 
         // Extract the new state root from the root node.
-        self.root_node.blinded_commitment().ok_or(TrieDBError::RootNotBlinded)
+        Ok(root)
     }
 
     /// Fetches the [TrieAccount] of an account from the trie DB.
@@ -204,13 +200,19 @@ where
     /// - `Ok(())` if the accounts were successfully updated.
     /// - `Err(_)` if the accounts could not be updated.
     fn update_accounts(&mut self, bundle: &BundleState) -> TrieDBResult<()> {
-        for (address, bundle_account) in bundle.state() {
+        // Sort the storage keys prior to applying the changeset, to ensure that the order of
+        // application is deterministic between runs.
+        let mut sorted_state =
+            bundle.state().iter().map(|(k, v)| (k, keccak256(*k), v)).collect::<Vec<_>>();
+        sorted_state.sort_by_key(|(_, hashed_addr, _)| *hashed_addr);
+
+        for (address, hashed_address, bundle_account) in sorted_state {
             if bundle_account.status.is_not_modified() {
                 continue;
             }
 
             // Compute the path to the account in the trie.
-            let account_path = Nibbles::unpack(keccak256(address.as_slice()));
+            let account_path = Nibbles::unpack(hashed_address.as_slice());
 
             // If the account was destroyed, delete it from the trie.
             if bundle_account.was_destroyed() {
@@ -233,16 +235,29 @@ where
                 .storage_roots
                 .entry(*address)
                 .or_insert_with(|| TrieNode::new_blinded(EMPTY_ROOT_HASH));
-            bundle_account.storage.iter().try_for_each(|(index, value)| {
-                Self::change_storage(acc_storage_root, *index, value, &self.fetcher, &self.hinter)
+
+            // Sort the hashed storage keys prior to applying the changeset, to ensure that the
+            // order of application is deterministic between runs.
+            let mut sorted_storage = bundle_account
+                .storage
+                .iter()
+                .map(|(k, v)| (keccak256(k.to_be_bytes::<32>()), v))
+                .collect::<Vec<_>>();
+            sorted_storage.sort_by_key(|(slot, _)| *slot);
+
+            sorted_storage.into_iter().try_for_each(|(hashed_key, value)| {
+                Self::change_storage(
+                    acc_storage_root,
+                    hashed_key,
+                    value,
+                    &self.fetcher,
+                    &self.hinter,
+                )
             })?;
 
             // Recompute the account storage root.
-            acc_storage_root.blind();
-
-            let commitment =
-                acc_storage_root.blinded_commitment().ok_or(TrieDBError::RootNotBlinded)?;
-            trie_account.storage_root = commitment;
+            let root = acc_storage_root.blind();
+            trie_account.storage_root = root;
 
             // RLP encode the trie account for insertion.
             let mut account_buf = Vec::with_capacity(trie_account.length());
@@ -258,16 +273,18 @@ where
     /// Modifies a storage slot of an account in the Merkle Patricia Trie.
     ///
     /// ## Takes
-    /// - `address`: The address of the account.
-    /// - `index`: The index of the storage slot.
+    /// - `storage_root`: The storage root of the account.
+    /// - `hashed_key`: The hashed storage slot key.
     /// - `value`: The new value of the storage slot.
+    /// - `fetcher`: The trie node fetcher.
+    /// - `hinter`: The trie hinter.
     ///
     /// ## Returns
     /// - `Ok(())` if the storage slot was successfully modified.
     /// - `Err(_)` if the storage slot could not be modified.
     fn change_storage(
         storage_root: &mut TrieNode,
-        index: U256,
+        hashed_key: B256,
         value: &StorageSlot,
         fetcher: &F,
         hinter: &H,
@@ -281,7 +298,7 @@ where
         value.present_value.encode(&mut rlp_buf);
 
         // Insert or update the storage slot in the trie.
-        let hashed_slot_key = Nibbles::unpack(keccak256(index.to_be_bytes::<32>().as_slice()));
+        let hashed_slot_key = Nibbles::unpack(hashed_key.as_slice());
         if value.present_value.is_zero() {
             // If the storage slot is being set to zero, prune it from the trie.
             storage_root.delete(&hashed_slot_key, fetcher, hinter)?;
@@ -366,8 +383,8 @@ where
         let mut header = self.parent_block_header.inner().clone();
 
         // Check if the block number is in range. If not, we can fail early.
-        if block_number > header.number ||
-            header.number.saturating_sub(block_number) > BLOCK_HASH_HISTORY
+        if block_number > header.number
+            || header.number.saturating_sub(block_number) > BLOCK_HASH_HISTORY
         {
             return Ok(B256::default());
         }
@@ -404,14 +421,14 @@ mod tests {
     fn test_trie_db_take_root_node() {
         let db = new_test_db();
         let root_node = db.take_root_node();
-        assert_eq!(root_node.blinded_commitment(), Some(B256::default()));
+        assert_eq!(root_node.blind(), B256::default());
     }
 
     #[test]
     fn test_trie_db_root_node_ref() {
         let db = new_test_db();
         let root_node = db.root();
-        assert_eq!(root_node.blinded_commitment(), Some(B256::default()));
+        assert_eq!(root_node.blind(), B256::default());
     }
 
     #[test]

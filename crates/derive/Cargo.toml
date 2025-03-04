@@ -1,7 +1,7 @@
 [package]
 name = "kona-derive"
 description = "A no_std derivation pipeline implementation for the OP Stack"
-version = "0.2.0"
+version = "0.2.3"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -25,6 +25,7 @@ op-alloy-protocol.workspace = true
 op-alloy-rpc-types-engine.workspace = true
 op-alloy-consensus = { workspace = true, features = ["k256"] }
 
+
 # General
 tracing.workspace = true
 async-trait.workspace = true
@@ -34,11 +35,18 @@ thiserror.workspace = true
 spin = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true, optional = true, features = ["fmt"] }
 
+bytes = { workspace = true}
+hex = {workspace = true}
+prost = { workspace = true, default-features = false}
+rlp = {workspace = true, default-features = false}
+log = "0.4.22"
+miniz_oxide.workspace = true
+
+
 [dev-dependencies]
 spin.workspace = true
 proptest.workspace = true
 serde_json.workspace = true
-op-alloy-registry.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tracing-subscriber = { workspace = true, features = ["fmt"] }
 alloy-primitives = { workspace = true, features = ["rlp", "k256", "map", "arbitrary"] }

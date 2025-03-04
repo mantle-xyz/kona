@@ -5,7 +5,9 @@ use alloy_consensus::{Header, Sealed};
 use alloy_primitives::B256;
 use async_trait::async_trait;
 use kona_driver::Executor;
-use kona_executor::{KonaHandleRegister, StatelessL2BlockExecutor, TrieDBProvider};
+use kona_executor::{
+    ExecutionArtifacts, KonaHandleRegister, StatelessL2BlockExecutor, TrieDBProvider,
+};
 use kona_mpt::TrieHinter;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
@@ -18,7 +20,7 @@ where
     H: TrieHinter + Send + Sync + Clone,
 {
     /// The rollup config for the executor.
-    rollup_config: &'a Arc<RollupConfig>,
+    rollup_config: &'a RollupConfig,
     /// The trie provider for the executor.
     trie_provider: P,
     /// The trie hinter for the executor.
@@ -36,7 +38,7 @@ where
 {
     /// Creates a new executor.
     pub const fn new(
-        rollup_config: &'a Arc<RollupConfig>,
+        rollup_config: &'a RollupConfig,
         trie_provider: P,
         trie_hinter: H,
         handle_register: Option<KonaHandleRegister<P, H>>,
@@ -82,14 +84,11 @@ where
     async fn execute_payload(
         &mut self,
         attributes: OpPayloadAttributes,
-    ) -> Result<Header, Self::Error> {
-        self.inner
-            .as_mut()
-            .map_or_else(
-                || Err(kona_executor::ExecutorError::MissingExecutor),
-                |e| e.execute_payload(attributes),
-            )
-            .cloned()
+    ) -> Result<ExecutionArtifacts, Self::Error> {
+        self.inner.as_mut().map_or_else(
+            || Err(kona_executor::ExecutorError::MissingExecutor),
+            |e| e.execute_payload(attributes),
+        )
     }
 
     /// Computes the output root.

@@ -91,8 +91,8 @@ where
     /// The `signal` is contains the signal variant with any necessary parameters.
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         match signal {
-            mut s @ Signal::Reset(ResetSignal { l2_safe_head, .. }) |
-            mut s @ Signal::Activation(ActivationSignal { l2_safe_head, .. }) => {
+            mut s @ Signal::Reset(ResetSignal { l2_safe_head, .. })
+            | mut s @ Signal::Activation(ActivationSignal { l2_safe_head, .. }) => {
                 let system_config = self
                     .l2_chain_provider
                     .system_config_by_number(
@@ -176,6 +176,10 @@ where
                     }
                     StepResult::AdvancedOrigin
                 }
+                PipelineErrorKind::Temporary(_) => {
+                    trace!(target: "pipeline", "Attributes queue step failed due to temporary error: {:?}", err);
+                    StepResult::StepFailed(err)
+                }
                 _ => {
                     warn!(target: "pipeline", "Attributes queue step failed: {:?}", err);
                     StepResult::StepFailed(err)
@@ -210,10 +214,9 @@ mod tests {
                 transactions: None,
                 no_tx_pool: None,
                 gas_limit: None,
-                eip_1559_params: None,
+                base_fee: None,
             },
             parent: Default::default(),
-            is_last_in_span: false,
         }
     }
 

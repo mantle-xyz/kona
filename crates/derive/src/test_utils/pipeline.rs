@@ -79,10 +79,10 @@ pub type TestChannelProvider = ChannelProvider<TestFrameQueue>;
 pub type TestChannelReader = ChannelReader<TestChannelProvider>;
 
 /// A [BatchStream] using test providers and sources.
-pub type TestBatchStream = BatchStream<TestChannelReader, TestL2ChainProvider>;
+pub type TestBatchStream = BatchStream<TestChannelReader>;
 
 /// A [BatchQueue] using test providers and sources.
-pub type TestBatchProvider = BatchProvider<TestBatchStream, TestL2ChainProvider>;
+pub type TestBatchProvider = BatchProvider<TestBatchStream>;
 
 /// An [AttributesQueue] using test providers and sources.
 pub type TestAttributesQueue = AttributesQueue<TestBatchProvider, TestAttributesBuilder>;

@@ -1,85 +1,94 @@
 //! Contains the [EthereumDataSource], which is a concrete implementation of the
 //! [DataAvailabilityProvider] trait for the Ethereum protocol.
 
+use crate::sources::eigen_da::EigenDaSource;
 use crate::{
     sources::{BlobSource, CalldataSource},
-    traits::{BlobProvider, ChainProvider, DataAvailabilityProvider},
+    traits::{BlobProvider, ChainProvider, DataAvailabilityProvider, EigenDAProvider},
     types::PipelineResult,
 };
 use alloc::{boxed::Box, fmt::Debug};
-use alloy_primitives::Bytes;
+use alloy_primitives::{Address, Bytes};
 use async_trait::async_trait;
 use op_alloy_genesis::RollupConfig;
 use op_alloy_protocol::BlockInfo;
 
 /// A factory for creating an Ethereum data source provider.
 #[derive(Debug, Clone)]
-pub struct EthereumDataSource<C, B>
+pub struct EthereumDataSource<C, B, E>
 where
     C: ChainProvider + Send + Clone,
     B: BlobProvider + Send + Clone,
+    E: EigenDAProvider + Send + Clone,
 {
-    /// The ecotone timestamp.
-    pub ecotone_timestamp: Option<u64>,
-    /// The blob source.
-    pub blob_source: BlobSource<C, B>,
     /// The calldata source.
     pub calldata_source: CalldataSource<C>,
+    /// The eigen da source.
+    pub eigen_da_source: EigenDaSource<C, B, E>,
+    /// Mantle da switch
+    pub mantle_da_switch: bool,
 }
 
-impl<C, B> EthereumDataSource<C, B>
+impl<C, B, E> EthereumDataSource<C, B, E>
 where
     C: ChainProvider + Send + Clone + Debug,
     B: BlobProvider + Send + Clone + Debug,
+    E: EigenDAProvider + Send + Clone + Debug,
 {
     /// Instantiates a new [EthereumDataSource].
     pub const fn new(
-        blob_source: BlobSource<C, B>,
         calldata_source: CalldataSource<C>,
+        eigen_da_source: EigenDaSource<C, B, E>,
         cfg: &RollupConfig,
     ) -> Self {
-        Self { ecotone_timestamp: cfg.ecotone_time, blob_source, calldata_source }
+        Self { calldata_source, eigen_da_source, mantle_da_switch: cfg.mantle_da_switch }
     }
 
-    /// Instantiates a new [EthereumDataSource] from parts.
-    pub fn new_from_parts(provider: C, blobs: B, cfg: &RollupConfig) -> Self {
+    /// Creates a new factory.
+    pub fn new_from_parts(provider: C, blobs: B, eigen_da_provider: E, cfg: &RollupConfig) -> Self {
         let signer =
             cfg.genesis.system_config.as_ref().map(|sc| sc.batcher_address).unwrap_or_default();
         Self {
-            ecotone_timestamp: cfg.ecotone_time,
-            blob_source: BlobSource::new(provider.clone(), blobs, cfg.batch_inbox_address, signer),
-            calldata_source: CalldataSource::new(provider, cfg.batch_inbox_address, signer),
+            calldata_source: CalldataSource::new(provider.clone(), cfg.batch_inbox_address, signer),
+            eigen_da_source: EigenDaSource::new(
+                provider,
+                blobs,
+                eigen_da_provider,
+                cfg.batch_inbox_address,
+                signer,
+            ),
+            mantle_da_switch: cfg.mantle_da_switch,
         }
     }
 }
 
 #[async_trait]
-impl<C, B> DataAvailabilityProvider for EthereumDataSource<C, B>
+impl<C, B, E> DataAvailabilityProvider for EthereumDataSource<C, B, E>
 where
     C: ChainProvider + Send + Sync + Clone + Debug,
     B: BlobProvider + Send + Sync + Clone + Debug,
+    E: EigenDAProvider + Send + Sync + Clone + Debug,
 {
     type Item = Bytes;
 
     async fn next(&mut self, block_ref: &BlockInfo) -> PipelineResult<Self::Item> {
-        let ecotone_enabled =
-            self.ecotone_timestamp.map(|e| block_ref.timestamp >= e).unwrap_or(false);
-        if ecotone_enabled {
-            self.blob_source.next(block_ref).await
+        if self.mantle_da_switch {
+            self.eigen_da_source.next(block_ref).await
         } else {
             self.calldata_source.next(block_ref).await
         }
     }
 
     fn clear(&mut self) {
-        self.blob_source.clear();
         self.calldata_source.clear();
+        self.eigen_da_source.clear();
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::TestEigenDaProvider;
     use crate::{
         sources::BlobData,
         test_utils::{TestBlobProvider, TestChainProvider},
@@ -103,34 +112,20 @@ mod tests {
         let chain = TestChainProvider::default();
         let blob = TestBlobProvider::default();
         let cfg = RollupConfig::default();
+        let eigen_da = TestEigenDaProvider::default();
         let mut calldata = CalldataSource::new(chain.clone(), Address::ZERO, Address::ZERO);
         calldata.calldata.insert(0, Default::default());
         calldata.open = true;
-        let mut blob = BlobSource::new(chain, blob, Address::ZERO, Address::ZERO);
-        blob.data = vec![Default::default()];
-        blob.open = true;
-        let mut data_source = EthereumDataSource::new(blob, calldata, &cfg);
+        let mut eigen = EigenDaSource::new(chain, blob, eigen_da, Address::ZERO, Address::ZERO);
+        eigen.data = vec![Default::default()];
+        eigen.open = true;
+        let mut data_source = EthereumDataSource::new(calldata, eigen, &cfg);
 
         data_source.clear();
-        assert!(data_source.blob_source.data.is_empty());
-        assert!(!data_source.blob_source.open);
+        assert!(data_source.eigen_da_source.data.is_empty());
+        assert!(!data_source.eigen_da_source.open);
         assert!(data_source.calldata_source.calldata.is_empty());
         assert!(!data_source.calldata_source.open);
-    }
-
-    #[tokio::test]
-    async fn test_open_blob_source() {
-        let chain = TestChainProvider::default();
-        let mut blob = default_test_blob_source();
-        blob.open = true;
-        blob.data.push(BlobData { data: None, calldata: Some(Bytes::default()) });
-        let calldata = CalldataSource::new(chain.clone(), Address::ZERO, Address::ZERO);
-        let cfg = RollupConfig { ecotone_time: Some(0), ..Default::default() };
-
-        // Should successfully retrieve a blob batch from the block
-        let mut data_source = EthereumDataSource::new(blob, calldata, &cfg);
-        let data = data_source.next(&BlockInfo::default()).await.unwrap();
-        assert_eq!(data, Bytes::default());
     }
 
     #[tokio::test]

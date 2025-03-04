@@ -1,7 +1,7 @@
 //! Contains the [PreimageKey] type, which is used to identify preimages that may be fetched from
 //! the preimage oracle.
 
-use alloy_primitives::{B256, U256};
+use alloy_primitives::{Keccak256, B256, U256};
 #[cfg(feature = "rkyv")]
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 #[cfg(feature = "serde")]
@@ -10,9 +10,13 @@ use serde::{Deserialize as SerdeDeserialize, Serialize as SerdeSerialize};
 use crate::errors::PreimageOracleError;
 
 /// <https://specs.optimism.io/experimental/fault-proof/index.html#pre-image-key-types>
-#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(u8)]
-#[cfg_attr(feature = "rkyv", derive(Archive, RkyvSerialize, RkyvDeserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(Archive, RkyvSerialize, RkyvDeserialize),
+    rkyv(derive(Eq, PartialEq, Ord, PartialOrd, Hash))
+)]
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 pub enum PreimageKeyType {
     /// Local key types are local to a given instance of a fault-proof and context dependent.
@@ -62,8 +66,12 @@ impl TryFrom<u8> for PreimageKeyType {
 /// |---------|-------------|
 /// | [0, 1)  | Type byte   |
 /// | [1, 32) | Data        |
-#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Hash)]
-#[cfg_attr(feature = "rkyv", derive(Archive, RkyvSerialize, RkyvDeserialize))]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(Archive, RkyvSerialize, RkyvDeserialize),
+    rkyv(derive(Eq, PartialEq, Ord, PartialOrd, Hash))
+)]
 #[cfg_attr(feature = "serde", derive(SerdeSerialize, SerdeDeserialize))]
 pub struct PreimageKey {
     data: [u8; 31],
@@ -85,6 +93,26 @@ impl PreimageKey {
         let mut data = [0u8; 31];
         data[23..].copy_from_slice(&local_ident.to_be_bytes());
         Self { data, key_type: PreimageKeyType::Local }
+    }
+
+    /// Creates a new keccak256 [PreimageKey] from a 32-byte keccak256 digest. The digest will be
+    /// truncated to 31 bytes by taking the low-order 31 bytes.
+    pub fn new_keccak256(digest: [u8; 32]) -> Self {
+        Self::new(digest, PreimageKeyType::Keccak256)
+    }
+
+    /// Creates a new precompile [PreimageKey] from a precompile address and input. The key will be
+    /// constructed as `keccak256(precompile_addr ++ input)`, and then the high-order byte of the
+    /// digest will be set to the type byte.
+    pub fn new_precompile(precompile_addr: [u8; 20], input: &[u8]) -> Self {
+        let mut data = [0u8; 31];
+
+        let mut hasher = Keccak256::new();
+        hasher.update(precompile_addr);
+        hasher.update(input);
+
+        data.copy_from_slice(&hasher.finalize()[1..]);
+        Self { data, key_type: PreimageKeyType::Precompile }
     }
 
     /// Returns the [PreimageKeyType] for the [PreimageKey].

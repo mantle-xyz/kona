@@ -53,60 +53,6 @@ where
         Self { prev, queue: VecDeque::new(), rollup_config: cfg }
     }
 
-    /// Returns if holocene is active.
-    pub fn is_holocene_active(&self, origin: BlockInfo) -> bool {
-        self.rollup_config.is_holocene_active(origin.timestamp)
-    }
-
-    /// Prunes frames if Holocene is active.
-    pub fn prune(&mut self, origin: BlockInfo) {
-        if !self.is_holocene_active(origin) {
-            return;
-        }
-
-        let mut i = 0;
-        while i < self.queue.len() - 1 {
-            let prev_frame = &self.queue[i];
-            let next_frame = &self.queue[i + 1];
-            let extends_channel = prev_frame.id == next_frame.id;
-
-            // If the frames are in the same channel, and the frame numbers are not sequential,
-            // drop the next frame.
-            if extends_channel && prev_frame.number + 1 != next_frame.number {
-                self.queue.remove(i + 1);
-                continue;
-            }
-
-            // If the frames are in the same channel, and the previous is last, drop the next frame.
-            if extends_channel && prev_frame.is_last {
-                self.queue.remove(i + 1);
-                continue;
-            }
-
-            // If the frames are in different channels, the next frame must be first.
-            if !extends_channel && next_frame.number != 0 {
-                self.queue.remove(i + 1);
-                continue;
-            }
-
-            // If the frames are in different channels, and the current channel is not last, walk
-            // back the channel and drop all prev frames.
-            if !extends_channel && !prev_frame.is_last && next_frame.number == 0 {
-                // Find the index of the first frame in the queue with the same channel ID
-                // as the previous frame.
-                let first_frame =
-                    self.queue.iter().position(|f| f.id == prev_frame.id).expect("infallible");
-
-                // Drain all frames from the previous channel.
-                let drained = self.queue.drain(first_frame..=i);
-                i = i.saturating_sub(drained.len());
-                continue;
-            }
-
-            i += 1;
-        }
-    }
-
     /// Loads more frames into the [FrameQueue].
     pub async fn load_frames(&mut self) -> PipelineResult<()> {
         // Skip loading frames if the queue is not empty.
@@ -132,10 +78,6 @@ where
 
         // Optimistically extend the queue with the new frames.
         self.queue.extend(frames);
-
-        // Prune frames if Holocene is active.
-        let origin = self.origin().ok_or(PipelineError::MissingOrigin.crit())?;
-        self.prune(origin);
 
         Ok(())
     }
@@ -212,7 +154,6 @@ pub(crate) mod tests {
         let mut mock = TestFrameQueueProvider::new(data);
         mock.set_origin(BlockInfo::default());
         let mut frame_queue = FrameQueue::new(mock, Default::default());
-        assert!(!frame_queue.is_holocene_active(BlockInfo::default()));
         let err = frame_queue.next_frame().await.unwrap_err();
         assert_eq!(err, PipelineError::NotEnoughData.temp());
     }
@@ -223,7 +164,6 @@ pub(crate) mod tests {
         let mut mock = TestFrameQueueProvider::new(data);
         mock.set_origin(BlockInfo::default());
         let mut frame_queue = FrameQueue::new(mock, Default::default());
-        assert!(!frame_queue.is_holocene_active(BlockInfo::default()));
         let err = frame_queue.next_frame().await.unwrap_err();
         assert_eq!(err, PipelineError::NotEnoughData.temp());
     }
@@ -235,7 +175,6 @@ pub(crate) mod tests {
             .with_raw_frames(Bytes::from(vec![0x01]))
             .with_expected_err(PipelineError::NotEnoughData.temp())
             .build();
-        assert.holocene_active(false);
         assert.next_frames().await;
     }
 
@@ -246,7 +185,6 @@ pub(crate) mod tests {
             .with_raw_frames(Bytes::from(vec![0x00, 0x01]))
             .with_expected_err(PipelineError::NotEnoughData.temp())
             .build();
-        assert.holocene_active(false);
         assert.next_frames().await;
     }
 
@@ -258,7 +196,7 @@ pub(crate) mod tests {
             .with_origin(BlockInfo::default())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(false);
+
         assert.next_frames().await;
     }
 
@@ -274,7 +212,7 @@ pub(crate) mod tests {
             .with_origin(BlockInfo::default())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(false);
+
         assert.next_frames().await;
     }
 
@@ -285,7 +223,7 @@ pub(crate) mod tests {
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        assert.holocene_active(false);
+
         assert.missing_origin().await;
     }
 
@@ -297,12 +235,12 @@ pub(crate) mod tests {
             crate::frame!(0xFF, 2, vec![0xDD; 50], true),
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -310,12 +248,12 @@ pub(crate) mod tests {
     async fn test_holocene_single_frame() {
         let frames = [crate::frame!(0xFF, 1, vec![0xDD; 50], true)];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&frames)
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -332,12 +270,12 @@ pub(crate) mod tests {
             crate::frame!(0xFF, 1, vec![0xDD; 50], true),
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&[&frames[0..3], &frames[4..]].concat())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -351,12 +289,12 @@ pub(crate) mod tests {
             crate::frame!(0xEE, 4, vec![0xDD; 50], false), // Dropped
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&frames[0..2])
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -373,12 +311,12 @@ pub(crate) mod tests {
             crate::frame!(0xFF, 1, vec![0xDD; 50], true),
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&frames[4..])
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -398,12 +336,12 @@ pub(crate) mod tests {
             crate::frame!(0xFF, 1, vec![0xDD; 50], true),
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&[&frames[0..4], &frames[6..]].concat())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -420,12 +358,12 @@ pub(crate) mod tests {
             crate::frame!(0xFF, 2, vec![0xDD; 50], true),  // Dropped
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&frames[0..4])
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -443,12 +381,12 @@ pub(crate) mod tests {
             crate::frame!(0xFF, 1, vec![0xDD; 50], true),
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&[&frames[0..2], &frames[4..]].concat())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -466,12 +404,12 @@ pub(crate) mod tests {
             crate::frame!(0xFF, 1, vec![0xDD; 50], true),
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&frames[4..])
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 
@@ -489,12 +427,12 @@ pub(crate) mod tests {
             crate::frame!(0xFF, 1, vec![0xDD; 50], true),
         ];
         let assert = crate::test_utils::FrameQueueBuilder::new()
-            .with_rollup_config(&RollupConfig { holocene_time: Some(0), ..Default::default() })
+            .with_rollup_config(&RollupConfig { ..Default::default() })
             .with_origin(BlockInfo::default())
             .with_expected_frames(&[&frames[1..2], &frames[3..]].concat())
             .with_frames(&frames)
             .build();
-        assert.holocene_active(true);
+
         assert.next_frames().await;
     }
 }

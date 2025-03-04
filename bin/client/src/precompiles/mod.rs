@@ -14,6 +14,15 @@ use revm::{
 mod bn128_pair;
 mod ecrecover;
 mod kzg_point_eval;
+pub(crate) mod utils;
+
+mod bls12_g1_add;
+mod bls12_g1_msm;
+mod bls12_g2_add;
+mod bls12_g2_msm;
+mod bls12_map_fp;
+mod bls12_map_fp2;
+mod bls12_pairing;
 
 /// The [KonaHandleRegister] function for registering the FPVM-accelerated precompiles.
 ///
@@ -42,6 +51,16 @@ pub(crate) fn fpvm_handle_register<F, H>(
         if spec_id.is_enabled_in(SpecId::GRANITE) {
             ctx_precompiles.extend([bn128_pair::FPVM_ECPAIRING_GRANITE]);
         }
+
+        // if spec_id.is_enabled_in(SpecId::ISTHMUS) {
+        //     ctx_precompiles.extend([bls12_g1_add::FPVM_BLS12_G1_ADD_ISTHMUS]);
+        //     ctx_precompiles.extend([bls12_g1_msm::FPVM_BLS12_G1_MSM_ISTHMUS]);
+        //     ctx_precompiles.extend([bls12_g2_add::FPVM_BLS12_G2_ADD_ISTHMUS]);
+        //     ctx_precompiles.extend([bls12_g2_msm::FPVM_BLS12_G2_MSM_ISTHMUS]);
+        //     ctx_precompiles.extend([bls12_map_fp::FPVM_BLS12_MAP_FP_ISTHMUS]);
+        //     ctx_precompiles.extend([bls12_map_fp2::FPVM_BLS12_MAP_FP2_ISTHMUS]);
+        //     ctx_precompiles.extend([bls12_pairing::FPVM_BLS12_PAIRING_ISTHMUS]);
+        // }
 
         ctx_precompiles
     });

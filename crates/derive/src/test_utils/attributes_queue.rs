@@ -10,7 +10,8 @@ use crate::{
 use alloc::{boxed::Box, string::ToString, vec::Vec};
 use alloy_eips::BlockNumHash;
 use async_trait::async_trait;
-use op_alloy_protocol::{BlockInfo, L2BlockInfo, SingleBatch};
+use op_alloy_protocol::SingleBatch;
+use op_alloy_protocol::{BlockInfo, L2BlockInfo};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use thiserror::Error;
 
@@ -85,10 +86,6 @@ impl SignalReceiver for TestAttributesProvider {
 impl AttributesProvider for TestAttributesProvider {
     async fn next_batch(&mut self, _parent: L2BlockInfo) -> PipelineResult<SingleBatch> {
         self.batches.pop().ok_or(PipelineError::Eof.temp())?
-    }
-
-    fn is_last_in_span(&self) -> bool {
-        self.batches.is_empty()
     }
 }
 

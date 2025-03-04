@@ -15,16 +15,16 @@ use op_alloy_protocol::BlockInfo;
 /// The oracle-backed L1 chain provider for the client program.
 #[derive(Debug, Clone)]
 pub struct OracleL1ChainProvider<T: CommsClient> {
-    /// The boot information
-    boot_info: Arc<BootInfo>,
+    /// The L1 head hash.
+    pub l1_head: B256,
     /// The preimage oracle client.
     pub oracle: Arc<T>,
 }
 
 impl<T: CommsClient> OracleL1ChainProvider<T> {
     /// Creates a new [OracleL1ChainProvider] with the given boot information and oracle client.
-    pub const fn new(boot_info: Arc<BootInfo>, oracle: Arc<T>) -> Self {
-        Self { boot_info, oracle }
+    pub const fn new(l1_head: B256, oracle: Arc<T>) -> Self {
+        Self { l1_head, oracle }
     }
 }
 
@@ -33,26 +33,16 @@ impl<T: CommsClient + Sync + Send> ChainProvider for OracleL1ChainProvider<T> {
     type Error = OracleProviderError;
 
     async fn header_by_hash(&mut self, hash: B256) -> Result<Header, Self::Error> {
-        // Send a hint for the block header.
-        self.oracle
-            .write(&HintType::L1BlockHeader.encode_with(&[hash.as_ref()]))
-            .await
-            .map_err(OracleProviderError::Preimage)?;
-
         // Fetch the header RLP from the oracle.
-        let header_rlp = self
-            .oracle
-            .get(PreimageKey::new(*hash, PreimageKeyType::Keccak256))
-            .await
-            .map_err(OracleProviderError::Preimage)?;
-
+        HintType::L1BlockHeader.with_data(&[hash.as_ref()]).send(self.oracle.as_ref()).await?;
+        let header_rlp = self.oracle.get(PreimageKey::new_keccak256(*hash)).await?;
         // Decode the header RLP into a Header.
         Header::decode(&mut header_rlp.as_slice()).map_err(OracleProviderError::Rlp)
     }
 
     async fn block_info_by_number(&mut self, block_number: u64) -> Result<BlockInfo, Self::Error> {
         // Fetch the starting block header.
-        let mut header = self.header_by_hash(self.boot_info.l1_head).await?;
+        let mut header = self.header_by_hash(self.l1_head).await?;
 
         // Check if the block number is in range. If not, we can fail early.
         if block_number > header.number {
@@ -78,10 +68,7 @@ impl<T: CommsClient + Sync + Send> ChainProvider for OracleL1ChainProvider<T> {
 
         // Send a hint for the block's receipts, and walk through the receipts trie in the header to
         // verify them.
-        self.oracle
-            .write(&HintType::L1Receipts.encode_with(&[hash.as_ref()]))
-            .await
-            .map_err(OracleProviderError::Preimage)?;
+        HintType::L1Receipts.with_data(&[hash.as_ref()]).send(self.oracle.as_ref()).await?;
         let trie_walker = OrderedListWalker::try_new_hydrated(header.receipts_root, self)
             .map_err(OracleProviderError::TrieWalker)?;
 
@@ -113,10 +100,7 @@ impl<T: CommsClient + Sync + Send> ChainProvider for OracleL1ChainProvider<T> {
 
         // Send a hint for the block's transactions, and walk through the transactions trie in the
         // header to verify them.
-        self.oracle
-            .write(&HintType::L1Transactions.encode_with(&[hash.as_ref()]))
-            .await
-            .map_err(OracleProviderError::Preimage)?;
+        HintType::L1Transactions.with_data(&[hash.as_ref()]).send(self.oracle.as_ref()).await?;
         let trie_walker = OrderedListWalker::try_new_hydrated(header.transactions_root, self)
             .map_err(OracleProviderError::TrieWalker)?;
 

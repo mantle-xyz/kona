@@ -18,9 +18,9 @@ type L1RetrievalStage<DAP, P> = L1Retrieval<DAP, L1TraversalStage<P>>;
 type FrameQueueStage<DAP, P> = FrameQueue<L1RetrievalStage<DAP, P>>;
 type ChannelProviderStage<DAP, P> = ChannelProvider<FrameQueueStage<DAP, P>>;
 type ChannelReaderStage<DAP, P> = ChannelReader<ChannelProviderStage<DAP, P>>;
-type BatchStreamStage<DAP, P, T> = BatchStream<ChannelReaderStage<DAP, P>, T>;
-type BatchProviderStage<DAP, P, T> = BatchProvider<BatchStreamStage<DAP, P, T>, T>;
-type AttributesQueueStage<DAP, P, T, B> = AttributesQueue<BatchProviderStage<DAP, P, T>, B>;
+type BatchStreamStage<DAP, P> = BatchStream<ChannelReaderStage<DAP, P>>;
+type BatchProviderStage<DAP, P> = BatchProvider<BatchStreamStage<DAP, P>>;
+type AttributesQueueStage<DAP, P, B> = AttributesQueue<BatchProviderStage<DAP, P>, B>;
 
 /// The `PipelineBuilder` constructs a [DerivationPipeline] using a builder pattern.
 #[derive(Debug)]
@@ -107,13 +107,13 @@ where
     }
 
     /// Builds the pipeline.
-    pub fn build(self) -> DerivationPipeline<AttributesQueueStage<D, P, T, B>, T> {
+    pub fn build(self) -> DerivationPipeline<AttributesQueueStage<D, P, B>, T> {
         self.into()
     }
 }
 
 impl<B, P, T, D> From<PipelineBuilder<B, P, T, D>>
-    for DerivationPipeline<AttributesQueueStage<D, P, T, B>, T>
+    for DerivationPipeline<AttributesQueueStage<D, P, B>, T>
 where
     B: AttributesBuilder + Send + Debug,
     P: ChainProvider + Send + Sync + Debug,
@@ -135,10 +135,8 @@ where
         let frame_queue = FrameQueue::new(l1_retrieval, Arc::clone(&rollup_config));
         let channel_provider = ChannelProvider::new(Arc::clone(&rollup_config), frame_queue);
         let channel_reader = ChannelReader::new(channel_provider, Arc::clone(&rollup_config));
-        let batch_stream =
-            BatchStream::new(channel_reader, rollup_config.clone(), l2_chain_provider.clone());
-        let batch_provider =
-            BatchProvider::new(rollup_config.clone(), batch_stream, l2_chain_provider.clone());
+        let batch_stream = BatchStream::new(channel_reader);
+        let batch_provider = BatchProvider::new(rollup_config.clone(), batch_stream);
         let attributes =
             AttributesQueue::new(rollup_config.clone(), batch_provider, attributes_builder);
 

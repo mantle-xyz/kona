@@ -21,9 +21,9 @@ pub struct TestBatchStreamProvider {
     pub origin: Option<BlockInfo>,
     /// A list of batches to return.
     pub batches: Vec<PipelineResult<Batch>>,
-    /// Wether the reset method was called.
+    /// Whether the reset method was called.
     pub reset: bool,
-    /// Wether the provider was flushed.
+    /// Whether the provider was flushed.
     pub flushed: bool,
 }
 
@@ -42,8 +42,6 @@ impl OriginProvider for TestBatchStreamProvider {
 
 #[async_trait]
 impl BatchStreamProvider for TestBatchStreamProvider {
-    fn flush(&mut self) {}
-
     async fn next_batch(&mut self) -> PipelineResult<Batch> {
         self.batches.pop().ok_or(PipelineError::Eof.temp())?
     }

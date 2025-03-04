@@ -89,26 +89,16 @@ impl<F: ChainProvider + Send> OriginAdvancer for L1Traversal<F> {
         let receipts =
             self.data_source.receipts_by_hash(next_l1_origin.hash).await.map_err(Into::into)?;
 
-        if let Err(e) = self.system_config.update_with_receipts(
-            receipts.as_slice(),
-            self.rollup_config.l1_system_config_address,
-            self.rollup_config.is_ecotone_active(next_l1_origin.timestamp),
-        ) {
+        if let Err(e) = self
+            .system_config
+            .update_with_receipts(receipts.as_slice(), self.rollup_config.l1_system_config_address)
+        {
             return Err(PipelineError::SystemConfigUpdate(e).crit());
         }
-
-        let prev_block_holocene = self.rollup_config.is_holocene_active(block.timestamp);
-        let next_block_holocene = self.rollup_config.is_holocene_active(next_l1_origin.timestamp);
 
         // Update the block origin regardless of if a holocene activation is required.
         self.block = Some(next_l1_origin);
         self.done = false;
-
-        // If the prev block is not holocene, but the next is, we need to flag this
-        // so the pipeline driver will reset the pipeline for holocene activation.
-        if !prev_block_holocene && next_block_holocene {
-            return Err(ResetError::HoloceneActivation.reset());
-        }
 
         Ok(())
     }
@@ -124,8 +114,8 @@ impl<F: ChainProvider> OriginProvider for L1Traversal<F> {
 impl<F: ChainProvider + Send> SignalReceiver for L1Traversal<F> {
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         match signal {
-            Signal::Reset(ResetSignal { l1_origin, system_config, .. }) |
-            Signal::Activation(ActivationSignal { l1_origin, system_config, .. }) => {
+            Signal::Reset(ResetSignal { l1_origin, system_config, .. })
+            | Signal::Activation(ActivationSignal { l1_origin, system_config, .. }) => {
                 self.block = Some(l1_origin);
                 self.done = false;
                 self.system_config = system_config.expect("System config must be provided.");

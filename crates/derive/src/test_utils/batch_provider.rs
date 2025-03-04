@@ -38,15 +38,7 @@ impl OriginProvider for TestNextBatchProvider {
 
 #[async_trait]
 impl NextBatchProvider for TestNextBatchProvider {
-    fn flush(&mut self) {
-        self.flushed = true;
-    }
-
-    fn span_buffer_size(&self) -> usize {
-        self.batches.len()
-    }
-
-    async fn next_batch(&mut self, _: L2BlockInfo, _: &[BlockInfo]) -> PipelineResult<Batch> {
+    async fn next_batch(&mut self) -> PipelineResult<Batch> {
         self.batches.pop().ok_or(PipelineError::Eof.temp())?
     }
 }

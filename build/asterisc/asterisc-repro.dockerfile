@@ -29,7 +29,7 @@ RUN git clone https://github.com/ethereum-optimism/asterisc && \
 #               Build kona-client @ `CLIENT_TAG`               #
 ################################################################
 
-FROM ghcr.io/anton-rs/kona/asterisc-builder@sha256:523f0455b25b28917a8e7d02cd3ecb8c8af93e5e5b85ec7d7bcf2df4458e65a5 AS client-build
+FROM ghcr.io/op-rs/kona/asterisc-builder@sha256:56c57453ebe09875e96df527d3734d781e987dbdc1e0ce9e813e1e88590036bd AS client-build
 SHELL ["/bin/bash", "-c"]
 
 ARG CLIENT_TAG
@@ -47,7 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git
 # Build kona-client on the selected tag
 RUN git checkout $CLIENT_TAG && \
   cargo build -Zbuild-std=core,alloc --workspace --bin kona --locked --profile release-client-lto --exclude kona-host --exclude kona-derive-alloy && \
-  mv ./target/riscv64gc-unknown-none-elf/release-client-lto/kona /kona-client-elf
+  mv ./target/riscv64imac-unknown-none-elf/release-client-lto/kona /kona-client-elf
 
 ################################################################
 #                Build kona-host @ `CLIENT_TAG`                #
