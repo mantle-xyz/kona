@@ -184,6 +184,7 @@ async fn derive_deposits(
             if l.data.topics().first().map_or(true, |i| *i != DEPOSIT_EVENT_ABI_HASH) {
                 continue;
             }
+            info!("Decoding deposit log: {:?}", l);
             if l.address != deposit_contract {
                 continue;
             }
