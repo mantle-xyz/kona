@@ -168,11 +168,11 @@ where
                 .with_tx_env(Self::prepare_tx_env(&transaction, raw_transaction)?)
                 .build();
 
-            // // If the transaction is a deposit, cache the depositor account.
-            // //
-            // // This only needs to be done post-Regolith, as deposit nonces were not included in
-            // // Bedrock. In addition, non-deposit transactions do not have deposit
-            // // nonces.
+            // If the transaction is a deposit, cache the depositor account.
+            //
+            // This only needs to be done post-Regolith, as deposit nonces were not included in
+            // Bedrock. In addition, non-deposit transactions do not have deposit
+            // nonces.
             let depositor = is_regolith
                 .then(|| {
                     if let OpTxEnvelope::Deposit(deposit) = &transaction {
@@ -210,6 +210,7 @@ where
                     .map(|depositor| depositor.account_info().unwrap_or_default().nonce),
                 None,
             );
+            info!("transaction: {:?}", transaction);
             info!("receipt: {:?}", receipt);
             // Ensure the receipt is not an EIP-7702 receipt.
             if matches!(receipt, OpReceiptEnvelope::Eip7702(_)) {
