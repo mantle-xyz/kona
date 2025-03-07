@@ -207,6 +207,16 @@ where
         sorted_state.sort_by_key(|(_, hashed_addr, _)| *hashed_addr);
 
         for (address, hashed_address, bundle_account) in sorted_state {
+            info!(
+                target: "client_executor",
+                "Updating account: {address}",
+                address = address.to_string(),
+            );
+            info!(
+                target: "client_executor",
+                "Account is_not_modified: {changes}",
+                changes = bundle_account.status.is_not_modified(),
+            );
             if bundle_account.status.is_not_modified() {
                 continue;
             }
