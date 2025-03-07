@@ -115,7 +115,7 @@ where
         let mut cumulative_gas_used = 0u64;
         let mut receipts: Vec<OpReceiptEnvelope> = Vec::with_capacity(transactions.len());
         //
-        let is_regolith = false;
+        let is_regolith = self.config.is_regolith_active(payload.payload_attributes.timestamp);
 
         // Construct the block-scoped EVM with the given configuration.
         // The transaction environment is set within the loop for each transaction.
@@ -370,26 +370,27 @@ where
         // the receipt root calculation does not inclide the deposit nonce in the
         // receipt encoding. In the Regolith hardfork, we must strip the deposit nonce
         // from the receipt encoding to match the receipt root calculation.
-        // if config.is_regolith_active(timestamp) {
-        //     let receipts = receipts
-        //         .iter()
-        //         .cloned()
-        //         .map(|receipt| match receipt {
-        //             OpReceiptEnvelope::Deposit(mut deposit_receipt) => {
-        //                 deposit_receipt.receipt.deposit_nonce = None;
-        //                 OpReceiptEnvelope::Deposit(deposit_receipt)
-        //             }
-        //             _ => receipt,
-        //         })
-        //         .collect::<Vec<_>>();
+        if config.is_regolith_active(timestamp) {
+            let receipts = receipts
+                .iter()
+                .cloned()
+                .map(|receipt| match receipt {
+                    OpReceiptEnvelope::Deposit(mut deposit_receipt) => {
+                        deposit_receipt.receipt.deposit_nonce = None;
+                        OpReceiptEnvelope::Deposit(deposit_receipt)
+                    }
+                    _ => receipt,
+                })
+                .collect::<Vec<_>>();
 
-        //     ordered_trie_with_encoder(receipts.as_ref(), |receipt, mut buf| {
-        //         receipt.encode_2718(&mut buf)
-        //     })
-        //     .root()
-        // } else {
-        ordered_trie_with_encoder(receipts, |receipt, mut buf| receipt.encode_2718(&mut buf)).root()
-        // }
+            ordered_trie_with_encoder(receipts.as_ref(), |receipt, mut buf| {
+                receipt.encode_2718(&mut buf)
+            })
+            .root()
+        } else {
+            ordered_trie_with_encoder(receipts, |receipt, mut buf| receipt.encode_2718(&mut buf))
+                .root()
+        }
     }
 
     /// Computes the transactions root from the given set of encoded transactions.
