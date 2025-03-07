@@ -190,7 +190,7 @@ where
                 "Executing transaction: {tx_hash}",
             );
             let result = evm.transact_commit().map_err(ExecutorError::ExecutionError)?;
-            debug!(
+            info!(
                 target: "client_executor",
                 "Transaction executed: {tx_hash} | Gas used: {gas_used} | Success: {status}",
                 gas_used = result.gas_used(),
