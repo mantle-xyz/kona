@@ -185,10 +185,12 @@ async fn derive_deposits(
                 continue;
             }
             info!("Decoding deposit log: {:?}", l);
+            info!("version: {:?}", l.data.topics()[3]);
             if l.address != deposit_contract {
                 continue;
             }
             let decoded = decode_deposit(block_hash, curr_index, l)?;
+            info!("Decoded deposit: {:?}", decoded);
             res.push(decoded);
         }
     }
