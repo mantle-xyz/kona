@@ -209,6 +209,7 @@ where
                     .map(|depositor| depositor.account_info().unwrap_or_default().nonce),
                 None,
             );
+            info!("receipt: {:?}", receipt);
             // Ensure the receipt is not an EIP-7702 receipt.
             if matches!(receipt, OpReceiptEnvelope::Eip7702(_)) {
                 panic!(
