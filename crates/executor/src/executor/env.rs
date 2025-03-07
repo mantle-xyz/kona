@@ -226,6 +226,7 @@ where
                     eth_value: tx.eth_value,
                     eth_tx_value: tx.eth_tx_value,
                 };
+                info!("env: {:?}", env);
                 Ok(env)
             }
             _ => Err(ExecutorError::UnsupportedTransactionType(transaction.tx_type() as u8)),
