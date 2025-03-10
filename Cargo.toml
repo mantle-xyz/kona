@@ -149,7 +149,7 @@ serde_json = { version = "1.0.135", default-features = false }
 
 # Ethereum
 unsigned-varint = "0.8.0"
-revm = { git = "https://github.com/mantle-xyz/revm", tag = "v1.0.0", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", tag = "v1.1.0", default-features = false }
 
 # K/V database
 rocksdb = { version = "0.22.0", default-features = false }
