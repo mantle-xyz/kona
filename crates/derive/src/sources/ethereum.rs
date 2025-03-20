@@ -51,9 +51,9 @@ where
         Self {
             calldata_source: CalldataSource::new(provider.clone(), cfg.batch_inbox_address, signer),
             eigen_da_source: EigenDaSource::new(
-                provider,
-                blobs,
-                eigen_da_provider,
+                provider.clone(),
+                blobs.clone(),
+                eigen_da_provider.clone(),
                 cfg.batch_inbox_address,
                 signer,
             ),
