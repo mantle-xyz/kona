@@ -369,10 +369,11 @@ impl HintHandler for SingleChainHintHandler {
 
                 let eigenda_blob = EigenDABlobData::encode(blob.as_ref());
 
-                assert_eq!(
-                    eigenda_blob.blob.len() < blob_length as usize * BYTES_PER_FIELD_ELEMENT,
-                    true,
-                    "data size from cert is smaller than the reconstructed data"
+                assert!(
+                    eigenda_blob.blob.len() <= blob_length as usize * BYTES_PER_FIELD_ELEMENT,
+                    "EigenDA blob size ({}) exceeds expected size ({})",
+                    eigenda_blob.blob.len(),
+                    blob_length as usize * BYTES_PER_FIELD_ELEMENT
                 );
 
                 //
