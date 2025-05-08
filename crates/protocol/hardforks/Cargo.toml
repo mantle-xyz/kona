@@ -28,7 +28,7 @@ op-alloy-consensus.workspace = true
 [dev-dependencies]
 alloy-primitives = { workspace = true, features = ["rand", "arbitrary"] }
 revm.workspace = true
-op-revm.workspace = true
+mantle-revm.workspace = true
 
 [features]
 default = []

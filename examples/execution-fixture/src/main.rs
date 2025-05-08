@@ -67,10 +67,11 @@ async fn main() -> Result<()> {
             .ok_or(anyhow!("Failed to locate workspace root"))?
             .join("crates/proof/executor/testdata")
     };
-
-    ExecutorTestFixtureCreator::new(cli.l2_rpc.as_str(), cli.block_number, output_dir)
-        .create_static_fixture()
-        .await;
+    for i in 0..20 {
+        ExecutorTestFixtureCreator::new(cli.l2_rpc.as_str(), cli.block_number + i, output_dir.join(format!("block_{}", cli.block_number + i)))
+            .create_static_fixture()
+            .await;
+    }
 
     info!(block_number = cli.block_number, "Successfully created static test fixture");
     Ok(())

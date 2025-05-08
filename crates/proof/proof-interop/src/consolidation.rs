@@ -4,7 +4,7 @@ use crate::{BootInfo, OptimisticBlock, OracleInteropProvider, PreState};
 use alloc::{boxed::Box, vec::Vec};
 use alloy_consensus::{Header, Sealed};
 use alloy_eips::Encodable2718;
-use alloy_op_evm::OpEvmFactory;
+use alloy_mantle_evm::OpEvmFactory;
 use alloy_primitives::{Address, B256, Bytes, Sealable, TxKind, U256, address};
 use alloy_rpc_types_engine::PayloadAttributes;
 use kona_executor::{ExecutorError, StatelessL2Builder};

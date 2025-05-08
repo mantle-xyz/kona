@@ -47,7 +47,7 @@ pub use traits::{NoopTrieDBProvider, TrieDBProvider};
 /// ```rust
 /// use alloy_consensus::{Header, Sealable};
 /// use alloy_evm::{EvmEnv, EvmFactory, block::BlockExecutorFactory};
-/// use alloy_op_evm::{
+/// use alloy_mantle_evm::{
 ///     OpBlockExecutionCtx, OpBlockExecutorFactory, OpEvmFactory, block::OpAlloyReceiptBuilder,
 /// };
 /// use alloy_op_hardforks::OpChainHardforks;

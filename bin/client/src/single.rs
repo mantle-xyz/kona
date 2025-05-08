@@ -18,7 +18,7 @@ use kona_proof::{
     sync::new_pipeline_cursor,
 };
 use op_alloy_consensus::OpTxEnvelope;
-use op_revm::OpSpecId;
+use mantle_revm::OpSpecId;
 use thiserror::Error;
 use tracing::{error, info};
 

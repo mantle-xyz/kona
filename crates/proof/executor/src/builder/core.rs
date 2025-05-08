@@ -7,13 +7,13 @@ use alloy_evm::{
     EvmFactory, FromRecoveredTx, FromTxWithEncoded,
     block::{BlockExecutionResult, BlockExecutor, BlockExecutorFactory},
 };
-use alloy_op_evm::{OpBlockExecutionCtx, OpBlockExecutorFactory, block::OpAlloyReceiptBuilder};
+use alloy_mantle_evm::{OpBlockExecutionCtx, OpBlockExecutorFactory, block::OpAlloyReceiptBuilder};
 use alloy_primitives::SignatureError;
 use kona_genesis::RollupConfig;
 use kona_mpt::TrieHinter;
 use op_alloy_consensus::{OpReceiptEnvelope, OpTxEnvelope};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
-use op_revm::OpSpecId;
+use mantle_revm::OpSpecId;
 use revm::database::{State, states::bundle_state::BundleRetention};
 
 /// The [`StatelessL2Builder`] is an OP Stack block builder that traverses a merkle patricia trie
@@ -29,7 +29,7 @@ where
     pub(crate) config: &'a RollupConfig,
     /// The inner trie database.
     pub(crate) trie_db: TrieDB<P, H>,
-    /// The executor factory, used to create new [`op_revm::OpEvm`] instances for block building
+    /// The executor factory, used to create new [`mantle_revm::OpEvm`] instances for block building
     /// routines.
     pub(crate) factory: OpBlockExecutorFactory<OpAlloyReceiptBuilder, RollupConfig, Evm>,
 }

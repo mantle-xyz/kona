@@ -89,7 +89,7 @@ where
             state_root,
             transactions_root,
             receipts_root,
-            withdrawals_root,
+            withdrawals_root: None,
             requests_hash,
             logs_bloom,
             difficulty: U256::ZERO,
@@ -106,7 +106,6 @@ where
             extra_data: encoded_base_fee_params,
         }
         .seal_slow();
-
         Ok(header)
     }
 
@@ -169,7 +168,7 @@ where
         // the receipt root calculation does not inclide the deposit nonce in the
         // receipt encoding. In the Regolith hardfork, we must strip the deposit nonce
         // from the receipt encoding to match the receipt root calculation.
-        if config.is_regolith_active(timestamp) && !config.is_canyon_active(timestamp) {
+        if config.is_regolith_active(timestamp)  {
             let receipts = receipts
                 .iter()
                 .cloned()

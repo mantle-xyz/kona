@@ -7,8 +7,8 @@ use alloy_eips::{eip1559::BaseFeeParams, eip7840::BlobParams};
 use alloy_evm::{EvmEnv, EvmFactory};
 use kona_genesis::RollupConfig;
 use kona_mpt::TrieHinter;
+use mantle_revm::OpSpecId;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
-use op_revm::OpSpecId;
 use revm::{
     context::{BlockEnv, CfgEnv},
     context_interface::block::BlobExcessGasAndPrice,
@@ -58,8 +58,7 @@ where
             })
             .or_else(|| spec_id.is_enabled_in(OpSpecId::ECOTONE).then_some(0))
             .map(|e| BlobExcessGasAndPrice::new(e, spec_id.is_enabled_in(OpSpecId::ISTHMUS)));
-        let next_block_base_fee =
-            parent_header.next_block_base_fee(*base_fee_params).unwrap_or_default();
+        let next_block_base_fee = parent_header.base_fee_per_gas.unwrap_or_default();
 
         Ok(BlockEnv {
             number: parent_header.number + 1,
@@ -68,7 +67,7 @@ where
             gas_limit: payload_attrs.gas_limit.ok_or(ExecutorError::MissingGasLimit)?,
             basefee: next_block_base_fee,
             prevrandao: Some(payload_attrs.payload_attributes.prev_randao),
-            blob_excess_gas_and_price,
+            blob_excess_gas_and_price: None,
             ..Default::default()
         })
     }

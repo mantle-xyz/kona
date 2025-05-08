@@ -44,7 +44,7 @@ could have to import all of these crates just to construct an
 OP Stack service:
 - `op-alloy`
 - `maili`
-- `op-revm`
+- `mantle-revm`
 - `op-reth`
 - `kona`
 
