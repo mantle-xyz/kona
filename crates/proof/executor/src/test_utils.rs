@@ -17,6 +17,7 @@ use rocksdb::{DB, Options};
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
 use tokio::{fs, runtime::Handle, sync::Mutex};
+use tracing::{info, warn};
 
 /// Executes a [ExecutorTestFixture] stored at the passed `fixture_path` and asserts that the
 /// produced block hash matches the expected block hash.
@@ -115,7 +116,7 @@ fn mock_rollup_config() -> RollupConfig {
 
 impl ExecutorTestFixtureCreator {
     /// Create a static test fixture with the configuration provided.
-    pub async fn create_static_fixture(self) {
+    pub async fn create_static_fixture(self) -> Result<bool, TestTrieNodeProviderError> {
         // let chain_id = self.provider.get_chain_id().await.expect("Failed to get chain ID");
         let rollup_config = mock_rollup_config();
 
@@ -123,14 +124,14 @@ impl ExecutorTestFixtureCreator {
             .provider
             .get_block_by_number(self.block_number.into())
             .await
-            .expect("Failed to get parent block")
-            .expect("Block not found");
+            .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?
+            .ok_or(TestTrieNodeProviderError::PreimageNotFound)?;
         let parent_block = self
             .provider
             .get_block_by_number((self.block_number - 1).into())
             .await
-            .expect("Failed to get parent block")
-            .expect("Block not found");
+            .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?
+            .ok_or(TestTrieNodeProviderError::PreimageNotFound)?;
 
         let executing_header = executing_block.header;
         let parent_header = parent_block.header.inner.seal_slow();
@@ -144,7 +145,7 @@ impl ExecutorTestFixtureCreator {
                         .client()
                         .request::<&[B256; 1], Bytes>("debug_getRawTransaction", &[tx_hash])
                         .await
-                        .expect("Block not found");
+                        .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?;
                     encoded_transactions.push(tx);
                 }
                 encoded_transactions
@@ -181,36 +182,10 @@ impl ExecutorTestFixtureCreator {
             NoopTrieHinter,
             parent_header,
         );
-        let outcome = executor.build_block(payload_attrs).expect("Failed to execute block");
+        let outcome = executor.build_block(payload_attrs).map_err(|_| TestTrieNodeProviderError::ExecutionFailed)?;
 
-        if *outcome.header.inner() != executing_header.inner {
-            warn!(
-                target: "block_builder",
-                block_number = executing_header.inner.number,
-                "Produced header does not match the expected header"
-            );
-        } else {
-            info!(
-                target: "block_builder",
-                block_number = executing_header.inner.number,
-                "Completed block building."
-            );
-        }
-        // fs::write(fixture_path.as_path(), serde_json::to_vec(&fixture).unwrap()).await.unwrap();
-
-        // // Tar the fixture.
-        // let data_dir = fixture_path.parent().unwrap();
-        // tokio::process::Command::new("tar")
-        //     .arg("-czf")
-        //     .arg(data_dir.with_extension("tar.gz").file_name().unwrap())
-        //     .arg(data_dir.file_name().unwrap())
-        //     .current_dir(data_dir.parent().unwrap())
-        //     .output()
-        //     .await
-        //     .expect("Failed to tar fixture");
-
-        // // Remove the leftover directory.
-        // fs::remove_dir_all(data_dir).await.expect("Failed to remove temporary directory");
+        let success = *outcome.header.inner() == executing_header.inner;
+        Ok(success)
     }
 }
 
@@ -372,4 +347,7 @@ pub enum TestTrieNodeProviderError {
     /// Failed to write back to the key-value store.
     #[error("Failed to write back to key value store")]
     KVStore,
+    /// Failed to execute the block
+    #[error("Failed to execute the block")]
+    ExecutionFailed,
 }
