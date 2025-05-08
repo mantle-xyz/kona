@@ -21,7 +21,7 @@ use clap::{ArgAction, Parser};
 use kona_cli::init_tracing_subscriber;
 use kona_executor::test_utils::ExecutorTestFixtureCreator;
 use std::path::PathBuf;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 use tracing_subscriber::EnvFilter;
 use url::Url;
 
@@ -76,21 +76,25 @@ impl BlockExecutionStats {
             info!("No blocks were processed");
             return;
         }
-        
+
         let success_percent = (self.success_count as f64 / total as f64) * 100.0;
         let failure_percent = (self.failure_count as f64 / total as f64) * 100.0;
-        
+
         // Print summary statistics
         println!("\n╔════════════════════════════════════════════════════════════════╗");
         println!("║                  📊 Block Execution Summary                   ║");
         println!("╠════════════════════════════════════════════════════════════════╣");
         println!("║  Total Blocks: {:<47}  ║", total);
-        println!("║  ✅ Success: {:<6} ({:.1}%)                                   ║", 
-                 self.success_count, success_percent);
-        println!("║  ❌ Failed: {:<6} ({:.1}%)                                    ║", 
-                 self.failure_count, failure_percent);
+        println!(
+            "║  ✅ Success: {:<6} ({:.1}%)                                   ║",
+            self.success_count, success_percent
+        );
+        println!(
+            "║  ❌ Failed: {:<6} ({:.1}%)                                    ║",
+            self.failure_count, failure_percent
+        );
         println!("╚════════════════════════════════════════════════════════════════╝");
-        
+
         // Print failed blocks
         if !self.failed_blocks.is_empty() {
             println!("\n╔════════════════════════════════════════════════════════════════╗");
@@ -98,7 +102,7 @@ impl BlockExecutionStats {
             println!("╠═══════════════════╦══════════════════════════════════════════╣");
             println!("║   Block Number    ║               Explorer Link               ║");
             println!("╠═══════════════════╬══════════════════════════════════════════╣");
-            
+
             for block_num in &self.failed_blocks {
                 println!(
                     "║  {:<16} ║  @https://explorer.mantle.xyz/block/{:<10}  ║",
@@ -107,16 +111,8 @@ impl BlockExecutionStats {
             }
             println!("╚═══════════════════╩══════════════════════════════════════════╝");
         }
-        
+
         println!("\n🏁 Execution Completed!");
-        
-        // Log statistics
-        info!(
-            success_count = self.success_count,
-            failure_count = self.failure_count,
-            success_rate = format!("{:.1}%", success_percent),
-            "Block execution statistics"
-        );
     }
 }
 
@@ -142,21 +138,21 @@ async fn main() -> Result<()> {
             .ok_or(anyhow!("Failed to locate workspace root"))?
             .join("crates/proof/executor/testdata")
     };
-    
+
     let mut stats = BlockExecutionStats::new();
-    
-    info!("Starting block processing from block {} for {} blocks", cli.block_number, cli.block_count);
-    
+
+    info!(
+        "Starting block processing from block {} for {} blocks",
+        cli.block_number, cli.block_count
+    );
+
     for i in 0..cli.block_count {
         let current_block = cli.block_number + i;
-        let fixture_creator = ExecutorTestFixtureCreator::new(
-            cli.l2_rpc.as_str(), 
-            current_block, 
-            output_dir.join(format!("block_{}", current_block))
-        );
-        
+        let fixture_creator =
+            ExecutorTestFixtureCreator::new(cli.l2_rpc.as_str(), current_block, output_dir.clone());
+
         info!(block_number = current_block, "Processing block");
-        
+
         match fixture_creator.create_static_fixture().await {
             Ok(success) => {
                 if success {
@@ -166,7 +162,7 @@ async fn main() -> Result<()> {
                     stats.record_failure(current_block);
                     warn!(block_number = current_block, "Block execution failed");
                 }
-            },
+            }
             Err(_) => {
                 stats.record_failure(current_block);
                 error!(block_number = current_block, "Block execution error");
