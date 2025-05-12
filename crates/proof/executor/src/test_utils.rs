@@ -2,7 +2,7 @@
 
 use crate::{StatelessL2Builder, TrieDBProvider};
 use alloy_consensus::Header;
-use alloy_mantle_evm::OpEvmFactory;
+use alloy_op_evm::OpEvmFactory;
 use alloy_primitives::{B256, Bytes, Sealable};
 use alloy_provider::{Provider, RootProvider, network::primitives::BlockTransactions};
 use alloy_rlp::Decodable;
@@ -182,9 +182,17 @@ impl ExecutorTestFixtureCreator {
             NoopTrieHinter,
             parent_header,
         );
-        let outcome = executor.build_block(payload_attrs).map_err(|_| TestTrieNodeProviderError::ExecutionFailed)?;
+        let outcome = executor
+            .build_block(payload_attrs)
+            .map_err(|_| TestTrieNodeProviderError::ExecutionFailed)?;
 
         let success = *outcome.header.inner() == executing_header.inner;
+        info!(
+            target: "kona_executor::test_utils",
+            executing = ?executing_header.inner,
+            result = ?outcome.header.inner(),
+            "Block execution"
+        );
         Ok(success)
     }
 }

@@ -28,7 +28,7 @@ thiserror.workspace = true
 derive_more = { workspace = true, features = ["from"] }
 
 # `revm` feature
-mantle-revm = { workspace = true, optional = true }
+op-revm = { workspace = true, optional = true }
 
 # `arbitrary` feature
 arbitrary = { workspace = true, features = ["derive"], optional = true }
@@ -47,7 +47,7 @@ alloy-primitives = { workspace = true, features = ["rand", "arbitrary"] }
 
 [features]
 default = []
-revm = ["dep:mantle-revm"]
+revm = ["dep:op-revm"]
 std = [
     "alloy-primitives/std",
     "alloy-sol-types/std",

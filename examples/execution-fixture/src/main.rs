@@ -105,7 +105,7 @@ impl BlockExecutionStats {
 
             for block_num in &self.failed_blocks {
                 println!(
-                    "║  {:<16} ║  @https://explorer.mantle.xyz/block/{:<10}  ║",
+                    "║  {:<16} ║  https://explorer.mantle.xyz/block/{}?tab=txs  ║",
                     block_num, block_num
                 );
             }

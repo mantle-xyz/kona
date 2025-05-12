@@ -102,38 +102,38 @@ kona-serde = { path = "crates/utilities/serde", version = "0.2.0", default-featu
 alloy-rlp = { version = "0.3.11", default-features = false }
 alloy-trie = { version = "0.8.0", default-features = false }
 alloy-chains = { version = "0.2", default-features = false }
-alloy-eips = { version = "0.14", default-features = false }
-alloy-serde = { version = "0.14", default-features = false }
-alloy-network = { version = "0.14", default-features = false }
-alloy-provider = { version = "0.14", default-features = false }
+alloy-eips = { version = "0.15", default-features = false }
+alloy-serde = { version = "0.15", default-features = false }
+alloy-network = { version = "0.15", default-features = false }
+alloy-provider = { version = "0.15", default-features = false }
 alloy-sol-types = { version = "1.0.0", default-features = false }
-alloy-consensus = { version = "0.14", default-features = false }
-alloy-transport = { version = "0.14", default-features = false }
-alloy-rpc-types = { version = "0.14", default-features = false }
-alloy-rpc-client = { version = "0.14", default-features = false }
+alloy-consensus = { version = "0.15", default-features = false }
+alloy-transport = { version = "0.15", default-features = false }
+alloy-rpc-types = { version = "0.15", default-features = false }
+alloy-rpc-client = { version = "0.15", default-features = false }
 alloy-primitives = { version = "1.0.0", default-features = false }
-alloy-node-bindings = { version = "0.14", default-features = false }
-alloy-rpc-types-eth = { version = "0.14", default-features = false }
-alloy-transport-http = { version = "0.14", default-features = false }
-alloy-rpc-types-engine = { version = "0.14", default-features = false }
-alloy-rpc-types-beacon = { version = "0.14", default-features = false }
-alloy-network-primitives = { version = "0.14", default-features = false }
+alloy-node-bindings = { version = "0.15", default-features = false }
+alloy-rpc-types-eth = { version = "0.15", default-features = false }
+alloy-transport-http = { version = "0.15", default-features = false }
+alloy-rpc-types-engine = { version = "0.15", default-features = false }
+alloy-rpc-types-beacon = { version = "0.15", default-features = false }
+alloy-network-primitives = { version = "0.15", default-features = false }
 alloy-hardforks = { version = "0.2.0", default-features = false }
 
 # OP Alloy
-op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v141", default-features = false }
-op-alloy-provider = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v141", default-features = false }
-op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v141", default-features = false }
-op-alloy-rpc-types = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v141", default-features = false }
-op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v141", default-features = false }
-op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v141", default-features = false }
+op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
+op-alloy-provider = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
+op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
+op-alloy-rpc-types = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
+op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
+op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
 alloy-op-hardforks = { version = "0.2.0", default-features = false }
 
 # Execution
-revm = { git = "https://github.com/mantle-xyz/revm", branch = "v69_mantle", default-features = false }
-mantle-revm = { git = "https://github.com/mantle-xyz/revm", branch = "v69_mantle", default-features = false }
-alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "mantle", default-features = false }
-alloy-mantle-evm = { git = "https://github.com/mantle-xyz/evm", branch = "mantle", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", branch = "v69_op", default-features = false }
+op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "v69_op", default-features = false }
+alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "mantle_op", default-features = false }
+alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "mantle_op", default-features = false }
 
 # General
 url = "2.5.4"

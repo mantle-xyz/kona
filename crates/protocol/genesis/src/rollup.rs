@@ -160,30 +160,30 @@ impl Default for RollupConfig {
 
 #[cfg(feature = "revm")]
 impl RollupConfig {
-    /// Returns the active [`mantle_revm::OpSpecId`] for the executor.
+    /// Returns the active [`op_revm::OpSpecId`] for the executor.
     ///
     /// ## Takes
     /// - `timestamp`: The timestamp of the executing block.
     ///
     /// ## Returns
-    /// The active [`mantle_revm::OpSpecId`] for the executor.
-    pub fn spec_id(&self, timestamp: u64) -> mantle_revm::OpSpecId {
+    /// The active [`op_revm::OpSpecId`] for the executor.
+    pub fn spec_id(&self, timestamp: u64) -> op_revm::OpSpecId {
         if self.is_interop_active(timestamp) {
-            mantle_revm::OpSpecId::INTEROP
+            op_revm::OpSpecId::INTEROP
         } else if self.is_isthmus_active(timestamp) {
-            mantle_revm::OpSpecId::ISTHMUS
+            op_revm::OpSpecId::ISTHMUS
         } else if self.is_holocene_active(timestamp) {
-            mantle_revm::OpSpecId::HOLOCENE
+            op_revm::OpSpecId::HOLOCENE
         } else if self.is_fjord_active(timestamp) {
-            mantle_revm::OpSpecId::FJORD
+            op_revm::OpSpecId::FJORD
         } else if self.is_ecotone_active(timestamp) {
-            mantle_revm::OpSpecId::ECOTONE
+            op_revm::OpSpecId::ECOTONE
         } else if self.is_canyon_active(timestamp) {
-            mantle_revm::OpSpecId::CANYON
+            op_revm::OpSpecId::CANYON
         } else if self.is_regolith_active(timestamp) {
-            mantle_revm::OpSpecId::REGOLITH
+            op_revm::OpSpecId::REGOLITH
         } else {
-            mantle_revm::OpSpecId::BEDROCK
+            op_revm::OpSpecId::BEDROCK
         }
     }
 }
@@ -408,18 +408,18 @@ mod tests {
             hardforks: HardForkConfig { regolith_time: Some(10), ..Default::default() },
             ..Default::default()
         };
-        assert_eq!(config.spec_id(0), mantle_revm::OpSpecId::BEDROCK);
-        assert_eq!(config.spec_id(10), mantle_revm::OpSpecId::REGOLITH);
+        assert_eq!(config.spec_id(0), op_revm::OpSpecId::BEDROCK);
+        assert_eq!(config.spec_id(10), op_revm::OpSpecId::REGOLITH);
         config.hardforks.canyon_time = Some(20);
-        assert_eq!(config.spec_id(20), mantle_revm::OpSpecId::CANYON);
+        assert_eq!(config.spec_id(20), op_revm::OpSpecId::CANYON);
         config.hardforks.ecotone_time = Some(30);
-        assert_eq!(config.spec_id(30), mantle_revm::OpSpecId::ECOTONE);
+        assert_eq!(config.spec_id(30), op_revm::OpSpecId::ECOTONE);
         config.hardforks.fjord_time = Some(40);
-        assert_eq!(config.spec_id(40), mantle_revm::OpSpecId::FJORD);
+        assert_eq!(config.spec_id(40), op_revm::OpSpecId::FJORD);
         config.hardforks.holocene_time = Some(50);
-        assert_eq!(config.spec_id(50), mantle_revm::OpSpecId::HOLOCENE);
+        assert_eq!(config.spec_id(50), op_revm::OpSpecId::HOLOCENE);
         config.hardforks.isthmus_time = Some(60);
-        assert_eq!(config.spec_id(60), mantle_revm::OpSpecId::ISTHMUS);
+        assert_eq!(config.spec_id(60), op_revm::OpSpecId::ISTHMUS);
     }
 
     #[test]

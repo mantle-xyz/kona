@@ -7,7 +7,7 @@ use alloy_eips::{eip1559::BaseFeeParams, eip7840::BlobParams};
 use alloy_evm::{EvmEnv, EvmFactory};
 use kona_genesis::RollupConfig;
 use kona_mpt::TrieHinter;
-use mantle_revm::OpSpecId;
+use op_revm::OpSpecId;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use revm::{
     context::{BlockEnv, CfgEnv},

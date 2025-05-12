@@ -4,7 +4,7 @@ use super::FaultProofProgramError;
 use crate::interop::util::fetch_l2_safe_head_hash;
 use alloc::sync::Arc;
 use alloy_consensus::Sealed;
-use alloy_mantle_evm::OpEvmFactory;
+use alloy_op_evm::OpEvmFactory;
 use alloy_primitives::B256;
 use core::fmt::Debug;
 use kona_derive::errors::{PipelineError, PipelineErrorKind};

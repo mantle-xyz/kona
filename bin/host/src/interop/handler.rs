@@ -10,7 +10,7 @@ use alloy_eips::{
     eip2718::Encodable2718,
     eip4844::{FIELD_ELEMENTS_PER_BLOB, IndexedBlobHash},
 };
-use alloy_mantle_evm::OpEvmFactory;
+use alloy_op_evm::OpEvmFactory;
 use alloy_primitives::{Address, B256, Bytes, keccak256};
 use alloy_provider::Provider;
 use alloy_rlp::{Decodable, Encodable};

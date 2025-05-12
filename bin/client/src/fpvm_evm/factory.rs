@@ -2,9 +2,9 @@
 
 use super::precompiles::OpFpvmPrecompiles;
 use alloy_evm::{Database, EvmEnv, EvmFactory};
-use alloy_mantle_evm::OpEvm;
+use alloy_op_evm::OpEvm;
 use kona_preimage::{Channel, HintWriter, OracleReader};
-use mantle_revm::{
+use op_revm::{
     DefaultOp, OpContext, OpEvm as RevmOpEvm, OpHaltReason, OpSpecId, OpTransaction,
     OpTransactionError,
 };

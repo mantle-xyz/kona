@@ -6,7 +6,7 @@ use crate::fpvm_evm::precompiles::{
 use alloc::{boxed::Box, string::String, vec, vec::Vec};
 use alloy_primitives::{Address, Bytes};
 use kona_preimage::{Channel, HintWriter, OracleReader};
-use mantle_revm::{
+use op_revm::{
     OpSpecId,
     precompiles::{fjord, granite, isthmus},
 };

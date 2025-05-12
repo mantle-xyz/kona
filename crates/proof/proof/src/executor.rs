@@ -11,7 +11,7 @@ use kona_genesis::RollupConfig;
 use kona_mpt::TrieHinter;
 use op_alloy_consensus::OpTxEnvelope;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
-use mantle_revm::OpSpecId;
+use op_revm::OpSpecId;
 
 /// An executor wrapper type.
 #[derive(Debug)]
