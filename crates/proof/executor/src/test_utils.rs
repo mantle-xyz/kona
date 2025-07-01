@@ -107,10 +107,15 @@ impl ExecutorTestFixtureCreator {
 }
 
 fn mock_rollup_config() -> RollupConfig {
-    let mut rollup_config = RollupConfig { l2_chain_id: 5000, ..Default::default() };
+    let mut rollup_config = RollupConfig { l2_chain_id: 561113, ..Default::default() };
     rollup_config.hardforks.regolith_time = Some(0);
     rollup_config.hardforks.canyon_time = Some(0);
-
+    rollup_config.hardforks.delta_time = Some(0);
+    rollup_config.hardforks.ecotone_time = Some(0);
+    rollup_config.hardforks.fjord_time = Some(0);
+    rollup_config.hardforks.granite_time = Some(0);
+    rollup_config.hardforks.holocene_time = Some(0);
+    rollup_config.hardforks.isthmus_time = Some(0);
     rollup_config
 }
 
@@ -120,37 +125,99 @@ impl ExecutorTestFixtureCreator {
         // let chain_id = self.provider.get_chain_id().await.expect("Failed to get chain ID");
         let rollup_config = mock_rollup_config();
 
-        let executing_block = self
+        let executing_block = match self
             .provider
             .get_block_by_number(self.block_number.into())
             .await
-            .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?
-            .ok_or(TestTrieNodeProviderError::PreimageNotFound)?;
-        let parent_block = self
+        {
+            Ok(Some(block)) => block,
+            Ok(None) => {
+                warn!(
+                    target: "kona_executor::test_utils",
+                    block_number = self.block_number,
+                    "Block not found"
+                );
+                return Err(TestTrieNodeProviderError::PreimageNotFound);
+            }
+            Err(e) => {
+                warn!(
+                    target: "kona_executor::test_utils",
+                    block_number = self.block_number,
+                    error = ?e,
+                    "Failed to get executing block"
+                );
+                return Err(TestTrieNodeProviderError::PreimageNotFound);
+            }
+        };
+        
+        let parent_block = match self
             .provider
             .get_block_by_number((self.block_number - 1).into())
             .await
-            .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?
-            .ok_or(TestTrieNodeProviderError::PreimageNotFound)?;
-
+        {
+            Ok(Some(block)) => block,
+            Ok(None) => {
+                warn!(
+                    target: "kona_executor::test_utils",
+                    block_number = self.block_number - 1,
+                    "Parent block not found"
+                );
+                return Err(TestTrieNodeProviderError::PreimageNotFound);
+            }
+            Err(e) => {
+                warn!(
+                    target: "kona_executor::test_utils",
+                    block_number = self.block_number - 1,
+                    error = ?e,
+                    "Failed to get parent block"
+                );
+                return Err(TestTrieNodeProviderError::PreimageNotFound);
+            }
+        };
+        
         let executing_header = executing_block.header;
         let parent_header = parent_block.header.inner.seal_slow();
 
         let encoded_executing_transactions = match executing_block.transactions {
             BlockTransactions::Hashes(transactions) => {
                 let mut encoded_transactions = Vec::with_capacity(transactions.len());
-                for tx_hash in transactions {
-                    let tx = self
+                info!(
+                    target: "kona_executor::test_utils",
+                    tx_count = transactions.len(),
+                    "Processing transactions"
+                );
+                
+                for (i, tx_hash) in transactions.iter().enumerate() {
+                    match self
                         .provider
                         .client()
-                        .request::<&[B256; 1], Bytes>("debug_getRawTransaction", &[tx_hash])
+                        .request::<&[B256; 1], Bytes>("debug_getRawTransaction", &[*tx_hash])
                         .await
-                        .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?;
-                    encoded_transactions.push(tx);
+                    {
+                        Ok(tx) => {
+                            encoded_transactions.push(tx);
+                        }
+                        Err(e) => {
+                            warn!(
+                                target: "kona_executor::test_utils",
+                                tx_index = i,
+                                tx_hash = ?tx_hash,
+                                error = ?e,
+                                "Failed to get raw transaction"
+                            );
+                            return Err(TestTrieNodeProviderError::PreimageNotFound);
+                        }
+                    }
                 }
                 encoded_transactions
             }
-            _ => panic!("Only BlockTransactions::Hashes are supported."),
+            _ => {
+                warn!(
+                    target: "kona_executor::test_utils",
+                    "Only BlockTransactions::Hashes are supported"
+                );
+                panic!("Only BlockTransactions::Hashes are supported.");
+            }
         };
 
         let payload_attrs = OpPayloadAttributes {
@@ -167,13 +234,10 @@ impl ExecutorTestFixtureCreator {
             eip_1559_params: None,
         };
 
-        // let fixture_path = self.data_dir.join("fixture.json");
-        // let fixture = ExecutorTestFixture {
-        //     rollup_config: rollup_config.clone(),
-        //     parent_header: parent_header.inner().clone(),
-        //     executing_payload: payload_attrs.clone(),
-        //     expected_block_hash: executing_header.hash_slow(),
-        // };
+        info!(
+            target: "kona_executor::test_utils",
+            "Creating executor and building block"
+        );
 
         let mut executor = StatelessL2Builder::new(
             &rollup_config,
@@ -182,16 +246,26 @@ impl ExecutorTestFixtureCreator {
             NoopTrieHinter,
             parent_header,
         );
-        let outcome = executor
-            .build_block(payload_attrs)
-            .map_err(|_| TestTrieNodeProviderError::ExecutionFailed)?;
+        
+        let outcome = match executor.build_block(payload_attrs) {
+            Ok(outcome) => outcome,
+            Err(e) => {
+                warn!(
+                    target: "kona_executor::test_utils",
+                    error = ?e,
+                    "Block execution failed"
+                );
+                return Err(TestTrieNodeProviderError::ExecutionFailed);
+            }
+        };
 
         let success = *outcome.header.inner() == executing_header.inner;
         info!(
             target: "kona_executor::test_utils",
             executing = ?executing_header.inner,
             result = ?outcome.header.inner(),
-            "Block execution"
+            success = success,
+            "Block execution completed"
         );
         Ok(success)
     }
@@ -204,25 +278,50 @@ impl TrieProvider for ExecutorTestFixtureCreator {
         // Fetch the preimage from the L2 chain provider.
         let preimage: Bytes = tokio::task::block_in_place(move || {
             Handle::current().block_on(async {
-                let preimage: Bytes = self
+                let preimage_result: Result<Bytes, _> = self
                     .provider
                     .client()
                     .request("debug_dbGet", &[key])
-                    .await
-                    .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?;
+                    .await;
+                
+                let preimage = match preimage_result {
+                    Ok(data) => data,
+                    Err(e) => {
+                        warn!(
+                            target: "kona_executor::test_utils",
+                            key = ?key,
+                            error = ?e,
+                            "Failed to get trie node preimage from debug_dbGet"
+                        );
+                        return Err(TestTrieNodeProviderError::PreimageNotFound);
+                    }
+                };
 
-                self.kv_store
-                    .lock()
-                    .await
-                    .put(key, preimage.clone())
-                    .map_err(|_| TestTrieNodeProviderError::KVStore)?;
+                // Store the preimage in the KV store for caching
+                if let Err(e) = self.kv_store.lock().await.put(key, preimage.clone()) {
+                    warn!(
+                        target: "kona_executor::test_utils",
+                        key = ?key,
+                        error = ?e,
+                        "Failed to store preimage in KV store"
+                    );
+                    return Err(TestTrieNodeProviderError::KVStore);
+                }
 
                 Ok(preimage)
             })
         })?;
 
         // Decode the preimage into a trie node.
-        TrieNode::decode(&mut preimage.as_ref()).map_err(TestTrieNodeProviderError::Rlp)
+        TrieNode::decode(&mut preimage.as_ref()).map_err(|e| {
+            warn!(
+                target: "kona_executor::test_utils",
+                key = ?key,
+                error = ?e,
+                "Failed to decode trie node from preimage"
+            );
+            TestTrieNodeProviderError::Rlp(e)
+        })
     }
 }
 
@@ -236,7 +335,7 @@ impl TrieDBProvider for ExecutorTestFixtureCreator {
             Handle::current().block_on(async {
                 // Attempt to fetch the code from the L2 chain provider.
                 let code_hash = [&[CODE_PREFIX], hash.as_slice()].concat();
-                let code = self
+                let code_result = self
                     .provider
                     .client()
                     .request::<&[Bytes; 1], Bytes>("debug_dbGet", &[code_hash.into()])
@@ -244,21 +343,46 @@ impl TrieDBProvider for ExecutorTestFixtureCreator {
 
                 // Check if the first attempt to fetch the code failed. If it did, try fetching the
                 // code hash preimage without the geth hashdb scheme prefix.
-                let code = match code {
+                let code = match code_result {
                     Ok(code) => code,
-                    Err(_) => self
-                        .provider
-                        .client()
-                        .request::<&[B256; 1], Bytes>("debug_dbGet", &[hash])
-                        .await
-                        .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?,
+                    Err(e) => {
+                        warn!(
+                            target: "kona_executor::test_utils",
+                            hash = ?hash,
+                            error = ?e,
+                            "Failed to get bytecode with prefix, trying without prefix"
+                        );
+                        
+                        match self
+                            .provider
+                            .client()
+                            .request::<&[B256; 1], Bytes>("debug_dbGet", &[hash])
+                            .await
+                        {
+                            Ok(code) => code,
+                            Err(e2) => {
+                                warn!(
+                                    target: "kona_executor::test_utils",
+                                    hash = ?hash,
+                                    error = ?e2,
+                                    "Failed to get bytecode without prefix"
+                                );
+                                return Err(TestTrieNodeProviderError::PreimageNotFound);
+                            }
+                        }
+                    }
                 };
 
-                self.kv_store
-                    .lock()
-                    .await
-                    .put(hash, code.clone())
-                    .map_err(|_| TestTrieNodeProviderError::KVStore)?;
+                // Store the bytecode in the KV store for caching
+                if let Err(e) = self.kv_store.lock().await.put(hash, code.clone()) {
+                    warn!(
+                        target: "kona_executor::test_utils",
+                        hash = ?hash,
+                        error = ?e,
+                        "Failed to store bytecode in KV store"
+                    );
+                    return Err(TestTrieNodeProviderError::KVStore);
+                }
 
                 Ok(code)
             })
@@ -270,25 +394,50 @@ impl TrieDBProvider for ExecutorTestFixtureCreator {
     fn header_by_hash(&self, hash: B256) -> Result<Header, Self::Error> {
         let encoded_header: Bytes = tokio::task::block_in_place(move || {
             Handle::current().block_on(async {
-                let preimage: Bytes = self
+                let header_result: Result<Bytes, _> = self
                     .provider
                     .client()
                     .request("debug_getRawHeader", &[hash])
-                    .await
-                    .map_err(|_| TestTrieNodeProviderError::PreimageNotFound)?;
+                    .await;
+                
+                let preimage = match header_result {
+                    Ok(data) => data,
+                    Err(e) => {
+                        warn!(
+                            target: "kona_executor::test_utils",
+                            hash = ?hash,
+                            error = ?e,
+                            "Failed to get header preimage from debug_getRawHeader"
+                        );
+                        return Err(TestTrieNodeProviderError::PreimageNotFound);
+                    }
+                };
 
-                self.kv_store
-                    .lock()
-                    .await
-                    .put(hash, preimage.clone())
-                    .map_err(|_| TestTrieNodeProviderError::KVStore)?;
+                // Store the header in the KV store for caching
+                if let Err(e) = self.kv_store.lock().await.put(hash, preimage.clone()) {
+                    warn!(
+                        target: "kona_executor::test_utils",
+                        hash = ?hash,
+                        error = ?e,
+                        "Failed to store header in KV store"
+                    );
+                    return Err(TestTrieNodeProviderError::KVStore);
+                }
 
                 Ok(preimage)
             })
         })?;
 
         // Decode the Header.
-        Header::decode(&mut encoded_header.as_ref()).map_err(TestTrieNodeProviderError::Rlp)
+        Header::decode(&mut encoded_header.as_ref()).map_err(|e| {
+            warn!(
+                target: "kona_executor::test_utils",
+                hash = ?hash,
+                error = ?e,
+                "Failed to decode header from preimage"
+            );
+            TestTrieNodeProviderError::Rlp(e)
+        })
     }
 }
 

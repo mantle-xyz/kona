@@ -111,6 +111,8 @@ impl Ecotone {
                 gas_limit: 375_000,
                 is_system_transaction: false,
                 input: Self::l1_block_deployment_bytecode(),
+                eth_value: None,
+                eth_tx_value: None,
             },
             // Deploy the Gas Price Oracle contract for Ecotone.
             // See: <https://specs.optimism.io/protocol/ecotone/derivation.html#gaspriceoracle-deployment>
@@ -123,6 +125,8 @@ impl Ecotone {
                 gas_limit: 1_000_000,
                 is_system_transaction: false,
                 input: Self::ecotone_gas_price_oracle_deployment_bytecode(),
+                eth_value: None,
+                eth_tx_value: None,
             },
             // Updates the l1 block proxy to point to the new L1 Block contract.
             // See: <https://specs.optimism.io/protocol/ecotone/derivation.html#l1block-proxy-update>
@@ -135,6 +139,8 @@ impl Ecotone {
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::NEW_L1_BLOCK),
+                eth_value: None,
+                eth_tx_value: None,
             },
             // Updates the gas price oracle proxy to point to the new Gas Price Oracle contract.
             // See: <https://specs.optimism.io/protocol/ecotone/derivation.html#gaspriceoracle-proxy-update>
@@ -147,6 +153,8 @@ impl Ecotone {
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::GAS_PRICE_ORACLE),
+                eth_value: None,
+                eth_tx_value: None,
             },
             // Enables the Ecotone Gas Price Oracle.
             // See: <https://specs.optimism.io/protocol/ecotone/derivation.html#gaspriceoracle-enable-ecotone>
@@ -159,6 +167,8 @@ impl Ecotone {
                 gas_limit: 80_000,
                 is_system_transaction: false,
                 input: Self::ENABLE_ECOTONE_INPUT.into(),
+                eth_value: None,
+                eth_tx_value: None,
             },
             // Deploys the beacon block roots contract.
             // See: <https://specs.optimism.io/protocol/ecotone/derivation.html#beacon-block-roots-contract-deployment-eip-4788>
@@ -171,6 +181,8 @@ impl Ecotone {
                 gas_limit: 250_000,
                 is_system_transaction: false,
                 input: Self::eip4788_creation_data(),
+                eth_value: None,
+                eth_tx_value: None,
             },
         ])
         .into_iter()
