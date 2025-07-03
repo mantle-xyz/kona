@@ -3,14 +3,14 @@
 use super::StatelessL2Builder;
 use crate::{
     ExecutorError, ExecutorResult, TrieDBError, TrieDBProvider, constants::SHA256_EMPTY,
-    util::encode_holocene_eip_1559_params,
+    // util::encode_holocene_eip_1559_params,
 };
 use alloc::vec::Vec;
 use alloy_consensus::{EMPTY_OMMER_ROOT_HASH, Header, Sealed};
 use alloy_eips::Encodable2718;
 use alloy_evm::{EvmFactory, block::BlockExecutionResult};
 use alloy_primitives::{B256, Sealable, U256, logs_bloom};
-use alloy_trie::EMPTY_ROOT_HASH;
+// use alloy_trie::EMPTY_ROOT_HASH;
 use kona_genesis::RollupConfig;
 use kona_mpt::{TrieHinter, ordered_trie_with_encoder};
 use kona_protocol::{OutputRoot, Predeploys};
@@ -55,6 +55,8 @@ where
         // } else {
         //     None
         // };
+
+        // [Mantle]: hardfork is not implemented yet.
         let withdrawals_root= Some(self.message_passer_account(block_env.number)?);
 
         // Compute the logs bloom from the receipts generated during block execution.
@@ -66,7 +68,8 @@ where
         //     .is_ecotone_active(timestamp)
         //     .then_some((Some(0), Some(0)))
         //     .unwrap_or_default();
-        
+
+        // [Mantle]: blob is not implemented yet.
         let (blob_gas_used, excess_blob_gas) = (Some(0), Some(0));
 
         // At holocene activation, the base fee parameters from the payload are placed
@@ -83,6 +86,8 @@ where
 
         // The requests hash on the OP Stack, if Isthmus is active, is always the empty SHA256 hash.
         // let requests_hash = self.config.is_isthmus_active(timestamp).then_some(SHA256_EMPTY);
+
+        // [Mantle]: requests_hash is always the empty SHA256 hash.
         let requests_hash = Some(SHA256_EMPTY);
 
         // Construct the new header.

@@ -1,18 +1,15 @@
 //! Environment utility functions for [StatelessL2Builder].
 
 use super::StatelessL2Builder;
-use crate::{ExecutorError, ExecutorResult, TrieDBProvider, util::decode_holocene_eip_1559_params};
-use alloy_consensus::{BlockHeader, Header};
-use alloy_eips::{eip1559::BaseFeeParams, eip7840::BlobParams};
+use crate::{ExecutorError, ExecutorResult, TrieDBProvider};
+use alloy_consensus::Header;
+use alloy_eips::eip1559::BaseFeeParams;
 use alloy_evm::{EvmEnv, EvmFactory};
 use kona_genesis::RollupConfig;
 use kona_mpt::TrieHinter;
-use op_revm::OpSpecId;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
-use revm::{
-    context::{BlockEnv, CfgEnv},
-    context_interface::block::BlobExcessGasAndPrice,
-};
+use op_revm::OpSpecId;
+use revm::context::{BlockEnv, CfgEnv};
 
 impl<P, H, Evm> StatelessL2Builder<'_, P, H, Evm>
 where
@@ -43,21 +40,24 @@ where
 
     /// Prepares a [BlockEnv] with the given [OpPayloadAttributes].
     pub(crate) fn prepare_block_env(
-        spec_id: OpSpecId,
+        _spec_id: OpSpecId,
         parent_header: &Header,
         payload_attrs: &OpPayloadAttributes,
-        base_fee_params: &BaseFeeParams,
+        _base_fee_params: &BaseFeeParams,
     ) -> ExecutorResult<BlockEnv> {
-        let blob_excess_gas_and_price = parent_header
-            .maybe_next_block_excess_blob_gas(if spec_id.is_enabled_in(OpSpecId::ISTHMUS) {
-                Some(BlobParams::prague())
-            } else if spec_id.is_enabled_in(OpSpecId::ECOTONE) {
-                Some(BlobParams::cancun())
-            } else {
-                None
-            })
-            .or_else(|| spec_id.is_enabled_in(OpSpecId::ECOTONE).then_some(0))
-            .map(|e| BlobExcessGasAndPrice::new(e, spec_id.is_enabled_in(OpSpecId::ISTHMUS)));
+        // let blob_excess_gas_and_price = parent_header
+        //     .maybe_next_block_excess_blob_gas(if spec_id.is_enabled_in(OpSpecId::ISTHMUS) {
+        //         Some(BlobParams::prague())
+        //     } else if spec_id.is_enabled_in(OpSpecId::ECOTONE) {
+        //         Some(BlobParams::cancun())
+        //     } else {
+        //         None
+        //     })
+        //     .or_else(|| spec_id.is_enabled_in(OpSpecId::ECOTONE).then_some(0))
+        //     .map(|e| BlobExcessGasAndPrice::new(e, spec_id.is_enabled_in(OpSpecId::ISTHMUS)));
+        
+        // [Mantle]: blob_excess_gas_and_price is not used in Mantle.
+        let blob_excess_gas_and_price = None;
         let next_block_base_fee = parent_header.base_fee_per_gas.unwrap_or_default();
 
         Ok(BlockEnv {
@@ -67,7 +67,7 @@ where
             gas_limit: payload_attrs.gas_limit.ok_or(ExecutorError::MissingGasLimit)?,
             basefee: next_block_base_fee,
             prevrandao: Some(payload_attrs.payload_attributes.prev_randao),
-            blob_excess_gas_and_price: None,
+            blob_excess_gas_and_price,
             ..Default::default()
         })
     }
@@ -75,7 +75,7 @@ where
     /// Returns the active base fee parameters for the given payload attributes.
     pub(crate) fn active_base_fee_params(
         config: &RollupConfig,
-        parent_header: &Header,
+        _parent_header: &Header,
         payload_attrs: &OpPayloadAttributes,
     ) -> ExecutorResult<BaseFeeParams> {
         let base_fee_params =

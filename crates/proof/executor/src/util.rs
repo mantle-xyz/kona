@@ -16,6 +16,7 @@ use op_alloy_rpc_types_engine::OpPayloadAttributes;
 /// ## Returns
 /// - `Ok(BaseFeeParams)`: The EIP-1559 parameters.
 /// - `Err(ExecutorError::InvalidExtraData)`: If the extra data is invalid.
+#[allow(dead_code)]
 pub(crate) fn decode_holocene_eip_1559_params(header: &Header) -> ExecutorResult<BaseFeeParams> {
     // Check the extra data length.
     if header.extra_data.len() != 1 + 8 {
@@ -53,6 +54,7 @@ pub(crate) fn decode_holocene_eip_1559_params(header: &Header) -> ExecutorResult
 /// ## Returns
 /// - `Ok(data)`: The encoded extra data.
 /// - `Err(ExecutorError::MissingEIP1559Params)`: If the EIP-1559 parameters are missing.
+#[allow(dead_code)]
 pub(crate) fn encode_holocene_eip_1559_params(
     config: &RollupConfig,
     attributes: &OpPayloadAttributes,
@@ -73,6 +75,7 @@ pub(crate) fn encode_holocene_eip_1559_params(
 /// Encodes the canyon base fee parameters, per Holocene spec.
 ///
 /// <https://specs.optimism.io/protocol/holocene/exec-engine.html#eip1559params-encoding>
+#[allow(dead_code)]
 pub(crate) fn encode_canyon_base_fee_params(config: &RollupConfig) -> B64 {
     let params = config.chain_op_config.as_canyon_base_fee_params();
 

@@ -11,7 +11,6 @@ use alloy_rpc_types_engine::PayloadAttributes;
 use alloy_transport_http::{Client, Http};
 use kona_genesis::RollupConfig;
 use kona_mpt::{NoopTrieHinter, TrieNode, TrieProvider};
-use kona_registry::ROLLUP_CONFIGS;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use rocksdb::{DB, Options};
 use serde::{Deserialize, Serialize};
