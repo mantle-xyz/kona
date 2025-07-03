@@ -24,7 +24,8 @@ use op_alloy_network::Optimism;
 use op_alloy_provider::ext::engine::OpEngineApi;
 use op_alloy_rpc_types::Transaction;
 use op_alloy_rpc_types_engine::{
-    OpExecutionPayloadEnvelopeV3, OpExecutionPayloadEnvelopeV4, OpPayloadAttributes,
+    OpExecutionPayloadEnvelopeV3, OpExecutionPayloadEnvelopeV4, OpExecutionPayloadV4,
+    OpPayloadAttributes, ProtocolVersion,
 };
 use std::sync::Arc;
 use thiserror::Error;
@@ -127,7 +128,7 @@ impl OpEngineApi<AnyNetwork, Http<HyperAuthClient>> for EngineClient {
 
     async fn new_payload_v4(
         &self,
-        payload: ExecutionPayloadV3,
+        payload: OpExecutionPayloadV4,
         parent_beacon_block_root: B256,
     ) -> TransportResult<PayloadStatus> {
         <RootProvider<AnyNetwork> as OpEngineApi<
@@ -217,6 +218,17 @@ impl OpEngineApi<AnyNetwork, Http<HyperAuthClient>> for EngineClient {
             AnyNetwork,
             Http<HyperAuthClient>,
         >>::get_client_version_v1(&self.engine, client_version).await
+    }
+
+    async fn signal_superchain_v1(
+        &self,
+        recommended: ProtocolVersion,
+        required: ProtocolVersion,
+    ) -> TransportResult<ProtocolVersion> {
+        <RootProvider<AnyNetwork> as OpEngineApi<
+            AnyNetwork,
+            Http<HyperAuthClient>,
+        >>::signal_superchain_v1(&self.engine, recommended, required).await
     }
 
     async fn exchange_capabilities(
