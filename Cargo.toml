@@ -20,7 +20,7 @@ members = [
   "crates/utilities/*",
   "examples/*",
 ]
-default-members = ["bin/host", "bin/client", "bin/node"]
+default-members = ["bin/host", "bin/client"]
 
 [workspace.metadata.cargo-udeps.ignore]
 normal = ["rustls-platform-verifier"]
@@ -69,18 +69,18 @@ kona-client = { path = "bin/client", version = "1.0.0", default-features = false
 kona-comp = { path = "crates/protocol/comp", version = "0.3.0", default-features = false }
 kona-driver = { path = "crates/protocol/driver", version = "0.3.0", default-features = false }
 kona-derive = { path = "crates/protocol/derive", version = "0.3.0", default-features = false }
-kona-interop = { path = "crates/protocol/interop", version = "0.3.0", default-features = false }
 kona-genesis = { path = "crates/protocol/genesis", version = "0.3.0", default-features = false }
 kona-protocol = { path = "crates/protocol/protocol", version = "0.3.0", default-features = false }
 kona-registry = { path = "crates/protocol/registry", version = "0.3.0", default-features = false }
 kona-hardforks = { path = "crates/protocol/hardforks", version = "0.3.0", default-features = false }
+kona-eigenda = { path = "crates/protocol/eigenda", version = "0.3.0", default-features = false }
 
 # Node
 kona-p2p = { path = "crates/node/p2p", version = "0.1.0", default-features = false }
 kona-rpc = { path = "crates/node/rpc", version = "0.2.0", default-features = false }
 kona-engine = { path = "crates/node/engine", version = "0.1.0", default-features = false }
 kona-sources = { path = "crates/node/sources", version = "0.1.0", default-features = false }
-kona-node-service = { path = "crates/node/service", version = "0.1.0", default-features = false }
+# kona-node-service = { path = "crates/node/service", version = "0.1.0", default-features = false }
 
 # Providers
 kona-providers-alloy = { path = "crates/providers/providers-alloy", version = "0.2.0", default-features = false }
@@ -92,7 +92,6 @@ kona-executor = { path = "crates/proof/executor", version = "0.3.0", default-fea
 kona-std-fpvm = { path = "crates/proof/std-fpvm", version = "0.2.0", default-features = false }
 kona-preimage = { path = "crates/proof/preimage", version = "0.3.0", default-features = false }
 kona-std-fpvm-proc = { path = "crates/proof/std-fpvm-proc", version = "0.2.0", default-features = false }
-kona-proof-interop = { path = "crates/proof/proof-interop", version = "0.2.0", default-features = false }
 
 # Utilities
 kona-cli = { path = "crates/utilities/cli", version = "0.2.0", default-features = false }
@@ -214,3 +213,16 @@ c-kzg = { version = "2.0.0", default-features = false }
 ark-ff = { version = "0.5.0", default-features = false }
 secp256k1 = { version = "0.30.0", default-features = false }
 ark-bls12-381 = { version = "0.5.0", default-features = false }
+
+# proto
+prost = { version = "0.13.3", default-features = false, features = ["derive"] }
+bytes = { version = "1.8.0", default-features = false }
+hex = { version = "0.4.3", default-features = false }
+rlp = { version = "0.6.1", default-features = false }
+
+#eigenlayer
+rust-kzg-bn254-primitives = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "b3e532e9aad533009849755d5ad7b9578a16bfb2", default-features = false }
+rust-kzg-bn254-prover = { git = "https://github.com/Layr-Labs/rust-kzg-bn254", rev = "b3e532e9aad533009849755d5ad7b9578a16bfb2", default-features = false }
+
+ark-bn254 = "0.5.0"
+num = "0.4"

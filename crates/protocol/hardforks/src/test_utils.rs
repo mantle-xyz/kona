@@ -29,6 +29,8 @@ pub(crate) fn check_deployment_code(
                 source_hash: deployment_tx.source_hash,
                 mint: deployment_tx.mint,
                 is_system_transaction: deployment_tx.is_system_transaction,
+                eth_value: None,
+                eth_tx_value: None,
             };
             tx.enveloped_tx = Some(deployment_tx.encoded_2718().into());
 

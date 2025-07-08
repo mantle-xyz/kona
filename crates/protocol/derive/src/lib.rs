@@ -27,5 +27,6 @@ pub mod stages;
 pub mod traits;
 pub mod types;
 
+mod proto;
 #[cfg(feature = "test-utils")]
 pub mod test_utils;

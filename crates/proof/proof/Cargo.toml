@@ -22,6 +22,7 @@ kona-rpc.workspace = true
 kona-protocol.workspace = true
 kona-registry.workspace = true
 kona-genesis = { workspace = true, features = ["serde"] }
+kona-eigenda.workspace = true
 
 # Alloy
 alloy-rlp.workspace = true

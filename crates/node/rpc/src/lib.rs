@@ -41,10 +41,6 @@ pub use attributes::OpAttributesWithParent;
 
 #[cfg(feature = "jsonrpsee")]
 mod jsonrpsee;
-#[cfg(all(feature = "jsonrpsee", feature = "interop", feature = "client"))]
-pub use jsonrpsee::SupervisorApiClient;
-#[cfg(all(feature = "jsonrpsee", feature = "interop"))]
-pub use jsonrpsee::SupervisorApiServer;
 #[cfg(all(feature = "jsonrpsee", feature = "client"))]
 pub use jsonrpsee::{
     EngineApiExtClient, MinerApiExtClient, OpAdminApiClient, OpP2PApiClient, RollupNodeApiClient,
@@ -53,13 +49,3 @@ pub use jsonrpsee::{
 pub use jsonrpsee::{
     EngineApiExtServer, MinerApiExtServer, OpAdminApiServer, OpP2PApiServer, RollupNodeApiServer,
 };
-
-#[cfg(all(feature = "reqwest", feature = "interop"))]
-pub mod reqwest;
-#[cfg(all(feature = "reqwest", feature = "interop", feature = "client"))]
-pub use reqwest::SupervisorClient;
-
-#[cfg(feature = "interop")]
-mod interop;
-#[cfg(feature = "interop")]
-pub use interop::{CheckAccessList, InteropTxValidator, InteropTxValidatorError};

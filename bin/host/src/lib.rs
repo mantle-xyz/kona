@@ -17,5 +17,6 @@ pub mod eth;
 #[cfg(feature = "single")]
 pub mod single;
 
-#[cfg(feature = "interop")]
-pub mod interop;
+
+mod witness;
+pub use witness::EigenDABlobWitness;

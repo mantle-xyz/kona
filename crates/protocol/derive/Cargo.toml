@@ -40,6 +40,13 @@ spin = { workspace = true, optional = true }
 tracing-subscriber = { workspace = true, optional = true, features = ["fmt"] }
 op-alloy-consensus = { workspace = true, optional = true, features = ["k256"] }
 
+# `derive` feature
+bytes = { workspace = true }
+hex = { workspace = true }
+prost = { workspace = true }
+miniz_oxide.workspace = true
+rlp = { workspace = true }
+
 [dev-dependencies]
 kona-derive = { workspace = true, features = ["test-utils"] }
 spin.workspace = true

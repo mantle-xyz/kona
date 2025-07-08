@@ -55,7 +55,7 @@ std = [
     "alloy-eips/std",
     "kona-serde?/std",
     "serde?/std",
-    "thiserror/std"
+    "thiserror/std",
 ]
 arbitrary = [
     "std",

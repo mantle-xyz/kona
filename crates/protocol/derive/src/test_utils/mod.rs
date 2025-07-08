@@ -47,3 +47,6 @@ mod frames;
 pub use frames::{FrameQueueAsserter, FrameQueueBuilder};
 
 mod macros;
+
+mod eigen_da_provider;
+pub use eigen_da_provider::TestEigenDaProvider;

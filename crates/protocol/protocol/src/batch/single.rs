@@ -571,6 +571,7 @@ mod tests {
             gas_limit: 5,
             is_system_transaction: false,
             input: Default::default(),
+            ..Default::default()
         };
         let envelope = OpTxEnvelope::Deposit(Sealed::new(tx));
         let encoded = envelope.encoded_2718();

@@ -17,7 +17,6 @@ kona-mpt.workspace = true
 kona-client.workspace = true
 kona-executor.workspace = true
 kona-std-fpvm.workspace = true
-kona-proof-interop.workspace = true
 kona-proof = { workspace = true, features = ["std"] }
 kona-preimage = { workspace = true, features = ["std"] }
 
@@ -27,6 +26,7 @@ kona-derive.workspace = true
 kona-registry.workspace = true
 kona-protocol = { workspace = true, features = ["std", "serde"] }
 kona-genesis = { workspace = true, features = ["std", "serde"] }
+kona-eigenda.workspace = true
 
 # Services
 kona-cli.workspace = true
@@ -52,7 +52,13 @@ op-alloy-network.workspace = true
 alloy-op-evm = { workspace = true, features = ["std"] }
 
 # Revm
-revm = { workspace = true, features = ["std", "c-kzg", "secp256k1", "portable", "blst"] }
+revm = { workspace = true, features = [
+    "std",
+    "c-kzg",
+    "secp256k1",
+    "portable",
+    "blst",
+] }
 
 # General
 anyhow.workspace = true
@@ -70,13 +76,18 @@ thiserror.workspace = true
 # KZG
 ark-ff.workspace = true
 
+# Eigenda
+rust-kzg-bn254-prover.workspace = true
+rust-kzg-bn254-primitives.workspace = true
+num.workspace = true
+ark-bn254.workspace = true
+
 [dev-dependencies]
 proptest.workspace = true
 
 [features]
-default = ["single", "interop"]
+default = ["single"]
 single = []
-interop = ["single"]
 
 [[bin]]
 name = "kona-host"

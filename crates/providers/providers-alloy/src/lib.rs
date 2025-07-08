@@ -23,3 +23,9 @@ pub use l2_chain_provider::{AlloyL2ChainProvider, AlloyL2ChainProviderError};
 
 mod pipeline;
 pub use pipeline::OnlinePipeline;
+
+mod eigen_da_proxy;
+pub use eigen_da_proxy::{EigenDAProxyClient, EigenDAProxy};
+
+mod eigen_da_provider;
+pub use eigen_da_provider::OnlineEigenDAProvider;

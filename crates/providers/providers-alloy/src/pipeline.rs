@@ -1,6 +1,9 @@
 //! Contains an online derivation pipeline.
 
-use crate::{AlloyChainProvider, AlloyL2ChainProvider, OnlineBeaconClient, OnlineBlobProvider};
+use crate::{
+    AlloyChainProvider, AlloyL2ChainProvider, EigenDAProxy, OnlineBeaconClient, OnlineBlobProvider,
+    OnlineEigenDAProvider,
+};
 use async_trait::async_trait;
 use core::fmt::Debug;
 use kona_derive::{
@@ -29,8 +32,11 @@ pub type OnlineDerivationPipeline = DerivationPipeline<
 >;
 
 /// An RPC-backed Ethereum data source.
-pub type OnlineDataProvider =
-    EthereumDataSource<AlloyChainProvider, OnlineBlobProvider<OnlineBeaconClient>>;
+pub type OnlineDataProvider = EthereumDataSource<
+    AlloyChainProvider,
+    OnlineBlobProvider<OnlineBeaconClient>,
+    OnlineEigenDAProvider<EigenDAProxy>,
+>;
 
 /// An RPC-backed payload attributes builder for the `AttributesQueue` stage of the derivation
 /// pipeline.
@@ -51,6 +57,7 @@ impl OnlinePipeline {
         l2_safe_head: L2BlockInfo,
         l1_origin: BlockInfo,
         blob_provider: OnlineBlobProvider<OnlineBeaconClient>,
+        eigen_da_provider: OnlineEigenDAProvider<EigenDAProxy>,
         chain_provider: AlloyChainProvider,
         mut l2_chain_provider: AlloyL2ChainProvider,
     ) -> PipelineResult<Self> {
@@ -59,7 +66,12 @@ impl OnlinePipeline {
             l2_chain_provider.clone(),
             chain_provider.clone(),
         );
-        let dap = EthereumDataSource::new_from_parts(chain_provider.clone(), blob_provider, &cfg);
+        let dap = EthereumDataSource::new_from_parts(
+            chain_provider.clone(),
+            blob_provider,
+            eigen_da_provider,
+            &cfg,
+        );
 
         let mut pipeline = PipelineBuilder::new()
             .rollup_config(cfg.clone())
