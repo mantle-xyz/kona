@@ -42,10 +42,10 @@ impl<C: Channel + Send + Sync> OpFpvmPrecompiles<C> {
         oracle_reader: OracleReader<C>,
     ) -> Self {
         let precompiles = match spec {
-            spec @ (OpSpecId::BEDROCK |
-            OpSpecId::REGOLITH |
-            OpSpecId::CANYON |
-            OpSpecId::ECOTONE) => Precompiles::new(spec.into_eth_spec().into()),
+            spec @ (OpSpecId::BEDROCK
+            | OpSpecId::REGOLITH
+            | OpSpecId::CANYON
+            | OpSpecId::ECOTONE) => Precompiles::new(spec.into_eth_spec().into()),
             OpSpecId::FJORD => fjord(),
             OpSpecId::GRANITE | OpSpecId::HOLOCENE => granite(),
             OpSpecId::ISTHMUS | OpSpecId::INTEROP | OpSpecId::OSAKA => isthmus(),
@@ -90,7 +90,7 @@ where
     #[inline]
     fn run(
         &mut self,
-        _context: &mut CTX,
+        context: &mut CTX,
         address: &Address,
         inputs: &InputsImpl,
         _is_static: bool,
@@ -102,14 +102,24 @@ where
             output: Bytes::new(),
         };
 
+        use revm::context::LocalContextTr;
+        let input = match &inputs.input {
+            revm::interpreter::CallInput::Bytes(bytes) => bytes.clone(),
+            revm::interpreter::CallInput::SharedBuffer(range) => context
+                .local()
+                .shared_memory_buffer_slice(range.clone())
+                .map(|b| Bytes::from(b.to_vec()))
+                .unwrap_or_default(),
+        };
+
         // Priority:
         // 1. If the precompile has an accelerated version, use that.
         // 2. If the precompile is not accelerated, use the default version.
         // 3. If the precompile is not found, return None.
         let output = if let Some(accelerated) = self.accelerated_precompiles.get(address) {
-            (accelerated)(&inputs.input, gas_limit, &self.hint_writer, &self.oracle_reader)
+            (accelerated)(&input, gas_limit, &self.hint_writer, &self.oracle_reader)
         } else if let Some(precompile) = self.inner.precompiles.get(address) {
-            (*precompile)(&inputs.input, gas_limit)
+            (*precompile)(&input, gas_limit)
         } else {
             return Ok(None);
         };

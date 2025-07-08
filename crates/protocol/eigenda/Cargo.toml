@@ -1,0 +1,36 @@
+[package]
+name = "kona-eigenda"
+version = "0.3.0"
+description = "EigenDA types"
+
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+
+[dependencies]
+
+#Alloy
+alloy-primitives = { workspace = true, features = ["rlp", "k256", "serde"] }
+alloy-rlp = { workspace = true }
+
+# Workspace
+kona-derive = { workspace = true, features = ["serde"] }
+
+bytes = { workspace = true }
+hex = { workspace = true }
+tracing.workspace = true
+url.workspace = true
+
+rust-kzg-bn254-primitives.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

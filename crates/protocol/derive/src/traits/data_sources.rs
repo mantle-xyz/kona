@@ -41,3 +41,16 @@ pub trait DataAvailabilityProvider {
     /// Clears the data source for the next block ref.
     fn clear(&mut self);
 }
+
+/// Describes the functionality of a data source that can provide data availability information.
+#[async_trait]
+pub trait EigenDAProvider {
+    /// The error type for the [EigenDAProvider].
+    type Error: Display;
+
+    /// Retrieves a blob with the given commitment.
+    async fn retrieve_blob_with_commitment(
+        &mut self,
+        commitment: &[u8],
+    ) -> Result<Vec<u8>, Self::Error>;
+}

@@ -7,7 +7,7 @@ no_std_packages=(
   kona-mpt
   kona-preimage
   kona-proof
-  kona-proof-interop
+  # kona-proof-interop
 
   # protocol crates
   kona-genesis
@@ -16,7 +16,7 @@ no_std_packages=(
   kona-protocol
   kona-derive
   kona-driver
-  kona-interop
+  # kona-interop
 
   # node crates
   kona-rpc

@@ -10,3 +10,6 @@ pub use blob_provider::{OracleBlobProvider, ROOTS_OF_UNITY};
 
 mod chain_provider;
 pub use chain_provider::OracleL1ChainProvider;
+
+mod eigen_da_provider;
+pub use eigen_da_provider::OracleEigenDaProvider;

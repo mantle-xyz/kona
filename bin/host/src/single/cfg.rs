@@ -16,11 +16,13 @@ use kona_preimage::{
     BidirectionalChannel, Channel, HintReader, HintWriter, OracleReader, OracleServer,
 };
 use kona_proof::HintType;
-use kona_providers_alloy::{OnlineBeaconClient, OnlineBlobProvider};
+use kona_providers_alloy::{
+    EigenDAProxy, OnlineBeaconClient, OnlineBlobProvider, OnlineEigenDAProvider,
+};
 use kona_std_fpvm::{FileChannel, FileDescriptor};
 use op_alloy_network::Optimism;
 use serde::Serialize;
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use tokio::{
     sync::RwLock,
     task::{self, JoinHandle},
@@ -111,6 +113,24 @@ pub struct SingleChainHost {
     /// the execution layer.
     #[arg(long, env)]
     pub enable_experimental_witness_endpoint: bool,
+    /// The url of EigenDA Proxy service
+    #[arg(long, alias = "proxy-url", env)]
+    pub proxy_url: Option<String>,
+    /// The total amount of time that the batcher will spend waiting for EigenDA to retrieve a blob
+    #[arg(long,
+        alias = "retrieve-timeout",
+        default_value = "120",
+        value_parser = parse_duration,
+        env
+    )]
+    pub retrieve_timeout: Duration,
+}
+
+fn parse_duration(input: &str) -> Result<Duration, String> {
+    input
+        .parse::<u64>()
+        .map(Duration::from_secs)
+        .map_err(|e| format!("Failed to parse duration: {}", e))
 }
 
 /// An error that can occur when handling single chain hosts
@@ -215,10 +235,10 @@ impl SingleChainHost {
 
     /// Returns `true` if the host is running in offline mode.
     pub const fn is_offline(&self) -> bool {
-        self.l1_node_address.is_none() &&
-            self.l2_node_address.is_none() &&
-            self.l1_beacon_address.is_none() &&
-            self.data_dir.is_some()
+        self.l1_node_address.is_none()
+            && self.l2_node_address.is_none()
+            && self.l1_beacon_address.is_none()
+            && self.data_dir.is_some()
     }
 
     /// Reads the [RollupConfig] from the file system and returns it as a string.
@@ -272,7 +292,20 @@ impl SingleChainHost {
                 .ok_or(SingleChainHostError::Other("L2 node address must be set"))?,
         );
 
-        Ok(SingleChainProviders { l1: l1_provider, blobs: blob_provider, l2: l2_provider })
+        let eigen_da_provider = OnlineEigenDAProvider::new(EigenDAProxy::new(
+            self.proxy_url
+                .as_ref()
+                .ok_or(SingleChainHostError::Other("Proxy URL must be set"))?
+                .to_string(),
+            self.retrieve_timeout,
+        ));
+
+        Ok(SingleChainProviders {
+            l1: l1_provider,
+            blobs: blob_provider,
+            l2: l2_provider,
+            eigen_da: eigen_da_provider,
+        })
     }
 }
 
@@ -290,6 +323,8 @@ pub struct SingleChainProviders {
     pub blobs: OnlineBlobProvider<OnlineBeaconClient>,
     /// The L2 EL provider.
     pub l2: RootProvider<Optimism>,
+    /// The EigenDA provider.
+    pub eigen_da: OnlineEigenDAProvider<EigenDAProxy>,
 }
 
 #[cfg(test)]
@@ -313,6 +348,10 @@ mod test {
             zero_hash_str,
             "--l2-block-number",
             "0",
+            "--proxy-url",
+            "dummy",
+            "--retrieve-timeout",
+            "120",
         ];
 
         let cases = [
@@ -358,7 +397,7 @@ mod test {
             (["--l1-node-address", "dummy", "--server", "--l2-chain-id", "0"].as_slice(), false),
             (["--l2-node-address", "dummy", "--server", "--l2-chain-id", "0"].as_slice(), false),
             (["--l1-beacon-address", "dummy", "--server", "--l2-chain-id", "0"].as_slice(), false),
-            ([].as_slice(), false),
+            (["--proxy-url", "dummy", "--retrieve-timeout", "120"].as_slice(), false),
         ];
 
         for (args_ext, valid) in cases.into_iter() {

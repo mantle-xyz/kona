@@ -18,3 +18,6 @@ pub use blobs::BlobSource;
 
 mod calldata;
 pub use calldata::CalldataSource;
+
+mod eigen_da;
+pub use eigen_da::EigenDaSource;

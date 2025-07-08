@@ -13,7 +13,7 @@ use kona_proof::{
     BootInfo, CachingOracle, HintType,
     errors::OracleProviderError,
     executor::KonaExecutor,
-    l1::{OracleBlobProvider, OracleL1ChainProvider, OraclePipeline},
+    l1::{OracleBlobProvider, OracleEigenDaProvider, OracleL1ChainProvider, OraclePipeline},
     l2::OracleL2ChainProvider,
     sync::new_pipeline_cursor,
 };
@@ -67,6 +67,7 @@ where
     let mut l2_provider =
         OracleL2ChainProvider::new(safe_head_hash, rollup_config.clone(), oracle.clone());
     let beacon = OracleBlobProvider::new(oracle.clone());
+    let eigen_da_provider = OracleEigenDaProvider::new(oracle.clone());
 
     // Fetch the safe head's block header.
     let safe_head = l2_provider
@@ -113,6 +114,7 @@ where
         cursor.clone(),
         oracle.clone(),
         beacon,
+        eigen_da_provider.clone(),
         l1_provider.clone(),
         l2_provider.clone(),
     )

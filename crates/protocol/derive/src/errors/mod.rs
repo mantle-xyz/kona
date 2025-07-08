@@ -11,3 +11,6 @@ pub use pipeline::{PipelineEncodingError, PipelineError, PipelineErrorKind, Rese
 
 mod sources;
 pub use sources::{BlobDecodingError, BlobProviderError};
+
+mod da;
+pub use da::{EigenDAProviderError, EigenDAProxyError};
