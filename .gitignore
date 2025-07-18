@@ -24,3 +24,5 @@ data/
 # Prestate artifacts
 prestate-artifacts-*
 crates/proof/executor/testdata/*
+
+.idea

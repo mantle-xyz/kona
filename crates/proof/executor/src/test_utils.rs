@@ -115,6 +115,7 @@ fn mock_rollup_config() -> RollupConfig {
     rollup_config.hardforks.granite_time = Some(0);
     rollup_config.hardforks.holocene_time = Some(0);
     rollup_config.hardforks.isthmus_time = Some(0);
+    rollup_config.hardforks.limb_time = Some(0);
     rollup_config
 }
 

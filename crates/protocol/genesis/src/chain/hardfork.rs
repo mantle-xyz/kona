@@ -67,6 +67,11 @@ pub struct HardForkConfig {
     /// otherwise.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub interop_time: Option<u64>,
+    /// `limb_time` sets the activation time for the Interop network upgrade.
+    /// Active if `limb_time` != None && L2 block timestamp >= Some(limb_time), inactive
+    /// otherwise.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub limb_time: Option<u64>,
 }
 
 impl Display for HardForkConfig {
@@ -90,7 +95,8 @@ impl Display for HardForkConfig {
             fmt_time(self.pectra_blob_schedule_time)
         )?;
         writeln!(f, "-> Isthmus Activation Time: {}", fmt_time(self.isthmus_time))?;
-        writeln!(f, "-> Interop Activation Time: {}", fmt_time(self.interop_time))
+        writeln!(f, "-> Interop Activation Time: {}", fmt_time(self.interop_time))?;
+        writeln!(f, "-> Limb Activation Time: {}", fmt_time(self.limb_time))
     }
 }
 

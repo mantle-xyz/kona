@@ -117,7 +117,7 @@ alloy-transport-http = { version = "0.15", default-features = false }
 alloy-rpc-types-engine = { version = "0.15", default-features = false }
 alloy-rpc-types-beacon = { version = "0.15", default-features = false }
 alloy-network-primitives = { version = "0.15", default-features = false }
-alloy-hardforks = { version = "0.2.0", default-features = false }
+alloy-hardforks = { git = "https://github.com/byteflyfunny/hardforks", branch = "feature/operator-fee", default-features = false }
 
 # OP Alloy
 op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
@@ -126,13 +126,13 @@ op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = 
 op-alloy-rpc-types = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
 op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
 op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
-alloy-op-hardforks = { version = "0.2.0", default-features = false }
+alloy-op-hardforks = { git = "https://github.com/byteflyfunny/hardforks", branch = "feature/operator-fee", default-features = false }
 
 # Execution
-revm = { git = "https://github.com/mantle-xyz/revm", branch = "skadi_new", default-features = false }
-op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "skadi_new", default-features = false }
-alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "dev", default-features = false }
-alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "dev", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", branch = "feature/operator-fee", default-features = false }
+op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "feature/operator-fee", features = ["std"] }
+alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "feature/operator-fee", default-features = false }
+alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "feature/operator-fee", default-features = false }
 
 # General
 url = "2.5.4"

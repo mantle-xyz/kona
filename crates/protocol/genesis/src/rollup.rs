@@ -168,7 +168,9 @@ impl RollupConfig {
     /// ## Returns
     /// The active [`op_revm::OpSpecId`] for the executor.
     pub fn spec_id(&self, timestamp: u64) -> op_revm::OpSpecId {
-        if self.is_interop_active(timestamp) {
+        if self.is_limb_active(timestamp) {
+            op_revm::OpSpecId::LIMB
+        } else if self.is_interop_active(timestamp) {
             op_revm::OpSpecId::INTEROP
         } else if self.is_isthmus_active(timestamp) {
             op_revm::OpSpecId::ISTHMUS
@@ -247,6 +249,9 @@ impl RollupConfig {
         self.hardforks.interop_time.is_some_and(|t| timestamp >= t)
     }
 
+    pub fn is_limb_active(&self, timestamp: u64) -> bool {
+        self.hardforks.limb_time.is_some_and(|t| timestamp >= t)
+    }
     /// Returns true if a DA Challenge proxy Address is provided in the rollup config and the
     /// address is not zero.
     pub fn is_alt_da_enabled(&self) -> bool {
@@ -326,7 +331,7 @@ impl EthereumHardforks for RollupConfig {
             self.op_fork_activation(OpHardfork::Ecotone)
         } else if fork <= EthereumHardfork::Prague {
             // Isthmus activates Prague hardfork.
-            self.op_fork_activation(OpHardfork::Isthmus)
+            self.op_fork_activation(OpHardfork::Limb)
         } else {
             ForkCondition::Never
         }
@@ -375,6 +380,11 @@ impl OpHardforks for RollupConfig {
             OpHardfork::Interop => self
                 .hardforks
                 .interop_time
+                .map(ForkCondition::Timestamp)
+                .unwrap_or(self.op_fork_activation(OpHardfork::Limb)),
+            OpHardfork::Limb => self
+                .hardforks
+                .limb_time
                 .map(ForkCondition::Timestamp)
                 .unwrap_or(ForkCondition::Never),
         }

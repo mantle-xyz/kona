@@ -48,14 +48,14 @@ impl<C: Channel + Send + Sync> OpFpvmPrecompiles<C> {
             | OpSpecId::ECOTONE) => Precompiles::new(spec.into_eth_spec().into()),
             OpSpecId::FJORD => fjord(),
             OpSpecId::GRANITE | OpSpecId::HOLOCENE => granite(),
-            OpSpecId::ISTHMUS | OpSpecId::INTEROP | OpSpecId::OSAKA => isthmus(),
+            OpSpecId::ISTHMUS | OpSpecId::INTEROP | OpSpecId::OSAKA | OpSpecId::LIMB => isthmus(),
         };
 
         let accelerated_precompiles = match spec {
             OpSpecId::BEDROCK | OpSpecId::REGOLITH | OpSpecId::CANYON => accelerated_bedrock::<C>(),
             OpSpecId::ECOTONE | OpSpecId::FJORD => accelerated_ecotone::<C>(),
             OpSpecId::GRANITE | OpSpecId::HOLOCENE => accelerated_granite::<C>(),
-            OpSpecId::ISTHMUS | OpSpecId::INTEROP | OpSpecId::OSAKA => accelerated_isthmus::<C>(),
+            OpSpecId::ISTHMUS | OpSpecId::INTEROP | OpSpecId::OSAKA | OpSpecId::LIMB => accelerated_isthmus::<C>(),
         };
 
         Self {
