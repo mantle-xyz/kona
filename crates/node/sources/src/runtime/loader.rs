@@ -1,7 +1,7 @@
 //! Contains the [`RuntimeLoader`] implementation.
 
 use crate::{RuntimeConfig, RuntimeLoaderError};
-use alloy_primitives::{Address, B256, b256};
+use alloy_primitives::{B256, b256};
 use alloy_provider::Provider;
 use kona_derive::traits::ChainProvider;
 use kona_genesis::RollupConfig;
@@ -19,16 +19,6 @@ const DEFAULT_CACHE_SIZE: usize = 100;
 /// Computed as: `bytes32(uint256(keccak256("systemconfig.unsafeblocksigner")) - 1)`
 const UNSAFE_BLOCK_SIGNER_ADDRESS_STORAGE_SLOT: B256 =
     b256!("0x65a7ed542fb37fe237fdfbdd70b31598523fe5b32879e307bae27a0bd9581c08");
-
-/// The storage slot that the required protocol version is stored at.
-/// Computed as: `bytes32(uint256(keccak256("protocolversion.required")) - 1)`
-const REQUIRED_PROTOCOL_VERSION_STORAGE_SLOT: B256 =
-    b256!("0x4aaefe95bd84fd3f32700cf3b7566bc944b73138e41958b5785826df2aecace0");
-
-/// The storage slot that the recommended protocol version is stored at.
-/// Computed as: `bytes32(uint256(keccak256("protocolversion.recommended")) - 1)`
-const RECOMMENDED_PROTOCOL_VERSION_STORAGE_SLOT: B256 =
-    b256!("0xe314dfc40f0025322aacc0ba8ef420b62fb3b702cf01e0cdf3d829117ac2ff1a");
 
 /// The runtime loader.
 #[derive(Debug, Clone)]
@@ -95,38 +85,38 @@ impl RuntimeLoader {
         debug!(target: "runtime_loader", "Unsafe block signer address: {:#x}", unsafe_block_signer_address);
 
         // If the protocol versions address is not set, return the default config.
-        let mut required_protocol_version = ProtocolVersion::V0(Default::default());
-        let mut recommended_protocol_version = ProtocolVersion::V0(Default::default());
+        let required_protocol_version = ProtocolVersion::V0(Default::default());
+        let recommended_protocol_version = ProtocolVersion::V0(Default::default());
 
         // Fetch the required protocol version from the system config.
-        if self.config.protocol_versions_address != Address::ZERO {
-            let required = self
-                .provider
-                .inner
-                .get_storage_at(
-                    self.config.protocol_versions_address,
-                    REQUIRED_PROTOCOL_VERSION_STORAGE_SLOT.into(),
-                )
-                .hash(block_info.hash)
-                .await?;
-            required_protocol_version = ProtocolVersion::decode(required.into())?;
-            debug!(target: "runtime_loader", "Required protocol version: {:?}", required_protocol_version);
+        // if self.config.protocol_versions_address != Address::ZERO {
+        //     let required = self
+        //         .provider
+        //         .inner
+        //         .get_storage_at(
+        //             self.config.protocol_versions_address,
+        //             REQUIRED_PROTOCOL_VERSION_STORAGE_SLOT.into(),
+        //         )
+        //         .hash(block_info.hash)
+        //         .await?;
+        //     required_protocol_version = ProtocolVersion::decode(required.into())?;
+        //     debug!(target: "runtime_loader", "Required protocol version: {:?}", required_protocol_version);
 
-            let recommended = self
-                .provider
-                .inner
-                .get_storage_at(
-                    self.config.protocol_versions_address,
-                    RECOMMENDED_PROTOCOL_VERSION_STORAGE_SLOT.into(),
-                )
-                .hash(block_info.hash)
-                .await?;
-            recommended_protocol_version = ProtocolVersion::decode(recommended.into())?;
-            debug!(target: "runtime_loader", "Recommended protocol version: {:?}", recommended_protocol_version);
-        } else {
-            warn!(target: "runtime_loader", "Protocol versions address is not set in Rollup Config.");
-            warn!(target: "runtime_loader", "Using default protocol version: {:?}", required_protocol_version);
-        }
+        //     let recommended = self
+        //         .provider
+        //         .inner
+        //         .get_storage_at(
+        //             self.config.protocol_versions_address,
+        //             RECOMMENDED_PROTOCOL_VERSION_STORAGE_SLOT.into(),
+        //         )
+        //         .hash(block_info.hash)
+        //         .await?;
+        //     recommended_protocol_version = ProtocolVersion::decode(recommended.into())?;
+        //     debug!(target: "runtime_loader", "Recommended protocol version: {:?}", recommended_protocol_version);
+        // } else {
+        //     warn!(target: "runtime_loader", "Protocol versions address is not set in Rollup Config.");
+        //     warn!(target: "runtime_loader", "Using default protocol version: {:?}", required_protocol_version);
+        // }
 
         // Metrics
         kona_macros::record!(

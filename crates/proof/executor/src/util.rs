@@ -76,8 +76,8 @@ pub(crate) fn encode_holocene_eip_1559_params(
 ///
 /// <https://specs.optimism.io/protocol/holocene/exec-engine.html#eip1559params-encoding>
 #[allow(dead_code)]
-pub(crate) fn encode_canyon_base_fee_params(config: &RollupConfig) -> B64 {
-    let params = config.chain_op_config.as_canyon_base_fee_params();
+pub(crate) fn encode_canyon_base_fee_params(_config: &RollupConfig) -> B64 {
+    let params = BaseFeeParams::optimism_canyon();
 
     let mut buf = B64::ZERO;
     buf[..4].copy_from_slice(&(params.max_change_denominator as u32).to_be_bytes());

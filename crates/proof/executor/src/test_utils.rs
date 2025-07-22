@@ -107,14 +107,7 @@ impl ExecutorTestFixtureCreator {
 
 fn mock_rollup_config() -> RollupConfig {
     let mut rollup_config = RollupConfig { l2_chain_id: 561113, ..Default::default() };
-    rollup_config.hardforks.regolith_time = Some(0);
-    rollup_config.hardforks.canyon_time = Some(0);
-    rollup_config.hardforks.delta_time = Some(0);
-    rollup_config.hardforks.ecotone_time = Some(0);
-    rollup_config.hardforks.fjord_time = Some(0);
-    rollup_config.hardforks.granite_time = Some(0);
-    rollup_config.hardforks.holocene_time = Some(0);
-    rollup_config.hardforks.isthmus_time = Some(0);
+    rollup_config.mantle_skadi_time = Some(0);
     rollup_config
 }
 

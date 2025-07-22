@@ -181,7 +181,7 @@ pub fn compute_receipts_root(
     // the receipt root calculation does not inclide the deposit nonce in the
     // receipt encoding. In the Regolith hardfork, we must strip the deposit nonce
     // from the receipt encoding to match the receipt root calculation.
-    if config.is_regolith_active(timestamp)  {
+    if config.is_regolith_active(timestamp) {
         let receipts = receipts
             .iter()
             .cloned()
@@ -199,7 +199,6 @@ pub fn compute_receipts_root(
         })
         .root()
     } else {
-        ordered_trie_with_encoder(receipts, |receipt, mut buf| receipt.encode_2718(&mut buf))
-            .root()
+        ordered_trie_with_encoder(receipts, |receipt, mut buf| receipt.encode_2718(&mut buf)).root()
     }
 }

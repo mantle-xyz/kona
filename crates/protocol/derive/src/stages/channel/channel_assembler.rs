@@ -10,9 +10,7 @@ use alloc::{boxed::Box, sync::Arc};
 use alloy_primitives::{Bytes, hex};
 use async_trait::async_trait;
 use core::fmt::Debug;
-use kona_genesis::{
-    MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, MAX_RLP_BYTES_PER_CHANNEL_FJORD, RollupConfig,
-};
+use kona_genesis::{MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, RollupConfig};
 use kona_protocol::{BlockInfo, Channel};
 
 /// The [ChannelAssembler] stage is responsible for assembling the [Frame]s from the [FrameQueue]
@@ -114,11 +112,7 @@ where
                 return Err(PipelineError::NotEnoughData.temp());
             }
 
-            let max_rlp_bytes_per_channel = if self.cfg.is_fjord_active(origin.timestamp) {
-                MAX_RLP_BYTES_PER_CHANNEL_FJORD
-            } else {
-                MAX_RLP_BYTES_PER_CHANNEL_BEDROCK
-            };
+            let max_rlp_bytes_per_channel = MAX_RLP_BYTES_PER_CHANNEL_BEDROCK;
             if channel.size() > max_rlp_bytes_per_channel as usize {
                 warn!(
                     target: "channel_assembler",
@@ -347,12 +341,9 @@ mod test {
             crate::frame!(0xFF, 0, vec![0xDD; 50], false),
             crate::frame!(0xFF, 1, vec![0xDD; 50], true),
         ];
-        frames[1].data = vec![0; MAX_RLP_BYTES_PER_CHANNEL_FJORD as usize];
+        frames[1].data = vec![0; MAX_RLP_BYTES_PER_CHANNEL_BEDROCK as usize];
         let mock = TestNextFrameProvider::new(frames.into_iter().rev().map(Ok).collect());
-        let cfg = Arc::new(RollupConfig {
-            hardforks: HardForkConfig { fjord_time: Some(0), ..Default::default() },
-            ..Default::default()
-        });
+        let cfg = Arc::new(RollupConfig::default());
 
         let mut assembler = ChannelAssembler::new(cfg, mock);
 
