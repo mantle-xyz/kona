@@ -105,20 +105,21 @@ impl BootInfo {
 
         // Attempt to load the rollup config from the chain ID. If there is no config for the chain,
         // fall back to loading the config from the preimage oracle.
-        let rollup_config = if let Some(config) = ROLLUP_CONFIGS.get(&chain_id) {
-            config.clone()
-        } else {
-            warn!(
-                target: "boot_loader",
-                "No rollup config found for chain ID {}, falling back to preimage oracle. This is insecure in production without additional validation!",
-                chain_id
-            );
-            let ser_cfg = oracle
-                .get(PreimageKey::new_local(L2_ROLLUP_CONFIG_KEY.to()))
-                .await
-                .map_err(OracleProviderError::Preimage)?;
-            serde_json::from_slice(&ser_cfg).map_err(OracleProviderError::Serde)?
-        };
+        // let rollup_config = if let Some(config) = ROLLUP_CONFIGS.get(&chain_id) {
+        //     config.clone()
+        // } else {
+        //     warn!(
+        //         target: "boot_loader",
+        //         "No rollup config found for chain ID {}, falling back to preimage oracle. This is insecure in production without additional validation!",
+        //         chain_id
+        //     );
+        // TODO: add default rollup config for mantle
+        let ser_cfg = oracle
+            .get(PreimageKey::new_local(L2_ROLLUP_CONFIG_KEY.to()))
+            .await
+            .map_err(OracleProviderError::Preimage)?;
+        let rollup_config = serde_json::from_slice(&ser_cfg).map_err(OracleProviderError::Serde)?;
+        // };
 
         Ok(Self {
             l1_head,
