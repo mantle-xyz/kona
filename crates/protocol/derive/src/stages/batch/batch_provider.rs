@@ -60,32 +60,9 @@ where
 
     /// Attempts to update the active stage of the mux.
     pub(crate) fn attempt_update(&mut self) -> PipelineResult<()> {
-        let origin = self.origin().ok_or(PipelineError::MissingOrigin.crit())?;
+        // let origin = self.origin().ok_or(PipelineError::MissingOrigin.crit())?;
         if let Some(prev) = self.prev.take() {
-            // On the first call to `attempt_update`, we need to determine the active stage to
-            // initialize the mux with.
-            if self.cfg.is_holocene_active(origin.timestamp) {
-                self.batch_validator = Some(BatchValidator::new(self.cfg.clone(), prev));
-            } else {
-                self.batch_queue =
-                    Some(BatchQueue::new(self.cfg.clone(), prev, self.provider.clone()));
-            }
-        } else if self.batch_queue.is_some() && self.cfg.is_holocene_active(origin.timestamp) {
-            // If the batch queue is active and Holocene is also active, transition to the batch
-            // validator.
-            let batch_queue = self.batch_queue.take().expect("Must have batch queue");
-            let mut bv = BatchValidator::new(self.cfg.clone(), batch_queue.prev);
-            bv.l1_blocks = batch_queue.l1_blocks;
-            self.batch_validator = Some(bv);
-        } else if self.batch_validator.is_some() && !self.cfg.is_holocene_active(origin.timestamp) {
-            // If the batch validator is active, and Holocene is not active, it indicates an L1
-            // reorg around Holocene activation. Transition back to the batch queue
-            // until Holocene re-activates.
-            let batch_validator = self.batch_validator.take().expect("Must have batch validator");
-            let mut bq =
-                BatchQueue::new(self.cfg.clone(), batch_validator.prev, self.provider.clone());
-            bq.l1_blocks = batch_validator.l1_blocks;
-            self.batch_queue = Some(bq);
+            self.batch_queue = Some(BatchQueue::new(self.cfg.clone(), prev, self.provider.clone()));
         }
         Ok(())
     }
@@ -154,10 +131,8 @@ where
     F: L2ChainProvider + Clone + Send + Debug,
 {
     fn is_last_in_span(&self) -> bool {
-        self.batch_validator.as_ref().map_or_else(
-            || self.batch_queue.as_ref().is_some_and(|batch_queue| batch_queue.is_last_in_span()),
-            |batch_validator| batch_validator.is_last_in_span(),
-        )
+        // [TODO]: MANTLE IN BEDROCK
+        true
     }
 
     async fn next_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch> {

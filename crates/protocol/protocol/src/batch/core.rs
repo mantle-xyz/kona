@@ -1,8 +1,6 @@
 //! Module containing the core [Batch] enum.
 
-use crate::{
-    BatchDecodingError, BatchEncodingError, BatchType, RawSpanBatch, SingleBatch, SpanBatch,
-};
+use crate::{BatchDecodingError, BatchEncodingError, BatchType, SingleBatch, SpanBatch};
 use alloy_primitives::bytes;
 use alloy_rlp::{Buf, Decodable, Encodable};
 use kona_genesis::RollupConfig;
@@ -27,29 +25,29 @@ impl Batch {
     }
 
     /// Attempts to decode a batch from a reader.
-    pub fn decode(r: &mut &[u8], cfg: &RollupConfig) -> Result<Self, BatchDecodingError> {
+    pub fn decode(r: &mut &[u8], _cfg: &RollupConfig) -> Result<Self, BatchDecodingError> {
         if r.is_empty() {
             return Err(BatchDecodingError::EmptyBuffer);
         }
 
-        // Read the batch type
-        let batch_type = BatchType::from(r[0]);
         r.advance(1);
 
-        match batch_type {
-            BatchType::Single => {
-                let single_batch =
-                    SingleBatch::decode(r).map_err(BatchDecodingError::AlloyRlpError)?;
-                Ok(Self::Single(single_batch))
-            }
-            BatchType::Span => {
-                let mut raw_span_batch = RawSpanBatch::decode(r)?;
-                let span_batch = raw_span_batch
-                    .derive(cfg.block_time, cfg.genesis.l2_time, cfg.l2_chain_id)
-                    .map_err(BatchDecodingError::SpanBatchError)?;
-                Ok(Self::Span(span_batch))
-            }
-        }
+        // match batch_type {
+        //     BatchType::Single => {
+        //         let single_batch =
+        //             SingleBatch::decode(r).map_err(BatchDecodingError::AlloyRlpError)?;
+        //         Ok(Self::Single(single_batch))
+        //     }
+        //     BatchType::Span => {
+        //         let mut raw_span_batch = RawSpanBatch::decode(r)?;
+        //         let span_batch = raw_span_batch
+        //             .derive(cfg.block_time, cfg.genesis.l2_time, cfg.l2_chain_id)
+        //             .map_err(BatchDecodingError::SpanBatchError)?;
+        //         Ok(Self::Span(span_batch))
+        //     }
+        // }
+        let single_batch = SingleBatch::decode(r).map_err(BatchDecodingError::AlloyRlpError)?;
+        Ok(Self::Single(single_batch))
     }
 
     /// Attempts to encode the batch to a writer.

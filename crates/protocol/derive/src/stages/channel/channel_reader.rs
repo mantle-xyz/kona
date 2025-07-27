@@ -100,8 +100,8 @@ where
     ///
     /// SAFETY: Only called post-holocene activation.
     fn flush(&mut self) {
-        debug!(target: "channel_reader", "[POST-HOLOCENE] Flushing channel");
-        self.next_channel();
+        // debug!(target: "channel_reader", "[POST-HOLOCENE] Flushing channel");
+        // self.next_channel();
     }
 
     async fn next_batch(&mut self) -> PipelineResult<Batch> {

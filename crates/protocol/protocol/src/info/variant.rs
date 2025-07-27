@@ -2,7 +2,7 @@
 //! transaction.
 
 use alloy_consensus::Header;
-use alloy_eips::{BlockNumHash, eip7840::BlobParams};
+use alloy_eips::BlockNumHash;
 use alloy_primitives::{Address, B256, Bytes, Sealable, Sealed, TxKind, U256, address};
 use kona_genesis::{RollupConfig, SystemConfig};
 use op_alloy_consensus::{DepositSourceDomain, L1InfoDepositSource, TxDeposit};
@@ -38,90 +38,19 @@ pub enum L1BlockInfoTx {
 impl L1BlockInfoTx {
     /// Creates a new [L1BlockInfoTx] from the given information.
     pub fn try_new(
-        rollup_config: &RollupConfig,
         system_config: &SystemConfig,
         sequence_number: u64,
         l1_header: &Header,
-        l2_block_time: u64,
     ) -> Result<Self, BlockInfoError> {
-        // In the first block of Ecotone, the L1Block contract has not been upgraded yet due to the
-        // upgrade transactions being placed after the L1 info transaction. Because of this,
-        // for the first block of Ecotone, we send a Bedrock style L1 block info transaction
-        if !rollup_config.is_ecotone_active(l2_block_time)
-            || rollup_config.is_first_ecotone_block(l2_block_time)
-        {
-            return Ok(Self::Bedrock(L1BlockInfoBedrock {
-                number: l1_header.number,
-                time: l1_header.timestamp,
-                base_fee: l1_header.base_fee_per_gas.unwrap_or(0),
-                block_hash: l1_header.hash_slow(),
-                sequence_number,
-                batcher_address: system_config.batcher_address,
-                l1_fee_overhead: system_config.overhead,
-                l1_fee_scalar: system_config.scalar,
-            }));
-        }
-
-        // --- Post-Ecotone Operations ---
-
-        let scalar = system_config.scalar.to_be_bytes::<32>();
-        let blob_base_fee_scalar = (scalar[0] == L1BlockInfoEcotone::L1_SCALAR)
-            .then(|| {
-                Ok::<u32, BlockInfoError>(u32::from_be_bytes(
-                    scalar[24..28].try_into().map_err(|_| BlockInfoError::L1BlobBaseFeeScalar)?,
-                ))
-            })
-            .transpose()?
-            .unwrap_or_default();
-        let base_fee_scalar = u32::from_be_bytes(
-            scalar[28..32].try_into().map_err(|_| BlockInfoError::BaseFeeScalar)?,
-        );
-
-        // Use the `requests_hash` presence in the L1 header to determine if pectra has activated on
-        // L1.
-        //
-        // There was an incident on OP Stack Sepolia chains (03-05-2025) when L1 activated pectra,
-        // where the sequencer followed the incorrect chain, using the legacy Cancun blob fee
-        // schedule instead of the new Prague blob fee schedule. This portion of the chain was
-        // chosen to be canonicalized in favor of the prospect of a deep reorg imposed by the
-        // sequencers of the testnet chains. An optional hardfork was introduced for Sepolia only,
-        // where if present, activates the use of the Prague blob fee schedule. If the hardfork is
-        // not present, and L1 has activated pectra, the Prague blob fee schedule is used
-        // immediately.
-        let blob_fee_config = BlobParams::cancun();
-
-        if rollup_config.is_isthmus_active(l2_block_time)
-            && !rollup_config.is_first_isthmus_block(l2_block_time)
-        {
-            let operator_fee_scalar = system_config.operator_fee_scalar.unwrap_or_default();
-            let operator_fee_constant = system_config.operator_fee_constant.unwrap_or_default();
-            return Ok(Self::Isthmus(L1BlockInfoIsthmus {
-                number: l1_header.number,
-                time: l1_header.timestamp,
-                base_fee: l1_header.base_fee_per_gas.unwrap_or(0),
-                block_hash: l1_header.hash_slow(),
-                sequence_number,
-                batcher_address: system_config.batcher_address,
-                blob_base_fee: l1_header.blob_fee(blob_fee_config).unwrap_or(1),
-                blob_base_fee_scalar,
-                base_fee_scalar,
-                operator_fee_scalar,
-                operator_fee_constant,
-            }));
-        }
-
-        Ok(Self::Ecotone(L1BlockInfoEcotone {
+        Ok(Self::Bedrock(L1BlockInfoBedrock {
             number: l1_header.number,
             time: l1_header.timestamp,
             base_fee: l1_header.base_fee_per_gas.unwrap_or(0),
             block_hash: l1_header.hash_slow(),
             sequence_number,
             batcher_address: system_config.batcher_address,
-            blob_base_fee: l1_header.blob_fee(blob_fee_config).unwrap_or(1),
-            blob_base_fee_scalar,
-            base_fee_scalar,
-            empty_scalars: false,
-            l1_fee_overhead: U256::ZERO,
+            l1_fee_overhead: system_config.overhead,
+            l1_fee_scalar: system_config.scalar,
         }))
     }
 
@@ -134,8 +63,7 @@ impl L1BlockInfoTx {
         l1_header: &Header,
         l2_block_time: u64,
     ) -> Result<(Self, Sealed<TxDeposit>), BlockInfoError> {
-        let l1_info =
-            Self::try_new(rollup_config, system_config, sequence_number, l1_header, l2_block_time)?;
+        let l1_info = Self::try_new(system_config, sequence_number, l1_header)?;
 
         let source = DepositSourceDomain::L1Info(L1InfoDepositSource {
             l1_block_hash: l1_info.block_hash(),

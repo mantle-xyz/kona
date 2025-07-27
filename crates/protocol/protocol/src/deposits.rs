@@ -18,6 +18,10 @@ pub const DEPOSIT_EVENT_ABI_HASH: B256 =
 /// The initial version of the deposit event log.
 pub const DEPOSIT_EVENT_VERSION_0: B256 = B256::ZERO;
 
+/// The version for mantle native token use mnt
+const DEPOSIT_EVENT_VERSION_1: B256 =
+    b256!("0000000000000000000000000000000000000000000000000000000000000001");
+
 /// An [`TxDeposit`] validation error.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DepositError {
@@ -66,6 +70,12 @@ pub enum DepositError {
     /// Failed to decode the deposit gas value.
     #[error("Failed to decode the u64 deposit gas value: {0}")]
     GasDecode(Bytes),
+    /// Failed to decode the deposit eth value.
+    #[error("Failed to decode the u128 deposit eth value: {0}")]
+    EthValueDecode(Bytes),
+    /// Failed to decode the deposit eth tx value.
+    #[error("Failed to decode the u128 deposit eth tx value: {0}")]
+    EthTxValueDecode(Bytes),
 }
 
 /// Derives a deposit transaction from an EVM log event emitted by the deposit contract.
@@ -171,12 +181,17 @@ pub fn decode_deposit(block_hash: B256, index: usize, log: &Log) -> Result<Bytes
         ..Default::default()
     };
 
-    // Can only handle version 0 for now
-    if !version.is_zero() {
-        return Err(DepositError::InvalidVersion(version));
+    match version {
+        DEPOSIT_EVENT_VERSION_0 => {
+            unmarshal_deposit_version0(&mut deposit_tx, to, opaque_data)?;
+        }
+        DEPOSIT_EVENT_VERSION_1 => {
+            unmarshal_deposit_version1(&mut deposit_tx, to, opaque_data)?;
+        }
+        _ => {
+            return Err(DepositError::InvalidVersion(version));
+        }
     }
-
-    unmarshal_deposit_version0(&mut deposit_tx, to, opaque_data)?;
 
     // Re-encode the deposit transaction
     let mut buffer = Vec::with_capacity(deposit_tx.eip2718_encoded_length());
@@ -242,6 +257,83 @@ pub(crate) fn unmarshal_deposit_version0(
     tx.input = Bytes::copy_from_slice(&data[offset..offset + tx_data_len]);
 
     Ok(())
+}
+
+/// Unmarshals a deposit transaction from the opaque data in deposit version1.
+pub(crate) fn unmarshal_deposit_version1(
+    tx: &mut TxDeposit,
+    to: Address,
+    data: &[u8],
+) -> Result<(), DepositError> {
+    if data.len() < 32 + 32 + 32 + 32 + 8 + 1 {
+        return Err(DepositError::UnexpectedOpaqueDataLen(data.len()));
+    }
+
+    let mut offset = 0;
+
+    // u128 mint mnt value
+    tx.mint = decode_u128_field(data, offset, DepositError::MintDecode)?;
+    offset += 32;
+
+    // uint256 value
+    tx.value = U256::from_be_slice(&data[offset..offset + 32]);
+    offset += 32;
+
+    // u128 mint eth_value
+    tx.eth_value = decode_u128_field(data, offset, DepositError::EthValueDecode)?;
+    offset += 32;
+
+    // uint256 eth_tx_value
+    tx.eth_tx_value = decode_u128_field(data, offset, DepositError::EthTxValueDecode)?;
+    offset += 32;
+
+    // uint64 gas
+    tx.gas_limit = decode_u8_field(data, offset, DepositError::GasDecode)?;
+    offset += 8;
+
+    // uint8 isCreation
+    // isCreation: If the boolean byte is 1 then dep.To will stay nil,
+    // and it will create a contract using L2 account nonce to determine the created address.
+    if data[offset] == 0 {
+        tx.to = TxKind::Call(to);
+    } else {
+        tx.to = TxKind::Create;
+    }
+    offset += 1;
+
+    // The remainder of the opaqueData is the transaction data (without length prefix).
+    // The data may be padded to a multiple of 32 bytes
+    let tx_data_len = data.len() - offset;
+
+    // Remaining bytes fill the data
+    tx.input = Bytes::copy_from_slice(&data[offset..offset + tx_data_len]);
+
+    Ok(())
+}
+
+/// decode u128 field function
+fn decode_u128_field<E>(
+    data: &[u8],
+    offset: usize,
+    error_fn: impl FnOnce(Bytes) -> E,
+) -> Result<Option<u128>, E> {
+    let raw_value: [u8; 16] = data[offset + 16..offset + 32]
+        .try_into()
+        .map_err(|_| error_fn(Bytes::copy_from_slice(&data[offset + 16..offset + 32])))?;
+    let value = u128::from_be_bytes(raw_value);
+    Ok(if value == 0 { None } else { Some(value) })
+}
+
+/// decode u8 field function
+fn decode_u8_field<E>(
+    data: &[u8],
+    offset: usize,
+    error_fn: impl FnOnce(Bytes) -> E,
+) -> Result<u64, E> {
+    let raw_value: [u8; 8] = data[offset..offset + 8]
+        .try_into()
+        .map_err(|_| error_fn(Bytes::copy_from_slice(&data[offset..offset + 8])))?;
+    Ok(u64::from_be_bytes(raw_value))
 }
 
 #[cfg(test)]
@@ -499,6 +591,45 @@ mod test {
         };
         let to = address!("5555555555555555555555555555555555555555");
         unmarshal_deposit_version0(&mut tx, to, &data).unwrap();
+        assert_eq!(tx.to, TxKind::Call(address!("5555555555555555555555555555555555555555")));
+    }
+
+    #[test]
+    fn test_unmarshal_deposit_version1() {
+        let mut data = vec![0u8; 192];
+        let offset: [u8; 8] = U64::from(32).to_be_bytes();
+        data[24..32].copy_from_slice(&offset);
+        let len: [u8; 8] = U64::from(128).to_be_bytes();
+        data[56..64].copy_from_slice(&len);
+        // Copy the u128 mint value
+        let mint: [u8; 16] = 10_u128.to_be_bytes();
+        data[80..96].copy_from_slice(&mint);
+        // Copy the tx value
+        let value: [u8; 32] = U256::from(100).to_be_bytes();
+        data[96..128].copy_from_slice(&value);
+        // Copy the eth value
+        let eth_value: [u8; 16] = 10_u128.to_be_bytes();
+        data[128..144].copy_from_slice(&eth_value);
+        // Copy the eth tx value
+        let eth_tx_value: [u8; 16] = 10_u128.to_be_bytes();
+        data[144..160].copy_from_slice(&eth_tx_value);
+        // Copy the gas limit
+        let gas: [u8; 8] = 1000_u64.to_be_bytes();
+        data[160..168].copy_from_slice(&gas);
+        // Copy the isCreation flag
+        data[168] = 1;
+        let mut tx = TxDeposit {
+            from: address!("1111111111111111111111111111111111111111"),
+            to: TxKind::Call(address!("2222222222222222222222222222222222222222")),
+            value: U256::from(100),
+            gas_limit: 1000,
+            mint: Some(10),
+            eth_value: Some(20),
+            eth_tx_value: Some(20),
+            ..Default::default()
+        };
+        let to = address!("5555555555555555555555555555555555555555");
+        unmarshal_deposit_version1(&mut tx, to, &data).unwrap();
         assert_eq!(tx.to, TxKind::Call(address!("5555555555555555555555555555555555555555")));
     }
 }
