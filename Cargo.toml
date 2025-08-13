@@ -134,7 +134,7 @@ op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = 
 op-alloy-rpc-types = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
 op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
 op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v151", default-features = false }
-alloy-op-hardforks = { version = "0.2.0", default-features = false }
+alloy-op-hardforks = { version = "=0.2.12", default-features = false }
 
 # Execution
 revm = { git = "https://github.com/mantle-xyz/revm", branch = "skadi_new", default-features = false }
@@ -188,7 +188,7 @@ brotli = { version = "8.0.0", default-features = false }
 # Networking
 snap = "1.1.1"
 discv5 = "0.9.1"
-libp2p = "0.55.0"
+libp2p = "0.56.0"
 libp2p-identity = "0.2.10"
 openssl = "0.10.72"
 
