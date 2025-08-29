@@ -137,10 +137,10 @@ op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", br
 alloy-op-hardforks = { version = "=0.2.12", default-features = false }
 
 # Execution
-revm = { git = "https://github.com/mantle-xyz/revm", branch = "skadi_new", default-features = false }
-op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "skadi_new", default-features = false }
-alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "dev", default-features = false }
-alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "dev", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", branch = "audit", default-features = false }
+op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "audit", default-features = false }
+alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "audit", default-features = false }
+alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "audit", default-features = false }
 
 # General
 url = "2.5.4"
