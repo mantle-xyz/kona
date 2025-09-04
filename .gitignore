@@ -7,8 +7,20 @@ target/
 # Monorepo workspace
 monorepo/
 
+# `optimism-package` workspace
+optimism-package/
+
 # Environment Variables
 .env
 
 # kona-host data-dir
 data/
+
+# FPVM artifacts
+./state.bin.gz
+./meta.json
+./out.json
+
+# Prestate artifacts
+prestate-artifacts-*
+crates/proof/executor/testdata/*

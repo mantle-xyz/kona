@@ -14,10 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.85
       - name: Setup mdbook
         run: |
           cargo install --version 0.4.40 mdbook
-          cargo install mdbook-mermaid mdbook-template
+          cargo install mdbook-mermaid mdbook-template mdbook-alerts
       - name: Build book
         working-directory: ./book
         run: mdbook build

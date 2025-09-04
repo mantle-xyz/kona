@@ -1,6 +1,6 @@
 [package]
 name = "kona-client"
-version = "0.1.0"
+version = "1.0.1"
 publish = false
 edition.workspace = true
 authors.workspace = true
@@ -9,15 +9,22 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-# Workspace
+# Proof
 kona-mpt.workspace = true
-kona-derive.workspace = true
-kona-driver.workspace = true
 kona-preimage.workspace = true
 kona-executor.workspace = true
 kona-proof.workspace = true
+kona-proof-interop.workspace = true
 kona-std-fpvm.workspace = true
 kona-std-fpvm-proc.workspace = true
+
+# Protocol
+kona-derive.workspace = true
+kona-driver.workspace = true
+kona-interop.workspace = true
+kona-registry.workspace = true
+kona-protocol.workspace = true
+kona-genesis = { workspace = true, features = ["serde"] }
 
 # Alloy
 alloy-rlp.workspace = true
@@ -27,13 +34,14 @@ alloy-primitives.workspace = true
 alloy-rpc-types-engine.workspace = true
 
 # Op Alloy
-op-alloy-protocol.workspace = true
 op-alloy-consensus.workspace = true
-op-alloy-genesis = { workspace = true, features = ["serde"] }
 op-alloy-rpc-types-engine = { workspace = true, features = ["serde"] }
 
-# Revm
+# Execution
 revm.workspace = true
+op-revm.workspace = true
+alloy-evm.workspace = true
+alloy-op-evm.workspace = true
 
 # General
 lru.workspace = true
@@ -45,6 +53,11 @@ serde_json.workspace = true
 async-trait.workspace = true
 thiserror.workspace = true
 
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+kona-preimage = { workspace = true, features = ["std"] }
+sha2.workspace = true
+
 [features]
 default = ["client-tracing"]
 client-tracing = ["kona-std-fpvm/tracing"]
@@ -52,3 +65,7 @@ client-tracing = ["kona-std-fpvm/tracing"]
 [[bin]]
 name = "kona"
 path = "src/kona.rs"
+
+[[bin]]
+name = "kona-int"
+path = "src/kona_interop.rs"
