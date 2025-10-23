@@ -37,23 +37,23 @@ impl SingleBatch {
     }
 
     /// Validate the batch timestamp.
-    pub fn check_batch_timestamp(
+    pub const fn check_batch_timestamp(
         &self,
         cfg: &RollupConfig,
         l2_safe_head: L2BlockInfo,
-        inclusion_block: &BlockInfo,
+        _inclusion_block: &BlockInfo,
     ) -> BatchValidity {
         let next_timestamp = l2_safe_head.block_info.timestamp + cfg.block_time;
         if self.timestamp > next_timestamp {
-            if cfg.is_holocene_active(inclusion_block.timestamp) {
-                return BatchValidity::Drop;
-            }
+            // if cfg.is_holocene_active(inclusion_block.timestamp) {
+            //     return BatchValidity::Drop;
+            // }
             return BatchValidity::Future;
         }
         if self.timestamp < next_timestamp {
-            if cfg.is_holocene_active(inclusion_block.timestamp) {
-                return BatchValidity::Past;
-            }
+            // if cfg.is_holocene_active(inclusion_block.timestamp) {
+            //     return BatchValidity::Past;
+            // }
             return BatchValidity::Drop;
         }
         BatchValidity::Accept
@@ -568,6 +568,8 @@ mod tests {
             gas_limit: 5,
             is_system_transaction: false,
             input: Default::default(),
+            eth_tx_value: None,
+            eth_value: None,
         };
         let envelope = OpTxEnvelope::Deposit(Sealed::new(tx));
         let encoded = envelope.encoded_2718();

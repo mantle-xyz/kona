@@ -118,8 +118,8 @@ impl<F: ChainProvider + Send> OriginAdvancer for PollingTraversal<F> {
             }
         }
 
-        let prev_block_holocene = self.rollup_config.is_holocene_active(block.timestamp);
-        let next_block_holocene = self.rollup_config.is_holocene_active(next_l1_origin.timestamp);
+        // let prev_block_holocene = self.rollup_config.is_holocene_active(block.timestamp);
+        // let next_block_holocene = self.rollup_config.is_holocene_active(next_l1_origin.timestamp);
 
         // Update the block origin regardless of if a holocene activation is required.
         self.update_origin(next_l1_origin);
@@ -135,11 +135,11 @@ impl<F: ChainProvider + Send> OriginAdvancer for PollingTraversal<F> {
             );
         }
 
-        // If the prev block is not holocene, but the next is, we need to flag this
-        // so the pipeline driver will reset the pipeline for holocene activation.
-        if !prev_block_holocene && next_block_holocene {
-            return Err(ResetError::HoloceneActivation.reset());
-        }
+        // // If the prev block is not holocene, but the next is, we need to flag this
+        // // so the pipeline driver will reset the pipeline for holocene activation.
+        // if !prev_block_holocene && next_block_holocene {
+        //     return Err(ResetError::HoloceneActivation.reset());
+        // }
 
         Ok(())
     }

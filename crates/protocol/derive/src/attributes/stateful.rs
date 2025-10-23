@@ -11,8 +11,7 @@ use alloy_primitives::{Address, B256, Bytes};
 use alloy_rlp::Encodable;
 use alloy_rpc_types_engine::PayloadAttributes;
 use async_trait::async_trait;
-use kona_genesis::{L1ChainConfig, RollupConfig};
-use kona_hardforks::{Hardfork, Hardforks};
+use kona_genesis::RollupConfig;
 use kona_protocol::{
     DEPOSIT_EVENT_ABI_HASH, L1BlockInfoTx, L2BlockInfo, Predeploys, decode_deposit,
 };
@@ -138,27 +137,27 @@ where
             ));
         }
 
-        let mut upgrade_transactions: Vec<Bytes> = vec![];
-        if self.rollup_cfg.is_ecotone_active(next_l2_time) &&
-            !self.rollup_cfg.is_ecotone_active(l2_parent.block_info.timestamp)
-        {
-            upgrade_transactions = Hardforks::ECOTONE.txs().collect();
-        }
-        if self.rollup_cfg.is_fjord_active(next_l2_time) &&
-            !self.rollup_cfg.is_fjord_active(l2_parent.block_info.timestamp)
-        {
-            upgrade_transactions.append(&mut Hardforks::FJORD.txs().collect());
-        }
-        if self.rollup_cfg.is_isthmus_active(next_l2_time) &&
-            !self.rollup_cfg.is_isthmus_active(l2_parent.block_info.timestamp)
-        {
-            upgrade_transactions.append(&mut Hardforks::ISTHMUS.txs().collect());
-        }
-        if self.rollup_cfg.is_interop_active(next_l2_time) &&
-            !self.rollup_cfg.is_interop_active(l2_parent.block_info.timestamp)
-        {
-            upgrade_transactions.append(&mut Hardforks::INTEROP.txs().collect());
-        }
+        // let mut upgrade_transactions: Vec<Bytes> = vec![];
+        // if self.rollup_cfg.is_ecotone_active(next_l2_time) &&
+        //     !self.rollup_cfg.is_ecotone_active(l2_parent.block_info.timestamp)
+        // {
+        //     upgrade_transactions = Hardforks::ECOTONE.txs().collect();
+        // }
+        // if self.rollup_cfg.is_fjord_active(next_l2_time) &&
+        //     !self.rollup_cfg.is_fjord_active(l2_parent.block_info.timestamp)
+        // {
+        //     upgrade_transactions.append(&mut Hardforks::FJORD.txs().collect());
+        // }
+        // if self.rollup_cfg.is_isthmus_active(next_l2_time) &&
+        //     !self.rollup_cfg.is_isthmus_active(l2_parent.block_info.timestamp)
+        // {
+        //     upgrade_transactions.append(&mut Hardforks::ISTHMUS.txs().collect());
+        // }
+        // if self.rollup_cfg.is_interop_active(next_l2_time) &&
+        //     !self.rollup_cfg.is_interop_active(l2_parent.block_info.timestamp)
+        // {
+        //     upgrade_transactions.append(&mut Hardforks::INTEROP.txs().collect());
+        // }
 
         // Build and encode the L1 info transaction for the current payload.
         let (_, l1_info_tx_envelope) = L1BlockInfoTx::try_new_with_deposit_tx(
@@ -175,11 +174,10 @@ where
         let mut encoded_l1_info_tx = Vec::with_capacity(l1_info_tx_envelope.length());
         l1_info_tx_envelope.encode_2718(&mut encoded_l1_info_tx);
 
-        let mut txs =
-            Vec::with_capacity(1 + deposit_transactions.len() + upgrade_transactions.len());
+        let mut txs = Vec::with_capacity(1 + deposit_transactions.len());
         txs.push(encoded_l1_info_tx.into());
         txs.extend(deposit_transactions);
-        txs.extend(upgrade_transactions);
+        // txs.extend(upgrade_transactions);
 
         let mut withdrawals = None;
         if self.rollup_cfg.is_canyon_active(next_l2_time) {
@@ -205,16 +203,8 @@ where
             gas_limit: Some(u64::from_be_bytes(
                 alloy_primitives::U64::from(sys_config.gas_limit).to_be_bytes(),
             )),
-            eip_1559_params: sys_config.eip_1559_params(
-                &self.rollup_cfg,
-                l2_parent.block_info.timestamp,
-                next_l2_time,
-            ),
-            min_base_fee: self
-                .rollup_cfg
-                .is_jovian_active(next_l2_time)
-                .then(|| sys_config.min_base_fee.unwrap_or_default()), /* Default to zero if not
-                                                                        * set at Jovian */
+            eip_1559_params: None,
+            min_base_fee: None,
         })
     }
 }

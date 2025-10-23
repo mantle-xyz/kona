@@ -58,7 +58,4 @@ mod genesis;
 pub use genesis::ChainGenesis;
 
 mod rollup;
-pub use rollup::{
-    DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW, FJORD_MAX_SEQUENCER_DRIFT, GRANITE_CHANNEL_TIMEOUT,
-    MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, MAX_RLP_BYTES_PER_CHANNEL_FJORD, RollupConfig,
-};
+pub use rollup::{MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, RollupConfig};

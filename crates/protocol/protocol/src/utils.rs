@@ -1,7 +1,7 @@
 //! Utility methods used by protocol types.
 
 use alloc::vec::Vec;
-use alloy_consensus::{Transaction, TxType, Typed2718};
+use alloy_consensus::TxType;
 use alloy_primitives::B256;
 use alloy_rlp::{Buf, Header};
 use kona_genesis::{RollupConfig, SystemConfig};
@@ -34,17 +34,28 @@ pub fn to_system_config(
         return Err(OpBlockConversionError::EmptyTransactions(block.header.hash_slow()));
     }
     let Some(tx) = block.body.transactions[0].as_deposit() else {
-        return Err(OpBlockConversionError::InvalidTxType(block.body.transactions[0].ty()));
+        return Err(OpBlockConversionError::InvalidTxType(
+            block.body.transactions[0].tx_type() as u8
+        ));
     };
 
-    let l1_info = L1BlockInfoTx::decode_calldata(tx.input().as_ref())?;
+    let l1_info = L1BlockInfoTx::decode_calldata(tx.input.as_ref())?;
     let l1_fee_scalar = match l1_info {
         L1BlockInfoTx::Bedrock(L1BlockInfoBedrock { l1_fee_scalar, .. }) => l1_fee_scalar,
         L1BlockInfoTx::Ecotone(L1BlockInfoEcotone {
             base_fee_scalar,
             blob_base_fee_scalar,
             ..
-        }) |
+        }) => {
+            // Translate Ecotone values back into encoded scalar if needed.
+            // We do not know if it was derived from a v0 or v1 scalar,
+            // but v1 is fine, a 0 blob base fee has the same effect.
+            let mut buf = B256::ZERO;
+            buf[0] = 0x01;
+            buf[24..28].copy_from_slice(blob_base_fee_scalar.to_be_bytes().as_ref());
+            buf[28..32].copy_from_slice(base_fee_scalar.to_be_bytes().as_ref());
+            buf.into()
+        }
         L1BlockInfoTx::Isthmus(L1BlockInfoIsthmus {
             base_fee_scalar,
             blob_base_fee_scalar,
@@ -61,31 +72,13 @@ pub fn to_system_config(
         }
     };
 
-    let mut cfg = SystemConfig {
+    let cfg = SystemConfig {
         batcher_address: l1_info.batcher_address(),
         overhead: l1_info.l1_fee_overhead(),
         scalar: l1_fee_scalar,
         gas_limit: block.header.gas_limit,
         ..Default::default()
     };
-
-    // After holocene's activation, the EIP-1559 parameters are stored in the block header's nonce.
-    if rollup_config.is_jovian_active(block.header.timestamp) {
-        let (elasticity, denominator, min_base_fee) =
-            decode_jovian_extra_data(&block.header.extra_data)?;
-        cfg.eip1559_denominator = Some(denominator);
-        cfg.eip1559_elasticity = Some(elasticity);
-        cfg.min_base_fee = Some(min_base_fee);
-    } else if rollup_config.is_holocene_active(block.header.timestamp) {
-        let (elasticity, denominator) = decode_holocene_extra_data(&block.header.extra_data)?;
-        cfg.eip1559_denominator = Some(denominator);
-        cfg.eip1559_elasticity = Some(elasticity);
-    }
-
-    if rollup_config.is_isthmus_active(block.header.timestamp) {
-        cfg.operator_fee_scalar = Some(l1_info.operator_fee_scalar());
-        cfg.operator_fee_constant = Some(l1_info.operator_fee_constant());
-    }
 
     Ok(cfg)
 }

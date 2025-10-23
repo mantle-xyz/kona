@@ -9,7 +9,7 @@ use alloy_primitives::Bytes;
 use async_trait::async_trait;
 use core::fmt::Debug;
 use kona_genesis::{
-    MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, MAX_RLP_BYTES_PER_CHANNEL_FJORD, RollupConfig,
+    MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, RollupConfig,
 };
 use kona_protocol::{Batch, BatchReader, BlockInfo};
 use tracing::{debug, warn};
@@ -61,12 +61,7 @@ where
             let channel =
                 self.prev.next_data().await?.ok_or(PipelineError::ChannelReaderEmpty.temp())?;
 
-            let origin = self.prev.origin().ok_or(PipelineError::MissingOrigin.crit())?;
-            let max_rlp_bytes_per_channel = if self.cfg.is_fjord_active(origin.timestamp) {
-                MAX_RLP_BYTES_PER_CHANNEL_FJORD
-            } else {
-                MAX_RLP_BYTES_PER_CHANNEL_BEDROCK
-            };
+            let max_rlp_bytes_per_channel = MAX_RLP_BYTES_PER_CHANNEL_BEDROCK;
 
             self.next_batch =
                 Some(BatchReader::new(&channel[..], max_rlp_bytes_per_channel as usize));
@@ -105,8 +100,8 @@ where
     ///
     /// SAFETY: Only called post-holocene activation.
     fn flush(&mut self) {
-        debug!(target: "channel_reader", "[POST-HOLOCENE] Flushing channel");
-        self.next_channel();
+        // debug!(target: "channel_reader", "[POST-HOLOCENE] Flushing channel");
+        // self.next_channel();
     }
 
     async fn next_batch(&mut self) -> PipelineResult<Batch> {
@@ -217,7 +212,7 @@ mod test {
         let mut reader = ChannelReader::new(mock, Arc::new(RollupConfig::default()));
         reader.next_batch = Some(BatchReader::new(
             new_compressed_batch_data(),
-            MAX_RLP_BYTES_PER_CHANNEL_FJORD as usize,
+            MAX_RLP_BYTES_PER_CHANNEL_BEDROCK as usize,
         ));
         reader.signal(Signal::FlushChannel).await.unwrap();
         assert!(reader.next_batch.is_none());
@@ -229,7 +224,7 @@ mod test {
         let mut reader = ChannelReader::new(mock, Arc::new(RollupConfig::default()));
         reader.next_batch = Some(BatchReader::new(
             vec![0x00, 0x01, 0x02],
-            MAX_RLP_BYTES_PER_CHANNEL_FJORD as usize,
+            MAX_RLP_BYTES_PER_CHANNEL_BEDROCK as usize,
         ));
         assert!(!reader.prev.reset);
         reader.signal(ResetSignal::default().signal()).await.unwrap();

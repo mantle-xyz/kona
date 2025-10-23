@@ -37,7 +37,7 @@ where
     /// The current frame queue.
     pub queue: VecDeque<Frame>,
     /// The rollup config.
-    pub rollup_config: Arc<RollupConfig>,
+    _rollup_config: Arc<RollupConfig>,
 }
 
 impl<P> FrameQueue<P>
@@ -48,12 +48,12 @@ where
     ///
     /// [`L1Retrieval`]: crate::stages::L1Retrieval
     pub const fn new(prev: P, cfg: Arc<RollupConfig>) -> Self {
-        Self { prev, queue: VecDeque::new(), rollup_config: cfg }
+        Self { prev, queue: VecDeque::new(), _rollup_config: cfg }
     }
 
     /// Returns if holocene is active.
-    pub fn is_holocene_active(&self, origin: BlockInfo) -> bool {
-        self.rollup_config.is_holocene_active(origin.timestamp)
+    pub const fn is_holocene_active(&self, _origin: BlockInfo) -> bool {
+        false
     }
 
     /// Prunes frames if Holocene is active.

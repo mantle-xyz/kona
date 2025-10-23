@@ -67,6 +67,7 @@ pub(crate) fn decode_jovian_eip_1559_params_block_header(
 /// ## Returns
 /// - `Ok(data)`: The encoded extra data.
 /// - `Err(ExecutorError::MissingEIP1559Params)`: If the EIP-1559 parameters are missing.
+#[allow(dead_code)]
 pub(crate) fn encode_holocene_eip_1559_params(
     config: &RollupConfig,
     attributes: &OpPayloadAttributes,

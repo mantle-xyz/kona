@@ -47,3 +47,6 @@ rustc-ice-*
 
 # logfiles
 *.log
+
+# testdata
+crates/proof/executor/testdata/*
