@@ -267,7 +267,7 @@ where
                 gas_limit: REPLACEMENT_GAS,
                 is_system_transaction: false,
                 input: output_root.encode().into(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             }
             .seal(),

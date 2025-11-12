@@ -143,7 +143,7 @@ mod tests {
         #[case] expected_id: u64,
     ) {
         let cli = Cli::try_parse_from(["kona-node", flag, value, "registry"]).unwrap();
-        assert_eq!(cli.global.l2_chain_id.id(), expected_id);
+        assert_eq!(cli.global.l2_chain_id, expected_id);
     }
 
     #[rstest]
@@ -158,6 +158,6 @@ mod tests {
     fn test_cli_l2_chain_id_default() {
         // Test that the default chain ID is 10 (Optimism)
         let cli = Cli::try_parse_from(["kona-node", "registry"]).unwrap();
-        assert_eq!(cli.global.l2_chain_id.id(), 10);
+        assert_eq!(cli.global.l2_chain_id, 10);
     }
 }

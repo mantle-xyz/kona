@@ -1,11 +1,31 @@
 //! Contains the [`BatchReader`] which is used to iteratively consume batches from raw data.
 
-use crate::Batch;
+use crate::{Batch, BrotliDecompressionError, decompress_brotli};
 use alloc::vec::Vec;
 use alloy_primitives::Bytes;
 use alloy_rlp::Decodable;
 use kona_genesis::RollupConfig;
 use miniz_oxide::inflate::decompress_to_vec_zlib;
+
+/// Error type for decompression failures.
+#[derive(Debug, thiserror::Error)]
+pub enum DecompressionError {
+    /// The data to decompress was empty.
+    #[error("the data to decompress was empty")]
+    EmptyData,
+    /// The compression type is not supported.
+    #[error("the compression type {0} is not supported")]
+    UnsupportedType(u8),
+    /// A brotli decompression error.
+    #[error("brotli decompression error: {0}")]
+    BrotliError(#[from] BrotliDecompressionError),
+    /// A zlib decompression error.
+    #[error("zlib decompression error")]
+    ZlibError,
+    /// The RLP data is too large for the configured maximum.
+    #[error("the RLP data is too large: {0} bytes, maximum allowed: {1} bytes")]
+    RlpTooLarge(usize, usize),
+}
 
 /// Batch Reader provides a function that iteratively consumes batches from the reader.
 /// The L1Inclusion block is also provided at creation time.

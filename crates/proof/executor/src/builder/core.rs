@@ -13,6 +13,7 @@ use alloy_evm::{
 };
 use alloy_op_evm::{OpBlockExecutionCtx, OpBlockExecutorFactory, block::OpAlloyReceiptBuilder};
 use alloy_eips::eip1559::BaseFeeParams;
+use core::fmt::Debug;
 use kona_genesis::RollupConfig;
 use kona_mpt::TrieHinter;
 use op_alloy_consensus::{OpReceiptEnvelope, OpTxEnvelope};
@@ -207,12 +208,20 @@ where
         attrs: OpPayloadAttributes,
     ) -> ExecutorResult<BlockBuildingOutcome> {
         // Step 1. Set up the execution environment.
-        // Mantle: base_fee_params is not used.
+        // [Mantle]s: base_fee_params is not used.
+        // [Mantle]: min_base_fee is always 0.
+        // 
+        // let (base_fee_params, min_base_fee) = Self::active_base_fee_params(
+        //     self.config,
+        //     self.trie_db.parent_block_header(),
+        //     attrs.payload_attributes.timestamp,
+        // )?;
         let evm_env = self.evm_env(
             self.config.spec_id(attrs.payload_attributes.timestamp),
             self.trie_db.parent_block_header(),
             &attrs,
             &BaseFeeParams::optimism(),
+            0,
         )?;
         let block_env = evm_env.block_env().clone();
         let parent_hash = self.trie_db.parent_block_header().seal();

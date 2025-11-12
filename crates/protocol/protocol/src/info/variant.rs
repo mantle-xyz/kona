@@ -45,8 +45,8 @@ impl L1BlockInfoTx {
         Ok(Self::Bedrock(L1BlockInfoBedrock {
             number: l1_header.number,
             time: l1_header.timestamp,
-            base_fee,
-            block_hash,
+            base_fee: l1_header.base_fee_per_gas.unwrap_or(0),
+            block_hash: l1_header.hash_slow(),
             sequence_number,
             batcher_address: system_config.batcher_address,
             l1_fee_overhead: system_config.overhead,
@@ -58,7 +58,7 @@ impl L1BlockInfoTx {
     /// to include at the top of a block.
     pub fn try_new_with_deposit_tx(
         rollup_config: &RollupConfig,
-        l1_config: &L1ChainConfig,
+        _l1_config: &L1ChainConfig,
         system_config: &SystemConfig,
         sequence_number: u64,
         l1_header: &Header,
@@ -80,7 +80,7 @@ impl L1BlockInfoTx {
             gas_limit: 150_000_000,
             is_system_transaction: true,
             input: l1_info.encode_calldata(),
-            eth_value: None,
+            eth_value: 0,
             eth_tx_value: None,
         };
 
@@ -145,9 +145,9 @@ impl L1BlockInfoTx {
     /// Returns the L1 [`BlockNumHash`] for the info transaction.
     pub const fn id(&self) -> BlockNumHash {
         match self {
-            Self::Ecotone(L1BlockInfoEcotone { number, block_hash, .. })
-            | Self::Bedrock(L1BlockInfoBedrock { number, block_hash, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { number, block_hash, .. }) => {
+            Self::Ecotone(L1BlockInfoEcotone { number, block_hash, .. }) |
+            Self::Bedrock(L1BlockInfoBedrock { number, block_hash, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { number, block_hash, .. }) => {
                 BlockNumHash { number: *number, hash: *block_hash }
             }
         }
@@ -174,9 +174,9 @@ impl L1BlockInfoTx {
     /// Returns the l1 base fee.
     pub fn l1_base_fee(&self) -> U256 {
         match self {
-            Self::Bedrock(L1BlockInfoBedrock { base_fee, .. })
-            | Self::Ecotone(L1BlockInfoEcotone { base_fee, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { base_fee, .. }) => U256::from(*base_fee),
+            Self::Bedrock(L1BlockInfoBedrock { base_fee, .. }) |
+            Self::Ecotone(L1BlockInfoEcotone { base_fee, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { base_fee, .. }) => U256::from(*base_fee),
         }
     }
 
@@ -184,8 +184,8 @@ impl L1BlockInfoTx {
     pub fn l1_fee_scalar(&self) -> U256 {
         match self {
             Self::Bedrock(L1BlockInfoBedrock { l1_fee_scalar, .. }) => *l1_fee_scalar,
-            Self::Ecotone(L1BlockInfoEcotone { base_fee_scalar, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { base_fee_scalar, .. }) => {
+            Self::Ecotone(L1BlockInfoEcotone { base_fee_scalar, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { base_fee_scalar, .. }) => {
                 U256::from(*base_fee_scalar)
             }
         }
@@ -195,8 +195,8 @@ impl L1BlockInfoTx {
     pub fn blob_base_fee(&self) -> U256 {
         match self {
             Self::Bedrock(_) => U256::ZERO,
-            Self::Ecotone(L1BlockInfoEcotone { blob_base_fee, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { blob_base_fee, .. }) => U256::from(*blob_base_fee),
+            Self::Ecotone(L1BlockInfoEcotone { blob_base_fee, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { blob_base_fee, .. }) => U256::from(*blob_base_fee),
         }
     }
 
@@ -204,8 +204,8 @@ impl L1BlockInfoTx {
     pub fn blob_base_fee_scalar(&self) -> U256 {
         match self {
             Self::Bedrock(_) => U256::ZERO,
-            Self::Ecotone(L1BlockInfoEcotone { blob_base_fee_scalar, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { blob_base_fee_scalar, .. }) => {
+            Self::Ecotone(L1BlockInfoEcotone { blob_base_fee_scalar, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { blob_base_fee_scalar, .. }) => {
                 U256::from(*blob_base_fee_scalar)
             }
         }
@@ -223,18 +223,18 @@ impl L1BlockInfoTx {
     /// Returns the batcher address for the info transaction
     pub const fn batcher_address(&self) -> Address {
         match self {
-            Self::Bedrock(L1BlockInfoBedrock { batcher_address, .. })
-            | Self::Ecotone(L1BlockInfoEcotone { batcher_address, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { batcher_address, .. }) => *batcher_address,
+            Self::Bedrock(L1BlockInfoBedrock { batcher_address, .. }) |
+            Self::Ecotone(L1BlockInfoEcotone { batcher_address, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { batcher_address, .. }) => *batcher_address,
         }
     }
 
     /// Returns the sequence number for the info transaction
     pub const fn sequence_number(&self) -> u64 {
         match self {
-            Self::Bedrock(L1BlockInfoBedrock { sequence_number, .. })
-            | Self::Ecotone(L1BlockInfoEcotone { sequence_number, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { sequence_number, .. }) => *sequence_number,
+            Self::Bedrock(L1BlockInfoBedrock { sequence_number, .. }) |
+            Self::Ecotone(L1BlockInfoEcotone { sequence_number, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { sequence_number, .. }) => *sequence_number,
         }
     }
 }

@@ -9,6 +9,7 @@ use kona_mpt::TrieHinter;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use op_revm::OpSpecId;
 use revm::context::{BlockEnv, CfgEnv};
+use alloy_primitives::U256;
 
 impl<P, H, Evm> StatelessL2Builder<'_, P, H, Evm>
 where
@@ -39,7 +40,7 @@ where
     /// Returns the active [CfgEnv] for the executor.
     pub(crate) fn evm_cfg_env(&self, timestamp: u64) -> CfgEnv<OpSpecId> {
         CfgEnv::new()
-            .with_chain_id(self.config.l2_chain_id.id())
+            .with_chain_id(self.config.l2_chain_id)
             .with_spec(self.config.spec_id(timestamp))
     }
 

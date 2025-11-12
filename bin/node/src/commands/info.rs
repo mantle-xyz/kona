@@ -2,6 +2,7 @@
 
 use crate::flags::GlobalArgs;
 use clap::Parser;
+use kona_cli::LogConfig;
 use kona_registry::OPCHAINS;
 use tracing::info;
 

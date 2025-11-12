@@ -1,7 +1,6 @@
 //! Contains the chain config type.
 
 use alloc::string::String;
-use alloy_chains::Chain;
 use alloy_eips::eip1559::BaseFeeParams;
 use alloy_primitives::Address;
 

@@ -78,7 +78,7 @@ mod tests {
     #[case::string_base("base", 8453)]
     fn test_l2_chain_id_parse_valid(#[case] value: &str, #[case] expected_id: u64) {
         let args = GlobalArgs::try_parse_from(["test", "--l2-chain-id", value]).unwrap();
-        assert_eq!(args.l2_chain_id.id(), expected_id);
+        assert_eq!(args.l2_chain_id, expected_id);
     }
 
     #[rstest]
@@ -97,7 +97,7 @@ mod tests {
     #[case::string("optimism", 10)]
     fn test_l2_chain_id_short_flag(#[case] value: &str, #[case] expected_id: u64) {
         let args = GlobalArgs::try_parse_from(["test", "-c", value]).unwrap();
-        assert_eq!(args.l2_chain_id.id(), expected_id);
+        assert_eq!(args.l2_chain_id, expected_id);
     }
 
     #[rstest]
@@ -108,7 +108,7 @@ mod tests {
             std::env::set_var("KONA_NODE_L2_CHAIN_ID", env_value);
         }
         let args = GlobalArgs::try_parse_from(["test"]).unwrap();
-        assert_eq!(args.l2_chain_id.id(), expected_id);
+        assert_eq!(args.l2_chain_id, expected_id);
         unsafe {
             std::env::remove_var("KONA_NODE_L2_CHAIN_ID");
         }
@@ -118,6 +118,6 @@ mod tests {
     fn test_l2_chain_id_default() {
         // Test that the default value is chain ID 10 (Optimism)
         let args = GlobalArgs::try_parse_from(["test"]).unwrap();
-        assert_eq!(args.l2_chain_id.id(), 10);
+        assert_eq!(args.l2_chain_id, 10);
     }
 }

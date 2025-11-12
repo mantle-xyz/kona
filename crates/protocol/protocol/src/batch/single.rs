@@ -569,7 +569,7 @@ mod tests {
             is_system_transaction: false,
             input: Default::default(),
             eth_tx_value: None,
-            eth_value: None,
+            eth_value: 0,
         };
         let envelope = OpTxEnvelope::Deposit(Sealed::new(tx));
         let encoded = envelope.encoded_2718();

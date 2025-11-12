@@ -1,19 +1,12 @@
 //! [Header] assembly logic for the [StatelessL2Builder].
 
 use super::StatelessL2Builder;
-use crate::{
-    ExecutorError,
-    ExecutorResult,
-    TrieDBError,
-    TrieDBProvider,
-    constants::SHA256_EMPTY,
-};
+use crate::{ExecutorError, ExecutorResult, TrieDBError, TrieDBProvider};
 use alloc::vec::Vec;
-use alloy_consensus::{EMPTY_OMMER_ROOT_HASH, Header, Sealed};
-use alloy_eips::{Encodable2718, eip7685::EMPTY_REQUESTS_HASH};
+use alloy_consensus::{EMPTY_OMMER_ROOT_HASH, EMPTY_ROOT_HASH, Header, Sealed};
+use alloy_eips::Encodable2718;
 use alloy_evm::{EvmFactory, block::BlockExecutionResult};
 use alloy_primitives::{B256, Sealable, U256, logs_bloom};
-// use alloy_trie::EMPTY_ROOT_HASH;
 use kona_genesis::RollupConfig;
 use kona_mpt::{TrieHinter, ordered_trie_with_encoder};
 use kona_protocol::{OutputRoot, Predeploys};
@@ -59,7 +52,8 @@ where
         // };
 
         // [Mantle]: hardfork is not implemented yet.
-        let withdrawals_root = Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?);
+        let withdrawals_root =
+            Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?);
 
         // Compute the logs bloom from the receipts generated during block execution.
         let logs_bloom = logs_bloom(ex_result.receipts.iter().flat_map(|r| r.logs()));
@@ -91,7 +85,7 @@ where
         // }?;
 
         // [Mantle]: requests_hash is always the empty SHA256 hash.
-        let requests_hash = Some(SHA256_EMPTY);
+        let requests_hash = Some(EMPTY_ROOT_HASH);
 
         // Construct the new header.
         let header = Header {

@@ -261,7 +261,7 @@ pub(crate) fn unmarshal_deposit_version1(
     let mut offset = 0;
 
     // u128 mint mnt value
-    tx.mint = decode_u128_field(data, offset, DepositError::MintDecode)?;
+    tx.mint = decode_u128_field(data, offset, DepositError::MintDecode)?.unwrap_or(0);
     offset += 32;
 
     // uint256 value
@@ -269,7 +269,7 @@ pub(crate) fn unmarshal_deposit_version1(
     offset += 32;
 
     // u128 mint eth_value
-    tx.eth_value = decode_u128_field(data, offset, DepositError::EthValueDecode)?;
+    tx.eth_value = decode_u128_field(data, offset, DepositError::EthValueDecode)?.unwrap_or(0);
     offset += 32;
 
     // uint256 eth_tx_value

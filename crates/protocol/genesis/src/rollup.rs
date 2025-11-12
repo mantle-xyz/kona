@@ -141,8 +141,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Regolith block.
     pub fn is_first_regolith_block(&self, timestamp: u64) -> bool {
-        self.is_regolith_active(timestamp)
-            && !self.is_regolith_active(timestamp.saturating_sub(self.block_time))
+        self.is_regolith_active(timestamp) &&
+            !self.is_regolith_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Canyon is active at the given timestamp.
@@ -152,8 +152,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Canyon block.
     pub fn is_first_canyon_block(&self, timestamp: u64) -> bool {
-        self.is_canyon_active(timestamp)
-            && !self.is_canyon_active(timestamp.saturating_sub(self.block_time))
+        self.is_canyon_active(timestamp) &&
+            !self.is_canyon_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Delta is active at the given timestamp.
@@ -163,8 +163,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Delta block.
     pub fn is_first_delta_block(&self, timestamp: u64) -> bool {
-        self.is_delta_active(timestamp)
-            && !self.is_delta_active(timestamp.saturating_sub(self.block_time))
+        self.is_delta_active(timestamp) &&
+            !self.is_delta_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Ecotone is active at the given timestamp.
@@ -174,8 +174,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Ecotone block.
     pub fn is_first_ecotone_block(&self, timestamp: u64) -> bool {
-        self.is_ecotone_active(timestamp)
-            && !self.is_ecotone_active(timestamp.saturating_sub(self.block_time))
+        self.is_ecotone_active(timestamp) &&
+            !self.is_ecotone_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Fjord is active at the given timestamp.
@@ -185,8 +185,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Fjord block.
     pub fn is_first_fjord_block(&self, timestamp: u64) -> bool {
-        self.is_fjord_active(timestamp)
-            && !self.is_fjord_active(timestamp.saturating_sub(self.block_time))
+        self.is_fjord_active(timestamp) &&
+            !self.is_fjord_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Granite is active at the given timestamp.
@@ -196,8 +196,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Granite block.
     pub fn is_first_granite_block(&self, timestamp: u64) -> bool {
-        self.is_granite_active(timestamp)
-            && !self.is_granite_active(timestamp.saturating_sub(self.block_time))
+        self.is_granite_active(timestamp) &&
+            !self.is_granite_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Holocene is active at the given timestamp.
@@ -207,8 +207,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Holocene block.
     pub fn is_first_holocene_block(&self, timestamp: u64) -> bool {
-        self.is_holocene_active(timestamp)
-            && !self.is_holocene_active(timestamp.saturating_sub(self.block_time))
+        self.is_holocene_active(timestamp) &&
+            !self.is_holocene_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if the pectra blob schedule is active at the given timestamp.
@@ -218,8 +218,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first pectra blob schedule block.
     pub fn is_first_pectra_blob_schedule_block(&self, timestamp: u64) -> bool {
-        self.is_pectra_blob_schedule_active(timestamp)
-            && !self.is_pectra_blob_schedule_active(timestamp.saturating_sub(self.block_time))
+        self.is_pectra_blob_schedule_active(timestamp) &&
+            !self.is_pectra_blob_schedule_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Isthmus is active at the given timestamp.
@@ -229,20 +229,18 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Isthmus block.
     pub fn is_first_isthmus_block(&self, timestamp: u64) -> bool {
-        self.is_isthmus_active(timestamp)
-            && !self.is_isthmus_active(timestamp.saturating_sub(self.block_time))
+        self.is_isthmus_active(timestamp) &&
+            !self.is_isthmus_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Jovian is active at the given timestamp.
-    pub fn is_jovian_active(&self, timestamp: u64) -> bool {
-        self.hardforks.jovian_time.is_some_and(|t| timestamp >= t) ||
-            self.is_interop_active(timestamp)
+    pub const fn is_jovian_active(&self, _timestamp: u64) -> bool {
+        false
     }
 
     /// Returns true if the timestamp marks the first Jovian block.
-    pub fn is_first_jovian_block(&self, timestamp: u64) -> bool {
-        self.is_jovian_active(timestamp) &&
-            !self.is_jovian_active(timestamp.saturating_sub(self.block_time))
+    pub const fn is_first_jovian_block(&self, _timestamp: u64) -> bool {
+        false
     }
 
     /// Returns true if Interop is active at the given timestamp.
@@ -251,9 +249,8 @@ impl RollupConfig {
     }
 
     /// Returns true if the timestamp marks the first Interop block.
-    pub fn is_first_interop_block(&self, timestamp: u64) -> bool {
-        self.is_interop_active(timestamp)
-            && !self.is_interop_active(timestamp.saturating_sub(self.block_time))
+    pub const fn is_first_interop_block(&self, _timestamp: u64) -> bool {
+        false
     }
 
     /// Returns the max sequencer drift for the given timestamp.

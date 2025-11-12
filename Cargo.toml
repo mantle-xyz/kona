@@ -25,9 +25,9 @@ members = [
 default-members = [
   "bin/host",
   "bin/client",
-  "bin/node",
-  "bin/supervisor",
-  "bin/rollup",
+  # "bin/node",
+  # "bin/supervisor",
+  # "bin/rollup",
 ]
 
 [workspace.metadata.cargo-udeps.ignore]

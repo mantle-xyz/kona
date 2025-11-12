@@ -52,9 +52,9 @@ impl RollupRpc {
             head_l1: l1_sync_status.head_l1.unwrap_or_default(),
             safe_l1: l1_sync_status.safe_l1.unwrap_or_default(),
             finalized_l1: l1_sync_status.finalized_l1.unwrap_or_default(),
-            unsafe_l2: l2_sync_status.unsafe_head(),
-            safe_l2: l2_sync_status.safe_head(),
-            finalized_l2: l2_sync_status.finalized_head(),
+            unsafe_l2: l2_sync_status.sync_state.unsafe_head(),
+            safe_l2: l2_sync_status.sync_state.safe_head(),
+            finalized_l2: l2_sync_status.sync_state.finalized_head(),
             queued_unsafe_l2: Default::default(),
             engine_sync_target: Default::default(),
         }

@@ -5,7 +5,7 @@ use alloy_consensus::TxType;
 use alloy_primitives::B256;
 use alloy_rlp::{Buf, Header};
 use kona_genesis::{RollupConfig, SystemConfig};
-use op_alloy_consensus::{OpBlock, decode_holocene_extra_data, decode_jovian_extra_data};
+use op_alloy_consensus::OpBlock;
 
 use crate::{
     L1BlockInfoBedrock, L1BlockInfoEcotone, L1BlockInfoIsthmus, L1BlockInfoTx,
