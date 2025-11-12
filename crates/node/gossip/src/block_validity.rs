@@ -243,7 +243,7 @@ impl BlockHandler {
         }
 
         // CHECK: The signature is valid.
-        let msg = envelope.payload_hash.signature_message(self.rollup_config.l2_chain_id.id());
+        let msg = envelope.payload_hash.signature_message(self.rollup_config.l2_chain_id);
         let block_signer = *self.signer_recv.borrow();
 
         // The block has a valid signature.

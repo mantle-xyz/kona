@@ -25,9 +25,9 @@ members = [
 default-members = [
   "bin/host",
   "bin/client",
-  "bin/node",
-  "bin/supervisor",
-  "bin/rollup",
+  # "bin/node",
+  # "bin/supervisor",
+  # "bin/rollup",
 ]
 
 [workspace.metadata.cargo-udeps.ignore]
@@ -149,19 +149,19 @@ alloy-rpc-types-beacon = { version = "1.0.42", default-features = false }
 alloy-network-primitives = { version = "1.0.42", default-features = false }
 
 # OP Alloy
-op-alloy-network = { version = "0.22.0", default-features = false }
-op-alloy-provider = { version = "0.22.0", default-features = false }
-alloy-op-hardforks = { version = "0.4.3", default-features = false }
-op-alloy-consensus = { version = "0.22.0", default-features = false }
-op-alloy-rpc-types = { version = "0.22.0", default-features = false }
-op-alloy-rpc-jsonrpsee = { version = "0.22.0", default-features = false }
-op-alloy-rpc-types-engine = { version = "0.22.0", default-features = false }
+op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v210", default-features = false }
+op-alloy-provider = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v210", default-features = false }
+alloy-op-hardforks = { version = "0.3.5", default-features = false }
+op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v210", default-features = false }
+op-alloy-rpc-types = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v210", default-features = false }
+op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v210", default-features = false }
+op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v210", default-features = false }
 
 # Execution
-revm = { version = "30.2.0", default-features = false }
-op-revm = { version = "11.3.0", default-features = false }
-alloy-evm = { version = "0.22.6", default-features = false }
-alloy-op-evm = { version = "0.22.6", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", branch = "fusaka", default-features = false }
+op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "fusaka", default-features = false }
+alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "fusaka", default-features = false }
+alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "fusaka", default-features = false }
 
 # Reth (pinned to v1.6.0 for kona-supervisor-storage)
 reth-db-api = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }

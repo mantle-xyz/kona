@@ -279,22 +279,22 @@ where
     /// Returns the next valid batch upon the given safe head.
     /// Also returns the boolean that indicates if the batch is the last block in the batch.
     async fn next_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch> {
-        if !self.next_spans.is_empty() {
-            // There are cached singular batches derived from the span batch.
-            // Check if the next cached batch matches the given parent block.
-            if self.next_spans[0].timestamp == parent.block_info.timestamp + self.cfg.block_time {
-                return self.pop_next_batch(parent).ok_or(PipelineError::BatchQueueEmpty.crit());
-            }
-            // Parent block does not match the next batch.
-            // Means the previously returned batch is invalid.
-            // Drop cached batches and find another batch.
-            warn!(
-                target: "batch_queue",
-                "Parent block does not match the next batch. Dropping {} cached batches.",
-                self.next_spans.len()
-            );
-            self.next_spans.clear();
-        }
+        // if !self.next_spans.is_empty() {
+        //     // There are cached singular batches derived from the span batch.
+        //     // Check if the next cached batch matches the given parent block.
+        //     if self.next_spans[0].timestamp == parent.block_info.timestamp + self.cfg.block_time {
+        //         return self.pop_next_batch(parent).ok_or(PipelineError::BatchQueueEmpty.crit());
+        //     }
+        //     // Parent block does not match the next batch.
+        //     // Means the previously returned batch is invalid.
+        //     // Drop cached batches and find another batch.
+        //     warn!(
+        //         target: "batch_queue",
+        //         "Parent block does not match the next batch. Dropping {} cached batches.",
+        //         self.next_spans.len()
+        //     );
+        //     self.next_spans.clear();
+        // }
 
         // If the epoch is advanced, update the l1 blocks.
         // Advancing epoch must be done after the pipeline successfully applies the entire span
@@ -1007,6 +1007,8 @@ mod tests {
             value: U256::from(4_u64),
             input: deposit_tx_calldata,
             is_system_transaction: false,
+            eth_value: 0,
+            eth_tx_value: None,
         };
         let mut buf = BytesMut::new();
         tx.encode(&mut buf);

@@ -59,7 +59,7 @@ where
     ) -> PipelineResult<Self> {
         let attributes = StatefulAttributesBuilder::new(
             cfg.clone(),
-            l1_cfg.clone(),
+            Arc::new(Default::default()),
             l2_chain_provider.clone(),
             chain_provider.clone(),
         );

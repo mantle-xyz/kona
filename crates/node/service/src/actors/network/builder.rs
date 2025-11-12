@@ -69,7 +69,7 @@ impl NetworkBuilder {
         Self {
             discovery: Discv5Builder::new(
                 discovery_address,
-                rollup_config.l2_chain_id.id(),
+                rollup_config.l2_chain_id,
                 discovery_config,
             ),
             gossip: GossipDriverBuilder::new(

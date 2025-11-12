@@ -2,7 +2,7 @@
 //! transaction.
 
 use alloy_consensus::Header;
-use alloy_eips::{BlockNumHash, eip7840::BlobParams};
+use alloy_eips::BlockNumHash;
 use alloy_primitives::{Address, B256, Bytes, Sealable, Sealed, TxKind, U256, address};
 use kona_genesis::{L1ChainConfig, RollupConfig, SystemConfig};
 use op_alloy_consensus::{DepositSourceDomain, L1InfoDepositSource, TxDeposit};
@@ -40,140 +40,19 @@ pub enum L1BlockInfoTx {
 impl L1BlockInfoTx {
     /// Creates a new [`L1BlockInfoTx`] from the given information.
     pub fn try_new(
-        rollup_config: &RollupConfig,
-        l1_config: &L1ChainConfig,
         system_config: &SystemConfig,
         sequence_number: u64,
         l1_header: &Header,
-        l2_block_time: u64,
     ) -> Result<Self, BlockInfoError> {
-        // In the first block of Ecotone, the L1Block contract has not been upgraded yet due to the
-        // upgrade transactions being placed after the L1 info transaction. Because of this,
-        // for the first block of Ecotone, we send a Bedrock style L1 block info transaction
-        if !rollup_config.is_ecotone_active(l2_block_time) ||
-            rollup_config.is_first_ecotone_block(l2_block_time)
-        {
-            return Ok(Self::Bedrock(L1BlockInfoBedrock {
-                number: l1_header.number,
-                time: l1_header.timestamp,
-                base_fee: l1_header.base_fee_per_gas.unwrap_or(0),
-                block_hash: l1_header.hash_slow(),
-                sequence_number,
-                batcher_address: system_config.batcher_address,
-                l1_fee_overhead: system_config.overhead,
-                l1_fee_scalar: system_config.scalar,
-            }));
-        }
-
-        // --- Post-Ecotone Operations ---
-
-        let scalar = system_config.scalar.to_be_bytes::<32>();
-        let blob_base_fee_scalar = (scalar[0] == L1BlockInfoEcotone::L1_SCALAR)
-            .then(|| {
-                Ok::<u32, BlockInfoError>(u32::from_be_bytes(
-                    scalar[24..28].try_into().map_err(|_| BlockInfoError::L1BlobBaseFeeScalar)?,
-                ))
-            })
-            .transpose()?
-            .unwrap_or_default();
-        let base_fee_scalar = u32::from_be_bytes(
-            scalar[28..32].try_into().map_err(|_| BlockInfoError::BaseFeeScalar)?,
-        );
-
-        // Determine the blob fee configuration based on the timestamp.
-        // We start with the scheduled blob fee parameters, and then check for the osaka and prague
-        // parameters.
-        let blob_fee_params = l1_config.blob_schedule_blob_params();
-
-        let blob_fee_config =
-            match blob_fee_params.active_scheduled_params_at_timestamp(l1_header.timestamp) {
-                Some(blob_fee_param) => *blob_fee_param,
-                None if l1_config.osaka_time.is_some_and(|time| time <= l1_header.timestamp) => {
-                    BlobParams::osaka()
-                }
-                None if l1_config
-                    .prague_time.is_some_and(|time| time <= l1_header.timestamp) &&
-                    // There was an incident on OP Stack Sepolia chains (03-05-2025) when L1 activated pectra,
-                    // where the sequencer followed the incorrect chain, using the legacy Cancun blob fee
-                    // schedule instead of the new Prague blob fee schedule. This portion of the chain was
-                    // chosen to be canonicalized in favor of the prospect of a deep reorg imposed by the
-                    // sequencers of the testnet chains. An optional hardfork was introduced for Sepolia only,
-                    // where if present, activates the use of the Prague blob fee schedule. If the hardfork is
-                    // not present, and L1 has activated pectra, the Prague blob fee schedule is used
-                    // immediately.
-                    (rollup_config.hardforks.pectra_blob_schedule_time.is_none() ||
-                        rollup_config.is_pectra_blob_schedule_active(l1_header.timestamp)) =>
-                {
-                    BlobParams::prague()
-                }
-                _ => BlobParams::cancun(),
-            };
-
-        let blob_base_fee = l1_header.blob_fee(blob_fee_config).unwrap_or(1);
-        let block_hash = l1_header.hash_slow();
-        let base_fee = l1_header.base_fee_per_gas.unwrap_or(0);
-
-        if rollup_config.is_jovian_active(l2_block_time) &&
-            !rollup_config.is_first_jovian_block(l2_block_time)
-        {
-            let operator_fee_scalar = system_config.operator_fee_scalar.unwrap_or_default();
-            let operator_fee_constant = system_config.operator_fee_constant.unwrap_or_default();
-            let mut da_footprint_gas_scalar = system_config
-                .da_footprint_gas_scalar
-                .unwrap_or(L1BlockInfoJovian::DEFAULT_DA_FOOTPRINT_GAS_SCALAR);
-
-            if da_footprint_gas_scalar == 0 {
-                da_footprint_gas_scalar = L1BlockInfoJovian::DEFAULT_DA_FOOTPRINT_GAS_SCALAR;
-            }
-
-            return Ok(Self::Jovian(L1BlockInfoJovian {
-                number: l1_header.number,
-                time: l1_header.timestamp,
-                base_fee,
-                block_hash,
-                sequence_number,
-                batcher_address: system_config.batcher_address,
-                blob_base_fee,
-                blob_base_fee_scalar,
-                base_fee_scalar,
-                operator_fee_scalar,
-                operator_fee_constant,
-                da_footprint_gas_scalar,
-            }));
-        }
-
-        if rollup_config.is_isthmus_active(l2_block_time) &&
-            !rollup_config.is_first_isthmus_block(l2_block_time)
-        {
-            let operator_fee_scalar = system_config.operator_fee_scalar.unwrap_or_default();
-            let operator_fee_constant = system_config.operator_fee_constant.unwrap_or_default();
-            return Ok(Self::Isthmus(L1BlockInfoIsthmus {
-                number: l1_header.number,
-                time: l1_header.timestamp,
-                base_fee,
-                block_hash,
-                sequence_number,
-                batcher_address: system_config.batcher_address,
-                blob_base_fee,
-                blob_base_fee_scalar,
-                base_fee_scalar,
-                operator_fee_scalar,
-                operator_fee_constant,
-            }));
-        }
-
-        Ok(Self::Ecotone(L1BlockInfoEcotone {
+        Ok(Self::Bedrock(L1BlockInfoBedrock {
             number: l1_header.number,
             time: l1_header.timestamp,
-            base_fee,
-            block_hash,
+            base_fee: l1_header.base_fee_per_gas.unwrap_or(0),
+            block_hash: l1_header.hash_slow(),
             sequence_number,
             batcher_address: system_config.batcher_address,
-            blob_base_fee,
-            blob_base_fee_scalar,
-            base_fee_scalar,
-            empty_scalars: false,
-            l1_fee_overhead: U256::ZERO,
+            l1_fee_overhead: system_config.overhead,
+            l1_fee_scalar: system_config.scalar,
         }))
     }
 
@@ -181,20 +60,13 @@ impl L1BlockInfoTx {
     /// to include at the top of a block.
     pub fn try_new_with_deposit_tx(
         rollup_config: &RollupConfig,
-        l1_config: &L1ChainConfig,
+        _l1_config: &L1ChainConfig,
         system_config: &SystemConfig,
         sequence_number: u64,
         l1_header: &Header,
         l2_block_time: u64,
     ) -> Result<(Self, Sealed<TxDeposit>), BlockInfoError> {
-        let l1_info = Self::try_new(
-            rollup_config,
-            l1_config,
-            system_config,
-            sequence_number,
-            l1_header,
-            l2_block_time,
-        )?;
+        let l1_info = Self::try_new(system_config, sequence_number, l1_header)?;
 
         let source = DepositSourceDomain::L1Info(L1InfoDepositSource {
             l1_block_hash: l1_info.block_hash(),
@@ -210,6 +82,8 @@ impl L1BlockInfoTx {
             gas_limit: 150_000_000,
             is_system_transaction: true,
             input: l1_info.encode_calldata(),
+            eth_value: 0,
+            eth_tx_value: None,
         };
 
         // With the regolith hardfork, system transactions were deprecated, and we allocate

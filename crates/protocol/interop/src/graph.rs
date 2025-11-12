@@ -9,8 +9,7 @@ use crate::{
 use alloc::{string::ToString, vec::Vec};
 use alloy_consensus::{Header, Sealed};
 use alloy_primitives::keccak256;
-use kona_genesis::RollupConfig;
-use kona_registry::{HashMap, ROLLUP_CONFIGS};
+use kona_registry::HashMap;
 use tracing::{info, warn};
 
 /// The [`MessageGraph`] represents a set of blocks at a given timestamp and the interop
@@ -34,8 +33,6 @@ pub struct MessageGraph<'a, P> {
     /// The data provider for the graph. Required for fetching headers, receipts and remote
     /// messages within history during resolution.
     provider: &'a P,
-    /// Backup rollup configs for each chain.
-    rollup_configs: &'a HashMap<u64, RollupConfig>,
 }
 
 impl<'a, P> MessageGraph<'a, P>
@@ -49,7 +46,6 @@ where
     pub async fn derive(
         blocks: &HashMap<u64, Sealed<Header>>,
         provider: &'a P,
-        rollup_configs: &'a HashMap<u64, RollupConfig>,
     ) -> MessageGraphResult<Self, P> {
         info!(
             target: "message_graph",
@@ -73,7 +69,7 @@ where
             num_messages = messages.len(),
             "Derived message graph successfully",
         );
-        Ok(Self { messages, provider, rollup_configs })
+        Ok(Self { messages, provider })
     }
 
     /// Checks the validity of all messages within the graph.
@@ -147,32 +143,7 @@ where
         // ChainID Invariant: The chain id of the initiating message MUST be in the dependency set
         // This is enforced implicitly by the graph constructor and the provider.
 
-        let initiating_chain_id = message.inner.identifier.chainId.saturating_to();
         let initiating_timestamp = message.inner.identifier.timestamp.saturating_to::<u64>();
-
-        // Attempt to fetch the rollup config for the initiating chain from the registry. If the
-        // rollup config is not found, fall back to the local rollup configs.
-        let rollup_config = ROLLUP_CONFIGS
-            .get(&initiating_chain_id)
-            .or_else(|| self.rollup_configs.get(&initiating_chain_id))
-            .ok_or(MessageGraphError::MissingRollupConfig(initiating_chain_id))?;
-
-        // Timestamp invariant: The timestamp at the time of inclusion of the initiating message
-        // MUST be less than or equal to the timestamp of the executing message as well as greater
-        // than the Interop activation block's timestamp.
-        if initiating_timestamp > message.executing_timestamp {
-            return Err(MessageGraphError::MessageInFuture {
-                max: message.executing_timestamp,
-                actual: initiating_timestamp,
-            });
-        } else if initiating_timestamp <
-            rollup_config.hardforks.interop_time.unwrap_or_default() + rollup_config.block_time
-        {
-            return Err(MessageGraphError::InitiatedTooEarly {
-                activation_time: rollup_config.hardforks.interop_time.unwrap_or_default(),
-                initiating_message_time: initiating_timestamp,
-            });
-        }
 
         // Message expiry invariant: The timestamp of the initiating message must be no more than
         // `MESSAGE_EXPIRY_WINDOW` seconds in the past, relative to the timestamp of the executing

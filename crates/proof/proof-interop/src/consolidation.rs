@@ -100,7 +100,6 @@ where
         let graph = MessageGraph::derive(
             self.interop_provider.local_safe_heads(),
             &self.interop_provider,
-            &self.boot_info.rollup_configs,
         )
         .await?;
 
@@ -271,6 +270,8 @@ where
                 gas_limit: REPLACEMENT_GAS,
                 is_system_transaction: false,
                 input: output_root.encode().into(),
+                eth_value: 0,
+                eth_tx_value: None,
             }
             .seal(),
         );

@@ -195,15 +195,15 @@ impl AttributesMatch {
                 );
                 return AttributesMismatch::InvalidEIP1559ParamsCombination.into();
             }
-            // We need to translate (0, 0) parameters to pre-holocene protocol constants.
-            // Since holocene is supposed to be active, canyon should be as well. We take the canyon
-            // base fee params.
-            Some((0, 0)) => {
-                let BaseFeeParams { max_change_denominator, elasticity_multiplier } =
-                    config.chain_op_config.as_canyon_base_fee_params();
+            // // We need to translate (0, 0) parameters to pre-holocene protocol constants.
+            // // Since holocene is supposed to be active, canyon should be as well. We take the canyon
+            // // base fee params.
+            // Some((0, 0)) => {
+            //     let BaseFeeParams { max_change_denominator, elasticity_multiplier } =
+            //         config.chain_op_config.as_canyon_base_fee_params();
 
-                (elasticity_multiplier, max_change_denominator)
-            }
+            //     (elasticity_multiplier, max_change_denominator)
+            // }
             Some((ae, ad)) => (ae.into(), ad.into()),
         };
 

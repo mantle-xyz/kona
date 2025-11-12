@@ -55,13 +55,8 @@ pub struct SyncStatus {
     /// This points to the L2 block that was derived fully from finalized L1 information, thus
     /// irreversible.
     pub finalized_l2: L2BlockInfo,
-    /// Cross unsafe L2 block ref.
-    ///
-    /// This is an unsafe L2 block, that has been verified to match cross-L2 dependencies.
-    /// Pre-interop every unsafe L2 block is also cross-unsafe.
-    pub cross_unsafe_l2: L2BlockInfo,
-    /// Local safe L2 block ref.
-    ///
-    /// This is an L2 block derived from L1, not yet verified to have valid cross-L2 dependencies.
-    pub local_safe_l2: L2BlockInfo,
+    /// The queued unsafe L2 block ref.
+    pub queued_unsafe_l2: L2BlockInfo,
+    /// The target L2 block need to sync.
+    pub engine_sync_target: L2BlockInfo,
 }

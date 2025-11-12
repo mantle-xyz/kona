@@ -49,27 +49,31 @@ impl Default for OverrideArgs {
 
 impl OverrideArgs {
     /// Applies the override args to the given rollup config.
-    pub fn apply(&self, config: RollupConfig) -> RollupConfig {
-        let hardforks = kona_genesis::HardForkConfig {
-            regolith_time: config.hardforks.regolith_time,
-            canyon_time: self.canyon_override.map(Some).unwrap_or(config.hardforks.canyon_time),
-            delta_time: self.delta_override.map(Some).unwrap_or(config.hardforks.delta_time),
-            ecotone_time: self.ecotone_override.map(Some).unwrap_or(config.hardforks.ecotone_time),
-            fjord_time: self.fjord_override.map(Some).unwrap_or(config.hardforks.fjord_time),
-            granite_time: self.granite_override.map(Some).unwrap_or(config.hardforks.granite_time),
-            holocene_time: self
-                .holocene_override
-                .map(Some)
-                .unwrap_or(config.hardforks.holocene_time),
-            pectra_blob_schedule_time: self
-                .pectra_blob_schedule_override
-                .map(Some)
-                .unwrap_or(config.hardforks.pectra_blob_schedule_time),
-            isthmus_time: self.isthmus_override.map(Some).unwrap_or(config.hardforks.isthmus_time),
-            jovian_time: self.jovian_override.map(Some).unwrap_or(config.hardforks.jovian_time),
-            interop_time: self.interop_override.map(Some).unwrap_or(config.hardforks.interop_time),
-        };
-        RollupConfig { hardforks, ..config }
+    pub fn apply(&self, _config: RollupConfig) -> RollupConfig {
+        // let hardforks = kona_genesis::HardForkConfig {
+        //     regolith_time: config.hardforks.regolith_time,
+        //     canyon_time: self.canyon_override.map(Some).unwrap_or(config.hardforks.canyon_time),
+        //     delta_time: self.delta_override.map(Some).unwrap_or(config.hardforks.delta_time),
+        //     ecotone_time:
+        // self.ecotone_override.map(Some).unwrap_or(config.hardforks.ecotone_time),
+        //     fjord_time: self.fjord_override.map(Some).unwrap_or(config.hardforks.fjord_time),
+        //     granite_time:
+        // self.granite_override.map(Some).unwrap_or(config.hardforks.granite_time),
+        //     holocene_time: self
+        //         .holocene_override
+        //         .map(Some)
+        //         .unwrap_or(config.hardforks.holocene_time),
+        //     pectra_blob_schedule_time: self
+        //         .pectra_blob_schedule_override
+        //         .map(Some)
+        //         .unwrap_or(config.hardforks.pectra_blob_schedule_time),
+        //     isthmus_time:
+        // self.isthmus_override.map(Some).unwrap_or(config.hardforks.isthmus_time),
+        //     jovian_time: self.jovian_override.map(Some).unwrap_or(config.hardforks.jovian_time),
+        //     interop_time:
+        // self.interop_override.map(Some).unwrap_or(config.hardforks.interop_time), };
+        // RollupConfig { hardforks, ..config }
+        RollupConfig::default()
     }
 }
 
