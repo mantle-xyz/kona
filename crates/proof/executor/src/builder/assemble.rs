@@ -3,16 +3,17 @@
 use super::StatelessL2Builder;
 use crate::{ExecutorError, ExecutorResult, TrieDBError, TrieDBProvider};
 use alloc::vec::Vec;
-use alloy_consensus::{EMPTY_OMMER_ROOT_HASH, EMPTY_ROOT_HASH, Header, Sealed};
+use alloy_consensus::{EMPTY_OMMER_ROOT_HASH, Header, Sealed};
 use alloy_eips::Encodable2718;
 use alloy_evm::{EvmFactory, block::BlockExecutionResult};
-use alloy_primitives::{B256, Sealable, U256, logs_bloom};
+use alloy_primitives::{B256, Sealable, U256, b256, logs_bloom};
 use kona_genesis::RollupConfig;
 use kona_mpt::{TrieHinter, ordered_trie_with_encoder};
 use kona_protocol::{OutputRoot, Predeploys};
 use op_alloy_consensus::OpReceiptEnvelope;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use revm::{context::BlockEnv, database::BundleState};
+const EMPTY_REQUESTS_HASH: B256 = b256!("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 
 impl<P, H, Evm> StatelessL2Builder<'_, P, H, Evm>
 where
@@ -87,7 +88,8 @@ where
         // }?;
 
         // [Mantle]: requests_hash is always the empty SHA256 hash.
-        let requests_hash = Some(EMPTY_ROOT_HASH);
+        // see: https://github.com/mantlenetworkio/op-geth/blob/v1.3.3/core/types/hashes.go#L44
+        let requests_hash = Some(EMPTY_REQUESTS_HASH);
 
         // Construct the new header.
         let header = Header {

@@ -2,7 +2,7 @@
 //! multiple places, it's just being referenced from this module.
 
 use crate::{CliResult, init_prometheus_server};
-use clap::{Parser, arg};
+use clap::Parser;
 use std::net::IpAddr;
 
 /// Configuration for Prometheus metrics.
