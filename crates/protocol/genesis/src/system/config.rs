@@ -223,7 +223,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{CONFIG_UPDATE_EVENT_VERSION_0, HardForkConfig};
+    use crate::CONFIG_UPDATE_EVENT_VERSION_0;
     use alloc::vec;
     use alloy_primitives::{B256, LogData, address, b256, hex};
 

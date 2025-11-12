@@ -50,7 +50,7 @@ where
     /// Constructs a new oracle-backed derivation pipeline.
     pub async fn new(
         cfg: Arc<RollupConfig>,
-        l1_cfg: Arc<L1ChainConfig>,
+        _l1_cfg: Arc<L1ChainConfig>,
         sync_start: Arc<RwLock<PipelineCursor>>,
         caching_oracle: Arc<O>,
         da_provider: DA,

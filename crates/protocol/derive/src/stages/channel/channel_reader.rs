@@ -116,8 +116,8 @@ where
         match next_batch.decompress() {
             Ok(()) => {
                 // Record the decompressed size and type.
-                let size = next_batch.decompressed.len() as f64;
-                let ty = if next_batch.brotli_used {
+                let _size = next_batch.decompressed.len() as f64;
+                let _ty = if next_batch.brotli_used {
                     BatchReader::CHANNEL_VERSION_BROTLI
                 } else {
                     BatchReader::ZLIB_DEFLATE_COMPRESSION_METHOD
@@ -125,12 +125,12 @@ where
                 kona_macros::set!(
                     gauge,
                     crate::metrics::Metrics::PIPELINE_LATEST_DECOMPRESSED_BATCH_SIZE,
-                    size
+                    _size
                 );
                 kona_macros::set!(
                     gauge,
                     crate::metrics::Metrics::PIPELINE_LATEST_DECOMPRESSED_BATCH_TYPE,
-                    ty as f64
+                    _ty as f64
                 );
             }
             Err(err) => {

@@ -92,14 +92,14 @@ where
             self.channel = Some(Channel::new(next_frame.id, origin));
         }
 
-        let count = if self.channel.is_some() { 1 } else { 0 };
-        kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_CHANNEL_BUFFER, count);
+        let _count = if self.channel.is_some() { 1 } else { 0 };
+        kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_CHANNEL_BUFFER, _count);
 
         if let Some(channel) = self.channel.as_mut() {
             // Track the number of blocks until the channel times out.
             let timeout = channel.open_block_number() + self.cfg.channel_timeout(origin.timestamp);
-            let margin = timeout.saturating_sub(origin.number) as f64;
-            kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_CHANNEL_TIMEOUT, margin);
+            let _margin = timeout.saturating_sub(origin.number) as f64;
+            kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_CHANNEL_TIMEOUT, _margin);
 
             // Add the frame to the channel. If this fails, return NotEnoughData and discard the
             // frame.
