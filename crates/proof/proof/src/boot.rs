@@ -252,12 +252,13 @@ impl BootInfo {
         // insecure in production without additional validation!",         rollup_config.
         // l1_chain_id     );
         
-        // [Mantle]
-        let ser_cfg = oracle
-            .get(PreimageKey::new_local(L1_CONFIG_KEY.to()))
-            .await
-            .map_err(OracleProviderError::Preimage)?;
-        let l1_config = serde_json::from_slice(&ser_cfg).map_err(OracleProviderError::Serde)?;
+        // [Mantle] L1 config is not needed for single chain.
+        // let ser_cfg = oracle
+        //     .get(PreimageKey::new_local(L1_CONFIG_KEY.to()))
+        //     .await
+        //     .map_err(OracleProviderError::Preimage)?;
+        // let l1_config = serde_json::from_slice(&ser_cfg).map_err(OracleProviderError::Serde)?;
+        let l1_config = L1ChainConfig::default();
         // };
 
         debug!(
