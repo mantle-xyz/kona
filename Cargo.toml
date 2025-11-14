@@ -151,7 +151,7 @@ alloy-network-primitives = { version = "1.0.42", default-features = false }
 # OP Alloy
 op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v220", default-features = false }
 op-alloy-provider = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v220", default-features = false }
-alloy-op-hardforks = { version = "0.4.3", default-features = false }
+alloy-op-hardforks = { version = "0.4.4", default-features = false }
 op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v220", default-features = false }
 op-alloy-rpc-types = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v220", default-features = false }
 op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", branch = "v220", default-features = false }

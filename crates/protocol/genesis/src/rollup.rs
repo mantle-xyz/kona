@@ -48,6 +48,11 @@ pub struct RollupConfig {
     /// Mantle only
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub mantle_skadi_time: Option<u64>,
+    /// MantleLimbTime sets the activation time of the limb network-upgrade:
+    /// Mantle only
+    /// Osaka hardfork
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub mantle_limb_time: Option<u64>,
     /// `batch_inbox_address` is the L1 address that batches are sent to.
     pub batch_inbox_address: Address,
     /// `deposit_contract_address` is the L1 address that deposits are sent to.
@@ -75,6 +80,7 @@ impl<'a> arbitrary::Arbitrary<'a> for RollupConfig {
             regolith_time: u.arbitrary()?,
             base_fee_time: u.arbitrary()?,
             mantle_skadi_time: u.arbitrary()?,
+            mantle_limb_time: u.arbitrary()?,
             batch_inbox_address: Address::arbitrary(u)?,
             deposit_contract_address: Address::arbitrary(u)?,
             l1_system_config_address: Address::arbitrary(u)?,
@@ -98,6 +104,7 @@ impl Default for RollupConfig {
             regolith_time: None,
             base_fee_time: None,
             mantle_skadi_time: None,
+            mantle_limb_time: None,
             batch_inbox_address: Address::ZERO,
             deposit_contract_address: Address::ZERO,
             l1_system_config_address: Address::ZERO,
@@ -118,7 +125,9 @@ impl RollupConfig {
     /// The active [`op_revm::OpSpecId`] for the executor.
     pub fn spec_id(&self, timestamp: u64) -> op_revm::OpSpecId {
         // Mantle skadi is equivalent to isthmus hardfork.
-        if self.is_mantle_skadi_active(timestamp) {
+        if self.is_mantle_limb_active(timestamp) {
+            op_revm::OpSpecId::OSAKA
+        } else if self.is_mantle_skadi_active(timestamp) {
             op_revm::OpSpecId::ISTHMUS
         } else if self.is_regolith_active(timestamp) {
             op_revm::OpSpecId::REGOLITH
@@ -129,6 +138,11 @@ impl RollupConfig {
 }
 
 impl RollupConfig {
+    /// Returns true if Mantle Limb is active at the given timestamp.
+    pub fn is_mantle_limb_active(&self, timestamp: u64) -> bool {
+        self.mantle_limb_time.is_some_and(|t| timestamp >= t)
+    }
+
     /// Returns true if Mantle Skadi is active at the given timestamp.
     pub fn is_mantle_skadi_active(&self, timestamp: u64) -> bool {
         self.mantle_skadi_time.is_some_and(|t| timestamp >= t)
@@ -398,6 +412,7 @@ mod test {
         "regolith_time": 0,
         "base_fee_time": 1704891600,
         "mantle_skadi_time": 1752649200,
+        "mantle_limb_time": 1752649200,
         "batch_inbox_address": "0xffeeddccbbaa0000000000000000000000000000",
         "deposit_contract_address": "0xb3db4bd5bc225930ed674494f9a4f6a11b8efbc8",
         "l1_system_config_address": "0x04b34526c91424e955d13c7226bc4385e57e6706",
@@ -411,6 +426,7 @@ mod test {
         assert_eq!(cfg.l1_chain_id, 11155111);
         assert_eq!(cfg.l2_chain_id, 5003);
         assert_eq!(cfg.mantle_skadi_time, Some(1752649200));
+        assert_eq!(cfg.mantle_limb_time, Some(1752649200));
         assert_eq!(cfg.batch_inbox_address, address!("0xffeeddccbbaa0000000000000000000000000000"));
         assert_eq!(
             cfg.deposit_contract_address,
