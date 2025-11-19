@@ -106,9 +106,9 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "alloy-chains"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfaa9ea039a6f9304b4a593d780b1f23e1ae183acdee938b11b38795acacc9f1"
+checksum = "3ef6e7627b842406f449f83ae1a437a01cd244bc246d66f102cee9c0435ce10d"
 dependencies = [
  "alloy-primitives",
  "arbitrary",
@@ -1757,9 +1757,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
-version = "1.10.1"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
+checksum = "b35204fbdc0b3f4446b89fc1ac2cf84a8a68971995d0bf2e925ec7cd960f9cb3"
 dependencies = [
  "serde",
 ]
@@ -1955,9 +1955,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.51"
+version = "4.5.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c26d721170e0295f191a69bd9a1f93efcdb0aff38684b61ab5750468972e5f5"
+checksum = "aa8120877db0e5c011242f96806ce3c94e0737ab8108532a76a3300a01db2ab8"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1965,9 +1965,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.51"
+version = "4.5.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75835f0c7bf681bfd05abe44e965760fea999a5286c6eb2d59883634fd02011a"
+checksum = "02576b399397b659c26064fbc92a75fede9d18ffd5f80ca1cd74ddab167016e1"
 dependencies = [
  "anstream",
  "anstyle",
@@ -6759,7 +6759,7 @@ dependencies = [
 [[package]]
 name = "op-revm"
 version = "11.1.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "alloy-sol-types",
  "auto_impl",
@@ -7818,9 +7818,9 @@ dependencies = [
 
 [[package]]
 name = "resolv-conf"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b3789b30bd25ba102de4beabd95d21ac45b69b1be7d14522bab988c526d6799"
+checksum = "1e061d1b48cb8d38042de4ae0a7a6401009d6143dc80d2e2d6f31f0bdd6470c7"
 
 [[package]]
 name = "reth-codecs"
@@ -8121,7 +8121,7 @@ dependencies = [
 [[package]]
 name = "revm"
 version = "30.1.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "revm-bytecode 7.0.1",
  "revm-context",
@@ -8151,7 +8151,7 @@ dependencies = [
 [[package]]
 name = "revm-bytecode"
 version = "7.0.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "bitvec",
  "phf 0.13.1",
@@ -8162,7 +8162,7 @@ dependencies = [
 [[package]]
 name = "revm-context"
 version = "10.1.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "bitvec",
  "cfg-if",
@@ -8178,7 +8178,7 @@ dependencies = [
 [[package]]
 name = "revm-context-interface"
 version = "11.1.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "alloy-eip2930",
  "alloy-eip7702",
@@ -8207,7 +8207,7 @@ dependencies = [
 [[package]]
 name = "revm-database"
 version = "9.0.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "alloy-eips",
  "revm-bytecode 7.0.1",
@@ -8233,7 +8233,7 @@ dependencies = [
 [[package]]
 name = "revm-database-interface"
 version = "8.0.2"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "auto_impl",
  "either",
@@ -8245,7 +8245,7 @@ dependencies = [
 [[package]]
 name = "revm-handler"
 version = "11.1.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "auto_impl",
  "derive-where",
@@ -8263,7 +8263,7 @@ dependencies = [
 [[package]]
 name = "revm-inspector"
 version = "11.1.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "auto_impl",
  "either",
@@ -8280,7 +8280,7 @@ dependencies = [
 [[package]]
 name = "revm-interpreter"
 version = "27.0.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "revm-bytecode 7.0.1",
  "revm-context-interface",
@@ -8292,7 +8292,7 @@ dependencies = [
 [[package]]
 name = "revm-precompile"
 version = "28.1.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "ark-bls12-381",
  "ark-bn254",
@@ -8328,7 +8328,7 @@ dependencies = [
 [[package]]
 name = "revm-primitives"
 version = "21.0.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "alloy-primitives",
  "num_enum",
@@ -8351,7 +8351,7 @@ dependencies = [
 [[package]]
 name = "revm-state"
 version = "8.0.1"
-source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#6f67e5d35f98bc4a6594e6cf50fb92481b945f8e"
+source = "git+https://github.com/mantle-xyz/revm?branch=fusaka#9e6494c63afd9346d4913aa0c60a8b49ad3ef8ff"
 dependencies = [
  "bitflags 2.10.0",
  "revm-bytecode 7.0.1",
@@ -9044,9 +9044,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with"
-version = "3.15.1"
+version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa66c845eee442168b2c8134fec70ac50dc20e760769c8ba0ad1319ca1959b04"
+checksum = "10574371d41b0d9b2cff89418eda27da52bcaff2cc8741db26382a77c29131f1"
 dependencies = [
  "base64",
  "chrono",
@@ -9063,9 +9063,9 @@ dependencies = [
 
 [[package]]
 name = "serde_with_macros"
-version = "3.15.1"
+version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91a903660542fced4e99881aa481bdbaec1634568ee02e0b8bd57c64cb38955"
+checksum = "08a72d8216842fdd57820dc78d840bef99248e35fb2554ff923319e60f2d686b"
 dependencies = [
  "darling 0.21.3",
  "proc-macro2",
@@ -9345,9 +9345,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "symbolic-common"
-version = "12.16.3"
+version = "12.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d03f433c9befeea460a01d750e698aa86caf86dcfbd77d552885cd6c89d52f50"
+checksum = "b3d8046c5674ab857104bc4559d505f4809b8060d57806e45d49737c97afeb60"
 dependencies = [
  "debugid",
  "memmap2",
@@ -9357,9 +9357,9 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "12.16.3"
+version = "12.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13d359ef6192db1760a34321ec4f089245ede4342c27e59be99642f12a859de8"
+checksum = "1accb6e5c4b0f682de907623912e616b44be1c9e725775155546669dbff720ec"
 dependencies = [
  "cpp_demangle",
  "rustc-demangle",
