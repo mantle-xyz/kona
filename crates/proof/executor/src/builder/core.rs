@@ -247,6 +247,7 @@ where
             block_number = %block_env.number,
             block_timestamp = %block_env.timestamp,
             block_gas_limit = block_env.gas_limit,
+            spec_id = ?self.config.spec_id(attrs.payload_attributes.timestamp),
             transactions = attrs.transactions.as_ref().map_or(0, |txs| txs.len()),
             "Beginning block building."
         );
