@@ -1,7 +1,8 @@
 //! Registry Subcommand
 
-use crate::flags::{GlobalArgs, MetricsArgs};
+use crate::flags::GlobalArgs;
 use clap::Parser;
+use kona_cli::LogConfig;
 
 /// The `registry` Subcommand
 ///
@@ -12,15 +13,15 @@ use clap::Parser;
 /// ```sh
 /// kona-node registry [FLAGS] [OPTIONS]
 /// ```
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Default, PartialEq, Debug, Clone)]
 #[command(about = "Lists the OP Stack chains available in the superchain-registry")]
-pub struct RegistryCommand {}
+pub struct RegistryCommand;
 
 impl RegistryCommand {
-    /// Initializes the telemetry stack and Prometheus metrics recorder.
-    pub fn init_telemetry(&self, args: &GlobalArgs, metrics: &MetricsArgs) -> anyhow::Result<()> {
-        args.init_tracing(None)?;
-        metrics.init_metrics()
+    /// Initializes the logging system based on global arguments.
+    pub fn init_logs(&self, args: &GlobalArgs) -> anyhow::Result<()> {
+        LogConfig::new(args.log_args.clone()).init_tracing_subscriber(None)?;
+        Ok(())
     }
 
     /// Runs the subcommand.
@@ -32,7 +33,7 @@ impl RegistryCommand {
             tabled::settings::object::Columns::first(),
             tabled::settings::Alignment::right(),
         );
-        println!("{}", table);
+        println!("{table}");
         Ok(())
     }
 }

@@ -1,7 +1,8 @@
 //! Info Subcommand
 
-use crate::flags::{GlobalArgs, MetricsArgs};
+use crate::flags::GlobalArgs;
 use clap::Parser;
+use kona_cli::LogConfig;
 use kona_registry::OPCHAINS;
 use tracing::info;
 
@@ -15,20 +16,20 @@ use tracing::info;
 /// kona-node info
 /// ```
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Default, PartialEq, Debug, Clone)]
 #[command(about = "Runs the information stack for the kona-node.")]
 pub struct InfoCommand;
 
 impl InfoCommand {
-    /// Initializes the telemetry stack and Prometheus metrics recorder.
-    pub fn init_telemetry(&self, args: &GlobalArgs, metrics: &MetricsArgs) -> anyhow::Result<()> {
-        args.init_tracing(None)?;
-        metrics.init_metrics()
+    /// Initializes the logging system based on global arguments.
+    pub fn init_logs(&self, args: &GlobalArgs) -> anyhow::Result<()> {
+        LogConfig::new(args.log_args.clone()).init_tracing_subscriber(None)?;
+        Ok(())
     }
 
     /// Runs the information stack for the kona-node.
     pub fn run(&self, args: &GlobalArgs) -> anyhow::Result<()> {
-        info!("Running info command");
+        info!(target: "node_info", "Running info command");
 
         let op_chain_config = OPCHAINS.get(&args.l2_chain_id).expect("No Chain config found");
 

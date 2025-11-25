@@ -2,9 +2,8 @@
 
 use super::NextBatchProvider;
 use crate::{
-    errors::ResetError,
-    prelude::{OriginProvider, PipelineError, PipelineErrorKind},
-    traits::{AttributesProvider, OriginAdvancer, SignalReceiver},
+    errors::{PipelineError, PipelineErrorKind, ResetError},
+    traits::{AttributesProvider, OriginAdvancer, OriginProvider, SignalReceiver},
     types::{PipelineResult, ResetSignal, Signal},
 };
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
@@ -13,36 +12,36 @@ use core::fmt::Debug;
 use kona_genesis::RollupConfig;
 use kona_protocol::{Batch, BatchValidity, BlockInfo, L2BlockInfo, SingleBatch};
 
-/// The [BatchValidator] stage is responsible for validating the [SingleBatch]es from
-/// the [BatchStream] [AttributesQueue]'s consumption.
+/// The [`BatchValidator`] stage is responsible for validating the [`SingleBatch`]es from
+/// the [`BatchStream`] [`AttributesQueue`]'s consumption.
 ///
-/// [BatchStream]: crate::stages::BatchStream
-/// [AttributesQueue]: crate::stages::attributes_queue::AttributesQueue
+/// [`BatchStream`]: crate::stages::BatchStream
+/// [`AttributesQueue`]: crate::stages::attributes_queue::AttributesQueue
 #[derive(Debug)]
 pub struct BatchValidator<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
     /// The rollup configuration.
-    pub(crate) cfg: Arc<RollupConfig>,
+    pub cfg: Arc<RollupConfig>,
     /// The previous stage of the derivation pipeline.
-    pub(crate) prev: P,
+    pub prev: P,
     /// The L1 origin of the batch sequencer.
-    pub(crate) origin: Option<BlockInfo>,
+    pub origin: Option<BlockInfo>,
     /// A consecutive, time-centric window of L1 Blocks.
     /// Every L1 origin of unsafe L2 Blocks must be included in this list.
     /// If every L2 Block corresponding to a single L1 Block becomes safe,
     /// the block is popped from this list.
     /// If new L2 Block's L1 origin is not included in this list, fetch and
     /// push it to the list.
-    pub(crate) l1_blocks: Vec<BlockInfo>,
+    pub l1_blocks: Vec<BlockInfo>,
 }
 
 impl<P> BatchValidator<P>
 where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
-    /// Create a new [BatchValidator] stage.
+    /// Create a new [`BatchValidator`] stage.
     pub const fn new(cfg: Arc<RollupConfig>, prev: P) -> Self {
         Self { cfg, prev, origin: None, l1_blocks: Vec::new() }
     }
@@ -58,7 +57,7 @@ where
         self.prev.origin().is_none_or(|origin| origin.number < parent.l1_origin.number)
     }
 
-    /// Updates the [BatchValidator]'s view of the L1 origin blocks.
+    /// Updates the [`BatchValidator`]'s view of the L1 origin blocks.
     ///
     /// ## Takes
     /// - `parent`: The parent block of the current batch.
@@ -92,7 +91,7 @@ where
                 target: "batch_validator",
                 "Advancing batch validator origin to L1 block #{}.{}",
                 self.origin.map(|b| b.number).unwrap_or_default(),
-                origin_behind.then_some(" (origin behind)").unwrap_or_default()
+                if origin_behind { " (origin behind)" } else { Default::default() }
             );
         }
 
@@ -110,6 +109,23 @@ where
                 }
             }
             // If the origin of the parent block is not included, we must advance the origin.
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            if let Some(origin) = self.l1_blocks.first() {
+                kona_macros::set!(
+                    gauge,
+                    crate::metrics::Metrics::PIPELINE_L1_BLOCKS_START,
+                    origin.number as f64
+                );
+                let last = self.l1_blocks.last().unwrap_or(origin);
+                kona_macros::set!(
+                    gauge,
+                    crate::metrics::Metrics::PIPELINE_L1_BLOCKS_END,
+                    last.number as f64
+                );
+            }
         }
 
         Ok(())
@@ -299,7 +315,7 @@ where
                 self.l1_blocks.clear();
                 self.l1_blocks.push(l1_origin);
             }
-            s @ Signal::Activation(_) | s @ Signal::FlushChannel => {
+            s @ Signal::Activation(_) | s @ Signal::FlushChannel | s @ Signal::ProvideBlock(_) => {
                 self.prev.signal(s).await?;
             }
         }
@@ -310,11 +326,9 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        errors::{PipelineError, PipelineErrorKind, ResetError},
-        stages::{BatchValidator, NextBatchProvider},
+        AttributesProvider, BatchValidator, NextBatchProvider, OriginAdvancer, PipelineError,
+        PipelineErrorKind, PipelineResult, ResetError, ResetSignal, Signal, SignalReceiver,
         test_utils::{CollectingLayer, TestNextBatchProvider, TraceStorage},
-        traits::{AttributesProvider, OriginAdvancer, SignalReceiver},
-        types::{PipelineResult, ResetSignal, Signal},
     };
     use alloc::{sync::Arc, vec, vec::Vec};
     use alloy_eips::{BlockNumHash, NumHash};

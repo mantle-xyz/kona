@@ -15,11 +15,13 @@ use alloy_primitives::{Address, B64, Log, U256};
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct SystemConfig {
     /// Batcher address
-    #[cfg_attr(feature = "serde", serde(rename = "batcherAddress", alias = "batcherAddr"))]
+    #[cfg_attr(feature = "serde", serde(rename = "batcherAddr"))]
     pub batcher_address: Address,
     /// Fee overhead value
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_u256_full"))]
     pub overhead: U256,
     /// Fee scalar value
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_u256_full"))]
     pub scalar: U256,
     /// Gas limit value
     pub gas_limit: u64,
@@ -37,6 +39,14 @@ pub struct SystemConfig {
     pub operator_fee_scalar: Option<u32>,
     /// The operator fee constant (isthmus hardfork)
     pub operator_fee_constant: Option<u64>,
+    /// Min base fee (jovian hardfork)
+    /// Note: according to the [spec](https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/jovian/system-config.md#initialization), as long as the MinBaseFee is not
+    /// explicitly set, the default value (`0`) will be systematically applied.
+    pub min_base_fee: Option<u64>,
+    /// DA footprint gas scalar (Jovian hardfork)
+    /// Note: according to the [spec](https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/jovian/system-config.md#initialization), as long as the DAFootprintGasScalar is not
+    /// explicitly set, the default value (`400`) will be systematically applied.
+    pub da_footprint_gas_scalar: Option<u16>,
 }
 
 /// Custom EIP-1559 parameter decoding is needed here for holocene encoding.
@@ -71,6 +81,8 @@ impl<'a> serde::Deserialize<'a> for SystemConfig {
             operator_fee_params: Option<B256>,
             operator_fee_scalar: Option<u32>,
             operator_fee_constant: Option<u64>,
+            min_base_fee: Option<u64>,
+            da_footprint_gas_scalar: Option<u16>,
         }
 
         let mut alias = SystemConfigAlias::deserialize(deserializer)?;
@@ -101,18 +113,23 @@ impl<'a> serde::Deserialize<'a> for SystemConfig {
             eip1559_elasticity: alias.eip1559_elasticity,
             operator_fee_scalar: alias.operator_fee_scalar,
             operator_fee_constant: alias.operator_fee_constant,
+            min_base_fee: alias.min_base_fee,
+            da_footprint_gas_scalar: alias.da_footprint_gas_scalar,
         })
     }
 }
 
 impl SystemConfig {
     /// Filters all L1 receipts to find config updates and applies the config updates.
+    ///
+    /// Returns `true` if any config updates were applied, `false` otherwise.
     pub fn update_with_receipts(
         &mut self,
         receipts: &[Receipt],
         l1_system_config_address: Address,
         ecotone_active: bool,
-    ) -> Result<(), SystemConfigUpdateError> {
+    ) -> Result<bool, SystemConfigUpdateError> {
+        let mut updated = false;
         for receipt in receipts {
             if Eip658Value::Eip658(false) == receipt.status {
                 continue;
@@ -126,11 +143,12 @@ impl SystemConfig {
                 {
                     // Safety: Error is bubbled up by the trailing `?`
                     self.process_config_update_log(log, ecotone_active)?;
+                    updated = true;
                 }
                 Ok::<(), SystemConfigUpdateError>(())
             })?;
         }
-        Ok(())
+        Ok(updated)
     }
 
     /// Returns the eip1559 parameters from a [SystemConfig] encoded as a [B64].
@@ -189,12 +207,40 @@ impl SystemConfig {
     }
 }
 
+/// Compatibility helper function to serialize a [`U256`] as a [`B256`].
+///
+/// [`B256`]: alloy_primitives::B256
+#[cfg(feature = "serde")]
+fn serialize_u256_full<S>(ts: &U256, ser: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::Serialize;
+
+    alloy_primitives::B256::from(ts.to_be_bytes::<32>()).serialize(ser)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{CONFIG_UPDATE_EVENT_VERSION_0, HardForkConfig};
+    use crate::CONFIG_UPDATE_EVENT_VERSION_0;
     use alloc::vec;
     use alloy_primitives::{B256, LogData, address, b256, hex};
+
+    #[test]
+    #[cfg(feature = "serde")]
+    fn test_system_config_da_footprint_gas_scalar() {
+        let raw = r#"{
+        "batcherAddress": "0x6887246668a3b87F54DeB3b94Ba47a6f63F32985",
+          "overhead": "0x00000000000000000000000000000000000000000000000000000000000000bc",
+          "scalar": "0x00000000000000000000000000000000000000000000000000000000000a6fe0",
+          "gasLimit": 30000000,
+          "eip1559Params": "0x000000ab000000cd",
+          "daFootprintGasScalar": 10
+        }"#;
+        let system_config: SystemConfig = serde_json::from_str(raw).unwrap();
+        assert_eq!(system_config.da_footprint_gas_scalar, Some(10), "da_footprint_gas_scalar");
+    }
 
     #[test]
     #[cfg(feature = "serde")]
@@ -340,9 +386,10 @@ mod test {
         let l1_system_config_address = Address::ZERO;
         let ecotone_active = false;
 
-        system_config
+        let updated = system_config
             .update_with_receipts(&receipts, l1_system_config_address, ecotone_active)
             .unwrap();
+        assert!(!updated);
 
         assert_eq!(system_config, SystemConfig::default());
     }
@@ -373,9 +420,10 @@ mod test {
             cumulative_gas_used: 0,
         };
 
-        system_config
+        let updated = system_config
             .update_with_receipts(&[receipt], l1_system_config_address, ecotone_active)
             .unwrap();
+        assert!(updated);
 
         assert_eq!(
             system_config.batcher_address,

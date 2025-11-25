@@ -4,20 +4,26 @@
 //!
 //! [op-node]: https://github.com/ethereum-optimism/optimism/blob/develop/op-node/flags/p2p_flags.go
 
-use crate::flags::GlobalArgs;
-use alloy_primitives::B256;
+use crate::flags::{GlobalArgs, SignerArgs};
+use alloy_primitives::{B256, b256};
+use alloy_provider::Provider;
+use alloy_signer_local::PrivateKeySigner;
 use anyhow::Result;
 use clap::Parser;
 use discv5::{Enr, enr::k256};
+use kona_derive::ChainProvider;
+use kona_disc::LocalNode;
 use kona_genesis::RollupConfig;
-use kona_p2p::{Config, LocalNode, PeerMonitoring, PeerScoreLevel};
-use kona_sources::RuntimeLoader;
+use kona_gossip::GaterConfig;
+use kona_node_service::NetworkConfig;
+use kona_peers::{BootStoreFile, PeerMonitoring, PeerScoreLevel};
+use kona_providers_alloy::AlloyChainProvider;
 use libp2p::identity::Keypair;
 use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
+    net::{IpAddr, SocketAddr},
     num::ParseIntError,
     path::PathBuf,
-    sync::Arc,
+    str::FromStr,
 };
 use tokio::time::Duration;
 use url::Url;
@@ -25,9 +31,6 @@ use url::Url;
 /// P2P CLI Flags
 #[derive(Parser, Clone, Debug, PartialEq, Eq)]
 pub struct P2PArgs {
-    /// Fully disable the P2P stack.
-    #[arg(long = "p2p.disable", default_value = "false", env = "KONA_NODE_P2P_DISABLE")]
-    pub disabled: bool,
     /// Disable Discv5 (node discovery).
     #[arg(long = "p2p.no-discovery", default_value = "false", env = "KONA_NODE_P2P_NO_DISCOVERY")]
     pub no_discovery: bool,
@@ -50,20 +53,12 @@ pub struct P2PArgs {
     pub advertise_ip: Option<IpAddr>,
     /// TCP port to advertise to external peers from the discovery layer. Same as `p2p.listen.tcp`
     /// if set to zero.
-    #[arg(
-        long = "p2p.advertise.tcp",
-        default_value = "0",
-        env = "KONA_NODE_P2P_ADVERTISE_TCP_PORT"
-    )]
-    pub advertise_tcp_port: u16,
+    #[arg(long = "p2p.advertise.tcp", env = "KONA_NODE_P2P_ADVERTISE_TCP_PORT")]
+    pub advertise_tcp_port: Option<u16>,
     /// UDP port to advertise to external peers from the discovery layer.
     /// Same as `p2p.listen.udp` if set to zero.
-    #[arg(
-        long = "p2p.advertise.udp",
-        default_value = "0",
-        env = "KONA_NODE_P2P_ADVERTISE_UDP_PORT"
-    )]
-    pub advertise_udp_port: u16,
+    #[arg(long = "p2p.advertise.udp", env = "KONA_NODE_P2P_ADVERTISE_UDP_PORT")]
+    pub advertise_udp_port: Option<u16>,
 
     /// IP to bind LibP2P/Discv5 to.
     #[arg(long = "p2p.listen.ip", default_value = "0.0.0.0", env = "KONA_NODE_P2P_LISTEN_IP")]
@@ -90,7 +85,7 @@ pub struct P2PArgs {
         value_parser = |arg: &str| -> Result<Duration, ParseIntError> {Ok(Duration::from_secs(arg.parse()?))}
     )]
     pub peers_grace: Duration,
-    /// Configure GossipSub topic stablel mesh target count.
+    /// Configure GossipSub topic stable mesh target count.
     /// Aka: The desired outbound degree (numbers of peers to gossip to).
     #[arg(long = "p2p.gossip.mesh.d", default_value = "8", env = "KONA_NODE_P2P_GOSSIP_MESH_D")]
     pub gossip_mesh_d: usize,
@@ -136,14 +131,18 @@ pub struct P2PArgs {
     pub ban_enabled: bool,
 
     /// The threshold used to ban peers.
-    /// Note that for peers to be banned, the `p2p.ban.peers` flag must be set to `true`.
-    #[arg(long = "p2p.ban.threshold", default_value = "0", env = "KONA_NODE_P2P_BAN_THRESHOLD")]
-    pub ban_threshold: i32,
+    ///
+    /// For peers to be banned, the `p2p.ban.peers` flag must be set to `true`.
+    /// By default, peers are banned if their score is below -100. This follows the `op-node` default `<https://github.com/ethereum-optimism/optimism/blob/09a8351a72e43647c8a96f98c16bb60e7b25dc6e/op-node/flags/p2p_flags.go#L123-L130>`.
+    #[arg(long = "p2p.ban.threshold", default_value = "-100", env = "KONA_NODE_P2P_BAN_THRESHOLD")]
+    pub ban_threshold: i64,
 
-    /// The duration in seconds to ban a peer for.
-    /// Note that for peers to be banned, the `p2p.ban.peers` flag must be set to `true`.
-    #[arg(long = "p2p.ban.duration", default_value = "30", env = "KONA_NODE_P2P_BAN_DURATION")]
-    pub ban_duration: u32,
+    /// The duration in minutes to ban a peer for.
+    ///
+    /// For peers to be banned, the `p2p.ban.peers` flag must be set to `true`.
+    /// By default peers are banned for 1 hour. This follows the `op-node` default `<https://github.com/ethereum-optimism/optimism/blob/09a8351a72e43647c8a96f98c16bb60e7b25dc6e/op-node/flags/p2p_flags.go#L131-L138>`.
+    #[arg(long = "p2p.ban.duration", default_value = "60", env = "KONA_NODE_P2P_BAN_DURATION")]
+    pub ban_duration: u64,
 
     /// The interval in seconds to find peers using the discovery service.
     /// Defaults to 5 seconds.
@@ -156,15 +155,41 @@ pub struct P2PArgs {
     /// The directory to store the bootstore.
     #[arg(long = "p2p.bootstore", env = "KONA_NODE_P2P_BOOTSTORE")]
     pub bootstore: Option<PathBuf>,
+    /// Disables the bootstore.
+    #[arg(long = "p2p.no-bootstore", env = "KONA_NODE_P2P_NO_BOOTSTORE")]
+    pub disable_bootstore: bool,
     /// Peer Redialing threshold is the maximum amount of times to attempt to redial a peer that
     /// disconnects. By default, peers are *not* redialed. If set to 0, the peer will be
     /// redialed indefinitely.
-    #[arg(long = "p2p.redial", env = "KONA_NODE_P2P_REDIAL")]
+    #[arg(long = "p2p.redial", env = "KONA_NODE_P2P_REDIAL", default_value = "500")]
     pub peer_redial: Option<u64>,
+
+    /// The duration in minutes of the peer dial period.
+    /// When the last time a peer was dialed is longer than the dial period, the number of peer
+    /// dials is reset to 0, allowing the peer to be dialed again.
+    #[arg(long = "p2p.redial.period", env = "KONA_NODE_P2P_REDIAL_PERIOD", default_value = "60")]
+    pub redial_period: u64,
 
     /// An optional list of bootnode ENRs to start the node with.
     #[arg(long = "p2p.bootnodes", value_delimiter = ',', env = "KONA_NODE_P2P_BOOTNODES")]
     pub bootnodes: Vec<Enr>,
+
+    /// Optionally enable topic scoring.
+    ///
+    /// Topic scoring is a mechanism to score peers based on their behavior in the gossip network.
+    /// Historically, topic scoring was only enabled for the v1 topic on the OP Stack p2p network
+    /// in the `op-node`. This was a silent bug, and topic scoring is actively being
+    /// [phased out of the `op-node`][out].
+    ///
+    /// This flag is only presented for backwards compatibility and debugging purposes.
+    ///
+    /// [out]: https://github.com/ethereum-optimism/optimism/pull/15719
+    #[arg(
+        long = "p2p.topic-scoring",
+        default_value = "false",
+        env = "KONA_NODE_P2P_TOPIC_SCORING"
+    )]
+    pub topic_scoring: bool,
 
     /// An optional unsafe block signer address.
     ///
@@ -181,40 +206,18 @@ pub struct P2PArgs {
     /// This is useful for discovering a wider set of peers.
     #[arg(long = "p2p.discovery.randomize", env = "KONA_NODE_P2P_DISCOVERY_RANDOMIZE")]
     pub discovery_randomize: Option<u64>,
+
+    /// Specify optional remote signer configuration. Note that this argument is mutually exclusive
+    /// with `p2p.sequencer.key` that specifies a local sequencer signer.
+    #[command(flatten)]
+    pub signer: SignerArgs,
 }
 
 impl Default for P2PArgs {
     fn default() -> Self {
-        Self {
-            disabled: false,
-            no_discovery: false,
-            priv_path: None,
-            private_key: None,
-            advertise_ip: None,
-            advertise_tcp_port: 0,
-            advertise_udp_port: 0,
-            listen_ip: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-            listen_tcp_port: 9222,
-            listen_udp_port: 9223,
-            peers_lo: 20,
-            peers_hi: 30,
-            peers_grace: Duration::from_secs(30),
-            gossip_mesh_d: kona_p2p::DEFAULT_MESH_D,
-            gossip_mesh_dlo: kona_p2p::DEFAULT_MESH_DLO,
-            gossip_mesh_dhi: kona_p2p::DEFAULT_MESH_DHI,
-            gossip_mesh_dlazy: kona_p2p::DEFAULT_MESH_DLAZY,
-            gossip_flood_publish: false,
-            scoring: PeerScoreLevel::Light,
-            ban_enabled: false,
-            ban_threshold: 0,
-            ban_duration: 30,
-            discovery_interval: 5,
-            bootnodes: Vec::new(),
-            bootstore: None,
-            peer_redial: None,
-            unsafe_block_signer: None,
-            discovery_randomize: None,
-        }
+        // Construct default values using the clap parser.
+        // This works since none of the cli flags are required.
+        Self::parse_from::<[_; 0], &str>([])
     }
 }
 
@@ -228,21 +231,19 @@ impl P2PArgs {
         }
         let tcp_socket = std::net::TcpListener::bind((ip_addr, tcp_port));
         let udp_socket = std::net::UdpSocket::bind((ip_addr, udp_port));
-        if tcp_socket.is_err() {
-            tracing::error!(target: "p2p::flags", "TCP port {} is already in use", tcp_port);
-            tracing::warn!(target: "p2p::flags", "Specify a different TCP port with --p2p.listen.tcp");
-            anyhow::bail!("TCP port {} is already in use", tcp_port);
+        if let Err(e) = tcp_socket {
+            tracing::error!(target: "p2p::flags", tcp_port, "Error binding TCP socket: {e}");
+            anyhow::bail!("Error binding TCP socket on port {tcp_port}: {e}");
         }
-        if udp_socket.is_err() {
-            tracing::error!(target: "p2p::flags", "UDP port {} is already in use", udp_port);
-            tracing::warn!(target: "p2p::flags", "Specify a different UDP port with --p2p.listen.udp");
-            anyhow::bail!("UDP port {} is already in use", udp_port);
+        if let Err(e) = udp_socket {
+            tracing::error!(target: "p2p::flags", udp_port, "Error binding UDP socket: {e}");
+            anyhow::bail!("Error binding UDP socket on port {udp_port}: {e}");
         }
 
         Ok(())
     }
 
-    /// Checks if the ports are available on the system.
+    /// Checks if the listen ports are available on the system.
     ///
     /// If either of the ports are `0`, this check is skipped.
     ///
@@ -251,58 +252,69 @@ impl P2PArgs {
     /// - If the TCP port is already in use.
     /// - If the UDP port is already in use.
     pub fn check_ports(&self) -> Result<()> {
-        if self.disabled {
-            tracing::debug!(target: "p2p::flags", "P2P is disabled, skipping port check");
-            return Ok(());
-        }
-        Self::check_ports_inner(
-            // If the advertised ip is not specified, we use the listen ip.
-            self.advertise_ip.unwrap_or(self.listen_ip),
-            self.advertise_tcp_port,
-            self.advertise_udp_port,
-        )?;
-        Self::check_ports_inner(self.listen_ip, self.listen_tcp_port, self.listen_udp_port)?;
-
-        Ok(())
+        Self::check_ports_inner(self.listen_ip, self.listen_tcp_port, self.listen_udp_port)
     }
 
-    /// Returns the [`discv5::Config`] from the CLI arguments.
-    pub fn discv5_config(
-        &self,
-        listen_config: discv5::ListenConfig,
-        static_ip: bool,
-    ) -> discv5::Config {
-        // We can use a default listen config here since it
-        // will be overridden by the discovery service builder.
-        let mut builder = discv5::ConfigBuilder::new(listen_config);
-
-        builder.ban_duration(Some(Duration::from_secs(self.ban_duration as u64)));
-
-        if static_ip {
-            builder.disable_enr_update();
-
-            // If we have a static IP, we don't want to use any kind of NAT discovery mechanism.
-            builder.auto_nat_listen_duration(None);
+    /// Returns the private key as specified in the raw cli flag or via file path.
+    pub fn private_key(&self) -> Option<PrivateKeySigner> {
+        if let Some(key) = self.private_key {
+            match PrivateKeySigner::from_bytes(&key) {
+                Ok(signer) => return Some(signer),
+                Err(e) => {
+                    tracing::error!(target: "p2p::flags", "Failed to parse private key: {}", e);
+                    return None;
+                }
+            }
         }
 
-        builder.build()
+        if let Some(path) = self.priv_path.as_ref() {
+            if path.exists() {
+                let contents = std::fs::read_to_string(path).ok()?;
+                let decoded = B256::from_str(&contents).ok()?;
+                match PrivateKeySigner::from_bytes(&decoded) {
+                    Ok(signer) => return Some(signer),
+                    Err(e) => {
+                        tracing::error!(target: "p2p::flags", "Failed to parse private key from file: {}", e);
+                        return None;
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     /// Returns the unsafe block signer from the CLI arguments.
     pub async fn unsafe_block_signer(
         &self,
-        config: &RollupConfig,
         args: &GlobalArgs,
-        l1_rpc: Option<Url>,
+        rollup_config: &RollupConfig,
+        l1_eth_rpc: Option<Url>,
     ) -> anyhow::Result<alloy_primitives::Address> {
-        // First attempt to load the unsafe block signer from the runtime loader.
-        if let Some(url) = l1_rpc {
-            let mut loader = RuntimeLoader::new(url, Arc::new(config.clone()));
-            let runtime = loader
-                .load_latest()
-                .await
-                .map_err(|e| anyhow::anyhow!("Failed to load runtime: {}", e))?;
-            return Ok(runtime.unsafe_block_signer_address);
+        if let Some(l1_eth_rpc) = l1_eth_rpc {
+            /// The storage slot that the unsafe block signer address is stored at.
+            /// Computed as: `bytes32(uint256(keccak256("systemconfig.unsafeblocksigner")) - 1)`
+            const UNSAFE_BLOCK_SIGNER_ADDRESS_STORAGE_SLOT: B256 =
+                b256!("0x65a7ed542fb37fe237fdfbdd70b31598523fe5b32879e307bae27a0bd9581c08");
+
+            let mut provider = AlloyChainProvider::new_http(l1_eth_rpc, 1024);
+            let latest_block_num = provider.latest_block_number().await?;
+            let block_info = provider.block_info_by_number(latest_block_num).await?;
+
+            // Fetch the unsafe block signer address from the system config.
+            let unsafe_block_signer_address = provider
+                .inner
+                .get_storage_at(
+                    rollup_config.l1_system_config_address,
+                    UNSAFE_BLOCK_SIGNER_ADDRESS_STORAGE_SLOT.into(),
+                )
+                .hash(block_info.hash)
+                .await?;
+
+            // Convert the unsafe block signer address to the correct type.
+            return Ok(alloy_primitives::Address::from_slice(
+                &unsafe_block_signer_address.to_be_bytes_vec()[12..],
+            ));
         }
 
         // Otherwise use the genesis signer or the configured unsafe block signer.
@@ -311,7 +323,7 @@ impl P2PArgs {
         })
     }
 
-    /// Constructs kona's P2P network [`Config`] from CLI arguments.
+    /// Constructs kona's P2P network [`NetworkConfig`] from CLI arguments.
     ///
     /// ## Parameters
     ///
@@ -319,11 +331,11 @@ impl P2PArgs {
     ///
     /// Errors if the genesis unsafe block signer isn't available for the specified L2 Chain ID.
     pub async fn config(
-        &self,
+        self,
         config: &RollupConfig,
         args: &GlobalArgs,
         l1_rpc: Option<Url>,
-    ) -> anyhow::Result<Config> {
+    ) -> anyhow::Result<NetworkConfig> {
         // Note: the advertised address is contained in the ENR for external peers from the
         // discovery layer to use.
 
@@ -334,16 +346,14 @@ impl P2PArgs {
         let static_ip = self.advertise_ip.is_some();
 
         // If the advertise tcp port is null, use the listen tcp port
-        let advertise_tcp_port = if self.advertise_tcp_port != 0 {
-            self.advertise_tcp_port
-        } else {
-            self.listen_tcp_port
+        let advertise_tcp_port = match self.advertise_tcp_port {
+            None => self.listen_tcp_port,
+            Some(port) => port,
         };
 
-        let advertise_udp_port = if self.advertise_udp_port != 0 {
-            self.advertise_udp_port
-        } else {
-            self.listen_udp_port
+        let advertise_udp_port = match self.advertise_udp_port {
+            None => self.listen_udp_port,
+            Some(port) => port,
         };
 
         let keypair = self.keypair().unwrap_or_else(|_| Keypair::generate_secp256k1());
@@ -355,53 +365,62 @@ impl P2PArgs {
 
         let discovery_address =
             LocalNode::new(local_node_key, advertise_ip, advertise_tcp_port, advertise_udp_port);
-        let gossip_config = kona_p2p::default_config_builder()
+        let gossip_config = kona_gossip::default_config_builder()
             .mesh_n(self.gossip_mesh_d)
             .mesh_n_low(self.gossip_mesh_dlo)
             .mesh_n_high(self.gossip_mesh_dhi)
             .gossip_lazy(self.gossip_mesh_dlazy)
             .flood_publish(self.gossip_flood_publish)
             .build()?;
-        let block_time = config.block_time;
 
-        let monitor_peers = if self.ban_enabled {
-            Some(PeerMonitoring {
-                ban_duration: Duration::from_secs(self.ban_duration.into()),
-                ban_threshold: self.ban_threshold as f64,
-            })
-        } else {
-            None
-        };
+        let monitor_peers = self.ban_enabled.then_some(PeerMonitoring {
+            ban_duration: Duration::from_secs(60 * self.ban_duration),
+            ban_threshold: self.ban_threshold as f64,
+        });
 
         let discovery_listening_address = SocketAddr::new(self.listen_ip, self.listen_udp_port);
-        let discovery_config = self.discv5_config(discovery_listening_address.into(), static_ip);
+        let discovery_config =
+            NetworkConfig::discv5_config(discovery_listening_address.into(), static_ip);
 
         let mut gossip_address = libp2p::Multiaddr::from(self.listen_ip);
         gossip_address.push(libp2p::multiaddr::Protocol::Tcp(self.listen_tcp_port));
 
-        Ok(Config {
+        let unsafe_block_signer = self.unsafe_block_signer(args, config, l1_rpc).await?;
+
+        let bootstore = if self.disable_bootstore {
+            None
+        } else {
+            Some(self.bootstore.map_or(
+                BootStoreFile::Default { chain_id: args.l2_chain_id.into() },
+                BootStoreFile::Custom,
+            ))
+        };
+
+        Ok(NetworkConfig {
             discovery_config,
             discovery_interval: Duration::from_secs(self.discovery_interval),
             discovery_address,
             discovery_randomize: self.discovery_randomize.map(Duration::from_secs),
+            enr_update: !static_ip,
             gossip_address,
             keypair,
-            unsafe_block_signer: self.unsafe_block_signer(config, args, l1_rpc).await?,
+            unsafe_block_signer,
             gossip_config,
             scoring: self.scoring,
-            block_time,
             monitor_peers,
-            bootstore: self.bootstore.clone(),
-            redial: self.peer_redial,
-            // It is ok to clone here since the config only happens at startup
-            // and that we assume the number of bootnodes explicitly specified
-            // through the CLI is small.
-            bootnodes: self.bootnodes.clone(),
+            bootstore,
+            topic_scoring: self.topic_scoring,
+            gater_config: GaterConfig {
+                peer_redialing: self.peer_redial,
+                dial_period: Duration::from_secs(60 * self.redial_period),
+            },
+            bootnodes: self.bootnodes,
             rollup_config: config.clone(),
+            gossip_signer: self.signer.config(args)?,
         })
     }
 
-    /// Returns the [Keypair] from the cli inputs.
+    /// Returns the [`Keypair`] from the cli inputs.
     ///
     /// If the raw private key is empty and the specified file is empty,
     /// this method will generate a new private key and write it out to the file.
@@ -411,14 +430,15 @@ impl P2PArgs {
     pub fn keypair(&self) -> Result<Keypair> {
         // Attempt the parse the private key if specified.
         if let Some(mut private_key) = self.private_key {
-            return kona_p2p::parse_key(&mut private_key.0).map_err(|e| anyhow::anyhow!(e));
+            return kona_cli::SecretKeyLoader::parse(&mut private_key.0)
+                .map_err(|e| anyhow::anyhow!(e));
         }
 
         let Some(ref key_path) = self.priv_path else {
             anyhow::bail!("Neither a raw private key nor a private key file path was provided.");
         };
 
-        kona_p2p::get_keypair(key_path).map_err(|e| anyhow::anyhow!(e))
+        kona_cli::SecretKeyLoader::load(key_path).map_err(|e| anyhow::anyhow!(e))
     }
 }
 
@@ -487,12 +507,6 @@ mod tests {
     }
 
     #[test]
-    fn test_p2p_args_disabled() {
-        let args = MockCommand::parse_from(["test", "--p2p.disable"]);
-        assert!(args.p2p.disabled);
-    }
-
-    #[test]
     fn test_p2p_args_no_discovery() {
         let args = MockCommand::parse_from(["test", "--p2p.no-discovery"]);
         assert!(args.p2p.no_discovery);
@@ -513,6 +527,17 @@ mod tests {
         ]);
         let key = b256!("1d2b0bda21d56b8bd12d4f94ebacffdfb35f5e226f84b461103bb8beab6353be");
         assert_eq!(args.p2p.private_key, Some(key));
+    }
+
+    #[test]
+    fn test_p2p_args_sequencer_key() {
+        let args = MockCommand::parse_from([
+            "test",
+            "--p2p.sequencer.key",
+            "bcc617ea05150ff60490d3c6058630ba94ae9f12a02a87efd291349ca0e54e0a",
+        ]);
+        let key = b256!("bcc617ea05150ff60490d3c6058630ba94ae9f12a02a87efd291349ca0e54e0a");
+        assert_eq!(args.p2p.signer.sequencer_key, Some(key));
     }
 
     #[test]

@@ -2,8 +2,8 @@
 
 use super::{ChannelReaderProvider, NextFrameProvider};
 use crate::{
-    prelude::{OriginProvider, PipelineError},
-    traits::{OriginAdvancer, SignalReceiver},
+    errors::PipelineError,
+    traits::{OriginAdvancer, OriginProvider, SignalReceiver},
     types::{PipelineResult, Signal},
 };
 use alloc::{boxed::Box, sync::Arc};
@@ -13,30 +13,30 @@ use core::fmt::Debug;
 use kona_genesis::{MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, RollupConfig};
 use kona_protocol::{BlockInfo, Channel};
 
-/// The [ChannelAssembler] stage is responsible for assembling the [Frame]s from the [FrameQueue]
-/// stage into a raw compressed [Channel].
+/// The [`ChannelAssembler`] stage is responsible for assembling the [`Frame`]s from the
+/// [`FrameQueue`] stage into a raw compressed [`Channel`].
 ///
-/// [Frame]: kona_protocol::Frame
-/// [FrameQueue]: crate::stages::FrameQueue
-/// [Channel]: kona_protocol::Channel
+/// [`Frame`]: kona_protocol::Frame
+/// [`FrameQueue`]: crate::stages::FrameQueue
+/// [`Channel`]: kona_protocol::Channel
 #[derive(Debug)]
 pub struct ChannelAssembler<P>
 where
     P: NextFrameProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
     /// The rollup configuration.
-    pub(crate) cfg: Arc<RollupConfig>,
+    pub cfg: Arc<RollupConfig>,
     /// The previous stage of the derivation pipeline.
-    pub(crate) prev: P,
-    /// The current [Channel] being assembled.
-    pub(crate) channel: Option<Channel>,
+    pub prev: P,
+    /// The current [`Channel`] being assembled.
+    pub channel: Option<Channel>,
 }
 
 impl<P> ChannelAssembler<P>
 where
     P: NextFrameProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
-    /// Creates a new [ChannelAssembler] stage with the given configuration and previous stage.
+    /// Creates a new [`ChannelAssembler`] stage with the given configuration and previous stage.
     pub const fn new(cfg: Arc<RollupConfig>, prev: P) -> Self {
         Self { cfg, prev, channel: None }
     }
@@ -92,7 +92,15 @@ where
             self.channel = Some(Channel::new(next_frame.id, origin));
         }
 
+        let _count = if self.channel.is_some() { 1 } else { 0 };
+        kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_CHANNEL_BUFFER, _count);
+
         if let Some(channel) = self.channel.as_mut() {
+            // Track the number of blocks until the channel times out.
+            let timeout = channel.open_block_number() + self.cfg.channel_timeout(origin.timestamp);
+            let _margin = timeout.saturating_sub(origin.number) as f64;
+            kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_CHANNEL_TIMEOUT, _margin);
+
             // Add the frame to the channel. If this fails, return NotEnoughData and discard the
             // frame.
             debug!(
@@ -141,6 +149,8 @@ where
             }
         }
 
+        kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_CHANNEL_MEM, 0);
+
         Err(PipelineError::NotEnoughData.temp())
     }
 }
@@ -180,8 +190,7 @@ where
 mod test {
     use super::ChannelAssembler;
     use crate::{
-        prelude::PipelineError,
-        stages::ChannelReaderProvider,
+        ChannelReaderProvider, PipelineError,
         test_utils::{CollectingLayer, TestNextFrameProvider, TraceStorage},
     };
     use alloc::{sync::Arc, vec};

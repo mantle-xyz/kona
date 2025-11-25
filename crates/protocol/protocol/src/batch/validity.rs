@@ -1,4 +1,4 @@
-//! Contains the [BatchValidity] and its encodings.
+//! Contains the [`BatchValidity`] and its encodings.
 
 /// Batch Validity
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -15,6 +15,18 @@ pub enum BatchValidity {
     /// Introduced in Holocene, a special variant of the `Drop` variant that signals not to flush
     /// the active batch and channel, in the case of processing an old batch
     Past,
+}
+
+impl core::fmt::Display for BatchValidity {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Drop => write!(f, "Drop"),
+            Self::Accept => write!(f, "Accept"),
+            Self::Undecided => write!(f, "Undecided"),
+            Self::Future => write!(f, "Future"),
+            Self::Past => write!(f, "Past"),
+        }
+    }
 }
 
 impl BatchValidity {

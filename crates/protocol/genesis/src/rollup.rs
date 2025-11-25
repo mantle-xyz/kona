@@ -48,6 +48,11 @@ pub struct RollupConfig {
     /// Mantle only
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub mantle_skadi_time: Option<u64>,
+    /// MantleLimbTime sets the activation time of the limb network-upgrade:
+    /// Mantle only
+    /// Osaka hardfork
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub mantle_limb_time: Option<u64>,
     /// `batch_inbox_address` is the L1 address that batches are sent to.
     pub batch_inbox_address: Address,
     /// `deposit_contract_address` is the L1 address that deposits are sent to.
@@ -75,6 +80,7 @@ impl<'a> arbitrary::Arbitrary<'a> for RollupConfig {
             regolith_time: u.arbitrary()?,
             base_fee_time: u.arbitrary()?,
             mantle_skadi_time: u.arbitrary()?,
+            mantle_limb_time: u.arbitrary()?,
             batch_inbox_address: Address::arbitrary(u)?,
             deposit_contract_address: Address::arbitrary(u)?,
             l1_system_config_address: Address::arbitrary(u)?,
@@ -98,6 +104,7 @@ impl Default for RollupConfig {
             regolith_time: None,
             base_fee_time: None,
             mantle_skadi_time: None,
+            mantle_limb_time: None,
             batch_inbox_address: Address::ZERO,
             deposit_contract_address: Address::ZERO,
             l1_system_config_address: Address::ZERO,
@@ -118,7 +125,9 @@ impl RollupConfig {
     /// The active [`op_revm::OpSpecId`] for the executor.
     pub fn spec_id(&self, timestamp: u64) -> op_revm::OpSpecId {
         // Mantle skadi is equivalent to isthmus hardfork.
-        if self.is_mantle_skadi_active(timestamp) {
+        if self.is_mantle_limb_active(timestamp) {
+            op_revm::OpSpecId::OSAKA
+        } else if self.is_mantle_skadi_active(timestamp) {
             op_revm::OpSpecId::ISTHMUS
         } else if self.is_regolith_active(timestamp) {
             op_revm::OpSpecId::REGOLITH
@@ -129,6 +138,11 @@ impl RollupConfig {
 }
 
 impl RollupConfig {
+    /// Returns true if Mantle Limb is active at the given timestamp.
+    pub fn is_mantle_limb_active(&self, timestamp: u64) -> bool {
+        self.mantle_limb_time.is_some_and(|t| timestamp >= t)
+    }
+
     /// Returns true if Mantle Skadi is active at the given timestamp.
     pub fn is_mantle_skadi_active(&self, timestamp: u64) -> bool {
         self.mantle_skadi_time.is_some_and(|t| timestamp >= t)
@@ -141,8 +155,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Regolith block.
     pub fn is_first_regolith_block(&self, timestamp: u64) -> bool {
-        self.is_regolith_active(timestamp)
-            && !self.is_regolith_active(timestamp.saturating_sub(self.block_time))
+        self.is_regolith_active(timestamp) &&
+            !self.is_regolith_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Canyon is active at the given timestamp.
@@ -152,8 +166,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Canyon block.
     pub fn is_first_canyon_block(&self, timestamp: u64) -> bool {
-        self.is_canyon_active(timestamp)
-            && !self.is_canyon_active(timestamp.saturating_sub(self.block_time))
+        self.is_canyon_active(timestamp) &&
+            !self.is_canyon_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Delta is active at the given timestamp.
@@ -163,8 +177,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Delta block.
     pub fn is_first_delta_block(&self, timestamp: u64) -> bool {
-        self.is_delta_active(timestamp)
-            && !self.is_delta_active(timestamp.saturating_sub(self.block_time))
+        self.is_delta_active(timestamp) &&
+            !self.is_delta_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Ecotone is active at the given timestamp.
@@ -174,8 +188,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Ecotone block.
     pub fn is_first_ecotone_block(&self, timestamp: u64) -> bool {
-        self.is_ecotone_active(timestamp)
-            && !self.is_ecotone_active(timestamp.saturating_sub(self.block_time))
+        self.is_ecotone_active(timestamp) &&
+            !self.is_ecotone_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Fjord is active at the given timestamp.
@@ -185,8 +199,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Fjord block.
     pub fn is_first_fjord_block(&self, timestamp: u64) -> bool {
-        self.is_fjord_active(timestamp)
-            && !self.is_fjord_active(timestamp.saturating_sub(self.block_time))
+        self.is_fjord_active(timestamp) &&
+            !self.is_fjord_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Granite is active at the given timestamp.
@@ -196,8 +210,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Granite block.
     pub fn is_first_granite_block(&self, timestamp: u64) -> bool {
-        self.is_granite_active(timestamp)
-            && !self.is_granite_active(timestamp.saturating_sub(self.block_time))
+        self.is_granite_active(timestamp) &&
+            !self.is_granite_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Holocene is active at the given timestamp.
@@ -207,8 +221,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Holocene block.
     pub fn is_first_holocene_block(&self, timestamp: u64) -> bool {
-        self.is_holocene_active(timestamp)
-            && !self.is_holocene_active(timestamp.saturating_sub(self.block_time))
+        self.is_holocene_active(timestamp) &&
+            !self.is_holocene_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if the pectra blob schedule is active at the given timestamp.
@@ -218,8 +232,8 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first pectra blob schedule block.
     pub fn is_first_pectra_blob_schedule_block(&self, timestamp: u64) -> bool {
-        self.is_pectra_blob_schedule_active(timestamp)
-            && !self.is_pectra_blob_schedule_active(timestamp.saturating_sub(self.block_time))
+        self.is_pectra_blob_schedule_active(timestamp) &&
+            !self.is_pectra_blob_schedule_active(timestamp.saturating_sub(self.block_time))
     }
 
     /// Returns true if Isthmus is active at the given timestamp.
@@ -229,8 +243,18 @@ impl RollupConfig {
 
     /// Returns true if the timestamp marks the first Isthmus block.
     pub fn is_first_isthmus_block(&self, timestamp: u64) -> bool {
-        self.is_isthmus_active(timestamp)
-            && !self.is_isthmus_active(timestamp.saturating_sub(self.block_time))
+        self.is_isthmus_active(timestamp) &&
+            !self.is_isthmus_active(timestamp.saturating_sub(self.block_time))
+    }
+
+    /// Returns true if Jovian is active at the given timestamp.
+    pub const fn is_jovian_active(&self, _timestamp: u64) -> bool {
+        false
+    }
+
+    /// Returns true if the timestamp marks the first Jovian block.
+    pub const fn is_first_jovian_block(&self, _timestamp: u64) -> bool {
+        false
     }
 
     /// Returns true if Interop is active at the given timestamp.
@@ -239,9 +263,8 @@ impl RollupConfig {
     }
 
     /// Returns true if the timestamp marks the first Interop block.
-    pub fn is_first_interop_block(&self, timestamp: u64) -> bool {
-        self.is_interop_active(timestamp)
-            && !self.is_interop_active(timestamp.saturating_sub(self.block_time))
+    pub const fn is_first_interop_block(&self, _timestamp: u64) -> bool {
+        false
     }
 
     /// Returns the max sequencer drift for the given timestamp.
@@ -342,8 +365,7 @@ impl OpHardforks for RollupConfig {
             OpHardfork::Isthmus => {
                 self.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
             }
-            // Interop is not activated by mantle_skadi_time
-            OpHardfork::Interop => ForkCondition::Never,
+            _ => ForkCondition::Never,
         }
     }
 }
@@ -390,6 +412,7 @@ mod test {
         "regolith_time": 0,
         "base_fee_time": 1704891600,
         "mantle_skadi_time": 1752649200,
+        "mantle_limb_time": 1752649200,
         "batch_inbox_address": "0xffeeddccbbaa0000000000000000000000000000",
         "deposit_contract_address": "0xb3db4bd5bc225930ed674494f9a4f6a11b8efbc8",
         "l1_system_config_address": "0x04b34526c91424e955d13c7226bc4385e57e6706",
@@ -403,6 +426,7 @@ mod test {
         assert_eq!(cfg.l1_chain_id, 11155111);
         assert_eq!(cfg.l2_chain_id, 5003);
         assert_eq!(cfg.mantle_skadi_time, Some(1752649200));
+        assert_eq!(cfg.mantle_limb_time, Some(1752649200));
         assert_eq!(cfg.batch_inbox_address, address!("0xffeeddccbbaa0000000000000000000000000000"));
         assert_eq!(
             cfg.deposit_contract_address,

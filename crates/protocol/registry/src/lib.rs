@@ -9,7 +9,8 @@
 
 extern crate alloc;
 
-pub use alloy_primitives::map::{DefaultHashBuilder, HashMap};
+pub use alloy_primitives::map::HashMap;
+use kona_genesis::L1ChainConfig;
 pub use kona_genesis::{ChainConfig, RollupConfig};
 
 pub mod chain_list;
@@ -17,6 +18,10 @@ pub use chain_list::{Chain, ChainList};
 
 pub mod superchain;
 pub use superchain::Registry;
+
+/// L1 chain configurations.
+pub mod l1;
+pub use l1::L1Config;
 
 #[cfg(test)]
 pub mod test_utils;
@@ -29,20 +34,24 @@ lazy_static::lazy_static! {
     pub static ref CHAINS: ChainList = _INIT.chain_list.clone();
 
     /// OP Chain configurations exported from the registry
-    pub static ref OPCHAINS: HashMap<u64, ChainConfig, DefaultHashBuilder> = _INIT.op_chains.clone();
+    pub static ref OPCHAINS: HashMap<u64, ChainConfig> = _INIT.op_chains.clone();
 
     /// Rollup configurations exported from the registry
-    pub static ref ROLLUP_CONFIGS: HashMap<u64, RollupConfig, DefaultHashBuilder> = _INIT.rollup_configs.clone();
+    pub static ref ROLLUP_CONFIGS: HashMap<u64, RollupConfig> = _INIT.rollup_configs.clone();
+
+    /// L1 chain configurations exported from the registry
+    /// Note: the l1 chain configurations are not exported from the superchain registry but rather from a genesis dump file.
+    pub static ref L1_CONFIGS: HashMap<u64, L1ChainConfig> = _INIT.l1_configs.clone();
 }
 
 /// Returns a [RollupConfig] by its identifier.
-pub fn rollup_config_by_ident(ident: &str) -> Option<&RollupConfig> {
+pub fn scr_rollup_config_by_ident(ident: &str) -> Option<&RollupConfig> {
     let chain_id = CHAINS.get_chain_by_ident(ident)?.chain_id;
     ROLLUP_CONFIGS.get(&chain_id)
 }
 
 /// Returns a [RollupConfig] by its identifier.
-pub fn rollup_config_by_alloy_ident(chain: &alloy_chains::Chain) -> Option<&RollupConfig> {
+pub fn scr_rollup_config_by_alloy_ident(chain: &alloy_chains::Chain) -> Option<&RollupConfig> {
     ROLLUP_CONFIGS.get(&chain.id())
 }
 
@@ -50,6 +59,14 @@ pub fn rollup_config_by_alloy_ident(chain: &alloy_chains::Chain) -> Option<&Roll
 mod tests {
     use super::*;
     use alloy_chains::Chain as AlloyChain;
+    use alloy_hardforks::{
+        holesky::{HOLESKY_BPO1_TIMESTAMP, HOLESKY_BPO2_TIMESTAMP},
+        sepolia::{SEPOLIA_BPO1_TIMESTAMP, SEPOLIA_BPO2_TIMESTAMP},
+    };
+    use alloy_op_hardforks::{
+        BASE_MAINNET_JOVIAN_TIMESTAMP, BASE_SEPOLIA_JOVIAN_TIMESTAMP, OP_MAINNET_JOVIAN_TIMESTAMP,
+        OP_SEPOLIA_JOVIAN_TIMESTAMP,
+    };
 
     #[test]
     fn test_hardcoded_rollup_configs() {
@@ -83,11 +100,49 @@ mod tests {
     fn test_rollup_config_by_ident() {
         const ALLOY_BASE: AlloyChain = AlloyChain::base_mainnet();
 
-        let rollup_config_by_ident = rollup_config_by_ident("mainnet/base").unwrap();
-        let rollup_config_by_alloy_ident = rollup_config_by_alloy_ident(&ALLOY_BASE).unwrap();
+        let rollup_config_by_ident = scr_rollup_config_by_ident("mainnet/base").unwrap();
+        let rollup_config_by_alloy_ident = scr_rollup_config_by_alloy_ident(&ALLOY_BASE).unwrap();
         let rollup_config_by_id = ROLLUP_CONFIGS.get(&8453).unwrap();
 
         assert_eq!(rollup_config_by_ident, rollup_config_by_id);
         assert_eq!(rollup_config_by_alloy_ident, rollup_config_by_id);
+    }
+
+    #[test]
+    fn test_jovian_timestamps() {
+        let base_mainnet_config_by_ident = scr_rollup_config_by_ident("mainnet/base").unwrap();
+        assert_eq!(
+            base_mainnet_config_by_ident.hardforks.jovian_time,
+            Some(BASE_MAINNET_JOVIAN_TIMESTAMP)
+        );
+
+        let base_sepolia_config_by_ident = scr_rollup_config_by_ident("sepolia/base").unwrap();
+        assert_eq!(
+            base_sepolia_config_by_ident.hardforks.jovian_time,
+            Some(BASE_SEPOLIA_JOVIAN_TIMESTAMP)
+        );
+
+        let op_mainnet_config_by_ident = scr_rollup_config_by_ident("mainnet/op").unwrap();
+        assert_eq!(
+            op_mainnet_config_by_ident.hardforks.jovian_time,
+            Some(OP_MAINNET_JOVIAN_TIMESTAMP)
+        );
+
+        let op_sepolia_config_by_ident = scr_rollup_config_by_ident("sepolia/op").unwrap();
+        assert_eq!(
+            op_sepolia_config_by_ident.hardforks.jovian_time,
+            Some(OP_SEPOLIA_JOVIAN_TIMESTAMP)
+        );
+    }
+
+    #[test]
+    fn test_bpo_timestamps() {
+        let sepolia_config = L1_CONFIGS.get(&11155111).unwrap();
+        assert_eq!(sepolia_config.bpo1_time, Some(SEPOLIA_BPO1_TIMESTAMP));
+        assert_eq!(sepolia_config.bpo2_time, Some(SEPOLIA_BPO2_TIMESTAMP));
+
+        let holesky_config = L1_CONFIGS.get(&17000).unwrap();
+        assert_eq!(holesky_config.bpo1_time, Some(HOLESKY_BPO1_TIMESTAMP));
+        assert_eq!(holesky_config.bpo2_time, Some(HOLESKY_BPO2_TIMESTAMP));
     }
 }

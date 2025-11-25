@@ -1,10 +1,8 @@
 //! This module contains the `ChannelReader` struct.
 
 use crate::{
-    errors::PipelineError,
-    stages::BatchStreamProvider,
-    traits::{OriginAdvancer, OriginProvider, SignalReceiver},
-    types::{PipelineResult, Signal},
+    BatchStreamProvider, OriginAdvancer, OriginProvider, PipelineError, PipelineResult, Signal,
+    SignalReceiver,
 };
 use alloc::{boxed::Box, sync::Arc};
 use alloy_primitives::Bytes;
@@ -16,7 +14,7 @@ use kona_genesis::{
 use kona_protocol::{Batch, BatchReader, BlockInfo};
 use tracing::{debug, warn};
 
-/// The [ChannelReader] provider trait.
+/// The [`ChannelReader`] provider trait.
 #[async_trait]
 pub trait ChannelReaderProvider {
     /// Pulls the next piece of data from the channel bank. Note that it attempts to pull data out
@@ -26,9 +24,9 @@ pub trait ChannelReaderProvider {
     async fn next_data(&mut self) -> PipelineResult<Option<Bytes>>;
 }
 
-/// [ChannelReader] is a stateful stage that reads [Batch]es from `Channel`s.
+/// [`ChannelReader`] is a stateful stage that reads [`Batch`]es from `Channel`s.
 ///
-/// The [ChannelReader] pulls `Channel`s from the channel bank as raw data
+/// The [`ChannelReader`] pulls `Channel`s from the channel bank as raw data
 /// and pipes it into a `BatchReader`. Since the raw data is compressed,
 /// the `BatchReader` first decompresses the data using the first bytes as
 /// a compression algorithm identifier.
@@ -41,18 +39,18 @@ where
     P: ChannelReaderProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
     /// The previous stage of the derivation pipeline.
-    prev: P,
+    pub prev: P,
     /// The batch reader.
-    next_batch: Option<BatchReader>,
-    /// The rollup coonfiguration.
-    cfg: Arc<RollupConfig>,
+    pub next_batch: Option<BatchReader>,
+    /// The rollup configuration.
+    pub cfg: Arc<RollupConfig>,
 }
 
 impl<P> ChannelReader<P>
 where
     P: ChannelReaderProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
-    /// Create a new [ChannelReader] stage.
+    /// Create a new [`ChannelReader`] stage.
     pub const fn new(prev: P, cfg: Arc<RollupConfig>) -> Self {
         Self { prev, next_batch: None, cfg }
     }
@@ -67,6 +65,7 @@ where
 
             self.next_batch =
                 Some(BatchReader::new(&channel[..], max_rlp_bytes_per_channel as usize));
+            kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_BATCH_READER_SET, 1);
         }
         Ok(())
     }
@@ -75,6 +74,7 @@ where
     /// decoding / decompression state to a fresh start.
     pub fn next_channel(&mut self) {
         self.next_batch = None;
+        kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_BATCH_READER_SET, 0);
     }
 }
 
@@ -110,14 +110,46 @@ where
             self.next_channel();
             return Err(e);
         }
-        match self
-            .next_batch
-            .as_mut()
-            .expect("Cannot be None")
-            .next_batch(self.cfg.as_ref())
-            .ok_or(PipelineError::NotEnoughData.temp())
-        {
-            Ok(batch) => Ok(batch),
+
+        // SAFETY: The batch reader must be set above.
+        let next_batch = self.next_batch.as_mut().expect("Batch reader must be set");
+        match next_batch.decompress() {
+            Ok(()) => {
+                // Record the decompressed size and type.
+                let _size = next_batch.decompressed.len() as f64;
+                let _ty = if next_batch.brotli_used {
+                    BatchReader::CHANNEL_VERSION_BROTLI
+                } else {
+                    BatchReader::ZLIB_DEFLATE_COMPRESSION_METHOD
+                };
+                kona_macros::set!(
+                    gauge,
+                    crate::metrics::Metrics::PIPELINE_LATEST_DECOMPRESSED_BATCH_SIZE,
+                    _size
+                );
+                kona_macros::set!(
+                    gauge,
+                    crate::metrics::Metrics::PIPELINE_LATEST_DECOMPRESSED_BATCH_TYPE,
+                    _ty as f64
+                );
+            }
+            Err(err) => {
+                debug!(target: "channel_reader", ?err, "Failed to decompress batch");
+                self.next_channel();
+                return Err(PipelineError::NotEnoughData.temp());
+            }
+        }
+
+        // Read the next batch from the reader's decompressed data
+        match next_batch.next_batch(self.cfg.as_ref()).ok_or(PipelineError::NotEnoughData.temp()) {
+            Ok(batch) => {
+                kona_macros::inc!(
+                    gauge,
+                    crate::metrics::Metrics::PIPELINE_READ_BATCHES,
+                    "type" => batch.to_string(),
+                );
+                Ok(batch)
+            }
             Err(e) => {
                 self.next_channel();
                 Err(e)
@@ -146,6 +178,7 @@ where
                 // Drop the current in-progress channel.
                 warn!(target: "channel_reader", "Flushed channel");
                 self.next_batch = None;
+                kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_BATCH_READER_SET, 0);
             }
             s => {
                 self.prev.signal(s).await?;

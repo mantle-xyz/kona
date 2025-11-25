@@ -14,7 +14,7 @@ use kona_protocol::{
     Batch, BatchValidity, BatchWithInclusionBlock, BlockInfo, L2BlockInfo, SingleBatch,
 };
 
-/// [BatchQueue] is responsible for ordering unordered batches
+/// [`BatchQueue`] is responsible for ordering unordered batches
 /// and generating empty batches when the sequence window has passed.
 ///
 /// It receives batches that are tagged with the L1 Inclusion block of the batch.
@@ -35,26 +35,26 @@ where
     BF: L2ChainProvider + Debug,
 {
     /// The rollup config.
-    pub(crate) cfg: Arc<RollupConfig>,
+    pub cfg: Arc<RollupConfig>,
     /// The previous stage of the derivation pipeline.
-    pub(crate) prev: P,
+    pub prev: P,
     /// The l1 block ref
-    pub(crate) origin: Option<BlockInfo>,
+    pub origin: Option<BlockInfo>,
     /// A consecutive, time-centric window of L1 Blocks.
     /// Every L1 origin of unsafe L2 Blocks must be included in this list.
     /// If every L2 Block corresponding to a single L1 Block becomes safe,
     /// the block is popped from this list.
     /// If new L2 Block's L1 origin is not included in this list, fetch and
     /// push it to the list.
-    pub(crate) l1_blocks: Vec<BlockInfo>,
+    pub l1_blocks: Vec<BlockInfo>,
     /// A set of batches in order from when we've seen them.
-    pub(crate) batches: Vec<BatchWithInclusionBlock>,
-    /// A set of cached [SingleBatch]es derived from [SpanBatch]es.
+    pub batches: Vec<BatchWithInclusionBlock>,
+    /// A set of cached [`SingleBatch`]es derived from [`SpanBatch`]es.
     ///
-    /// [SpanBatch]: kona_protocol::SpanBatch
-    pub(crate) next_spans: Vec<SingleBatch>,
+    /// [`SpanBatch`]: kona_protocol::SpanBatch
+    pub next_spans: Vec<SingleBatch>,
     /// Used to validate the batches.
-    pub(crate) fetcher: BF,
+    pub fetcher: BF,
 }
 
 impl<P, BF> BatchQueue<P, BF>
@@ -62,7 +62,7 @@ where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
     BF: L2ChainProvider + Debug,
 {
-    /// Creates a new [BatchQueue] stage.
+    /// Creates a new [`BatchQueue`] stage.
     #[allow(clippy::missing_const_for_fn)]
     pub fn new(cfg: Arc<RollupConfig>, prev: P, fetcher: BF) -> Self {
         Self {
@@ -451,6 +451,9 @@ where
                 self.prev.signal(s).await?;
                 self.batches.clear();
                 self.next_spans.clear();
+            }
+            s @ Signal::ProvideBlock(_) => {
+                self.prev.signal(s).await?;
             }
         }
         Ok(())
@@ -998,13 +1001,13 @@ mod tests {
         let tx = TxDeposit {
             source_hash: B256::left_padding_from(&[0xde, 0xad]),
             from: Address::left_padding_from(&[0xbe, 0xef]),
-            mint: Some(1),
+            mint: 1,
             gas_limit: 2,
             to: TxKind::Call(Address::left_padding_from(&[3])),
             value: U256::from(4_u64),
             input: deposit_tx_calldata,
             is_system_transaction: false,
-            eth_value: None,
+            eth_value: 0,
             eth_tx_value: None,
         };
         let mut buf = BytesMut::new();
@@ -1085,7 +1088,7 @@ mod tests {
         let res = bq.next_batch(parent).await.unwrap_err();
         let logs = trace_store.get_by_level(Level::INFO);
         assert_eq!(logs.len(), 2);
-        let str = alloc::format!("Advancing batch queue origin: {:?}", origin);
+        let str = alloc::format!("Advancing batch queue origin: {origin:?}");
         assert!(logs[0].contains(&str));
         assert!(logs[1].contains("Deriving next batch for epoch: 16988980031808077784"));
         let warns = trace_store.get_by_level(Level::WARN);

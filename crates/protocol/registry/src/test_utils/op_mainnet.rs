@@ -1,6 +1,12 @@
 //! OP Mainnet Rollup Config.
 
+use alloy_chains::Chain;
 use alloy_eips::BlockNumHash;
+use alloy_op_hardforks::{
+    OP_MAINNET_CANYON_TIMESTAMP, OP_MAINNET_ECOTONE_TIMESTAMP, OP_MAINNET_FJORD_TIMESTAMP,
+    OP_MAINNET_GRANITE_TIMESTAMP, OP_MAINNET_HOLOCENE_TIMESTAMP, OP_MAINNET_ISTHMUS_TIMESTAMP,
+    OP_MAINNET_JOVIAN_TIMESTAMP,
+};
 use alloy_primitives::{address, b256, uint};
 use kona_genesis::{
     ChainGenesis, DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW, HardForkConfig,
@@ -30,6 +36,8 @@ pub const OP_MAINNET_CONFIG: RollupConfig = RollupConfig {
             eip1559_elasticity: None,
             operator_fee_scalar: None,
             operator_fee_constant: None,
+            min_base_fee: None,
+            da_footprint_gas_scalar: None,
         }),
     },
     block_time: 2_u64,
@@ -38,19 +46,20 @@ pub const OP_MAINNET_CONFIG: RollupConfig = RollupConfig {
     channel_timeout: 300_u64,
     granite_channel_timeout: 50,
     l1_chain_id: 1_u64,
-    l2_chain_id: 10_u64,
+    l2_chain_id: Chain::optimism_mainnet(),
     chain_op_config: OP_MAINNET_BASE_FEE_CONFIG,
     alt_da_config: None,
     hardforks: HardForkConfig {
         regolith_time: None,
-        canyon_time: Some(1_704_992_401_u64),
+        canyon_time: Some(OP_MAINNET_CANYON_TIMESTAMP),
         delta_time: Some(1_708_560_000_u64),
-        ecotone_time: Some(1_710_374_401_u64),
-        fjord_time: Some(1_720_627_201_u64),
-        granite_time: Some(1_726_070_401_u64),
-        holocene_time: Some(1736445601),
+        ecotone_time: Some(OP_MAINNET_ECOTONE_TIMESTAMP),
+        fjord_time: Some(OP_MAINNET_FJORD_TIMESTAMP),
+        granite_time: Some(OP_MAINNET_GRANITE_TIMESTAMP),
+        holocene_time: Some(OP_MAINNET_HOLOCENE_TIMESTAMP),
         pectra_blob_schedule_time: None,
-        isthmus_time: Some(1746806401),
+        isthmus_time: Some(OP_MAINNET_ISTHMUS_TIMESTAMP),
+        jovian_time: Some(OP_MAINNET_JOVIAN_TIMESTAMP),
         interop_time: None,
     },
     batch_inbox_address: address!("ff00000000000000000000000000000000000010"),

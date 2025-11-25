@@ -1,12 +1,12 @@
 //! Contains all hardforks represented in the [crate::Hardfork] type.
 
-use crate::{Ecotone, Fjord, Interop, Isthmus};
+use crate::{Ecotone, Fjord, Interop, Isthmus, Jovian};
 
 /// Optimism Hardforks
 ///
 /// This type is used to encapsulate hardfork transactions.
 /// It exposes methods that return hardfork upgrade transactions
-/// as [alloy_primitives::Bytes].
+/// as [`alloy_primitives::Bytes`].
 ///
 /// # Example
 ///
@@ -51,6 +51,9 @@ impl Hardforks {
     /// The Isthmus hardfork upgrade transactions.
     pub const ISTHMUS: Isthmus = Isthmus;
 
+    /// The Jovian hardfork upgrade transactions.
+    pub const JOVIAN: Jovian = Jovian;
+
     /// The Interop hardfork upgrade transactions.
     pub const INTEROP: Interop = Interop;
 }
@@ -71,6 +74,9 @@ mod tests {
 
         let isthmus_upgrade_tx = Hardforks::ISTHMUS.txs();
         assert_eq!(isthmus_upgrade_tx.collect::<Vec<_>>().len(), 8);
+
+        let jovian_upgrade_tx = Hardforks::JOVIAN.txs();
+        assert_eq!(jovian_upgrade_tx.collect::<Vec<_>>().len(), 5);
 
         let interop_upgrade_tx = Hardforks::INTEROP.txs();
         assert_eq!(interop_upgrade_tx.collect::<Vec<_>>().len(), 4);

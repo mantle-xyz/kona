@@ -1,11 +1,9 @@
-//! This module contains the [BatchProvider] stage.
+//! This module contains the [`BatchProvider`] stage.
 
 use super::NextBatchProvider;
 use crate::{
-    errors::PipelineError,
-    stages::{BatchQueue, BatchValidator},
-    traits::{AttributesProvider, L2ChainProvider, OriginAdvancer, OriginProvider, SignalReceiver},
-    types::{PipelineResult, Signal},
+    AttributesProvider, BatchQueue, BatchValidator, L2ChainProvider, OriginAdvancer,
+    OriginProvider, PipelineError, PipelineResult, Signal, SignalReceiver,
 };
 use alloc::{boxed::Box, sync::Arc};
 use async_trait::async_trait;
@@ -13,11 +11,11 @@ use core::fmt::Debug;
 use kona_genesis::RollupConfig;
 use kona_protocol::{BlockInfo, L2BlockInfo, SingleBatch};
 
-/// The [BatchProvider] stage is a mux between the [BatchQueue] and [BatchValidator] stages.
+/// The [`BatchProvider`] stage is a mux between the [`BatchQueue`] and [`BatchValidator`] stages.
 ///
 /// Rules:
-/// When Holocene is not active, the [BatchQueue] is used.
-/// When Holocene is active, the [BatchValidator] is used.
+/// When Holocene is not active, the [`BatchQueue`] is used.
+/// When Holocene is active, the [`BatchValidator`] is used.
 ///
 /// When transitioning between the two stages, the mux will reset the active stage, but
 /// retain `l1_blocks`.
@@ -28,24 +26,24 @@ where
     F: L2ChainProvider + Clone + Debug,
 {
     /// The rollup configuration.
-    cfg: Arc<RollupConfig>,
+    pub cfg: Arc<RollupConfig>,
     /// The L2 chain provider.
-    provider: F,
+    pub provider: F,
     /// The previous stage of the derivation pipeline.
     ///
-    /// If this is set to [None], the multiplexer has been activated and the active stage
+    /// If this is set to [`None`], the multiplexer has been activated and the active stage
     /// owns the previous stage.
     ///
-    /// Must be [None] if `batch_queue` or `batch_validator` is [Some].
-    prev: Option<P>,
+    /// Must be [`None`] if `batch_queue` or `batch_validator` is [`Some`].
+    pub prev: Option<P>,
     /// The batch queue stage of the provider.
     ///
-    /// Must be [None] if `prev` or `batch_validator` is [Some].
-    batch_queue: Option<BatchQueue<P, F>>,
+    /// Must be [`None`] if `prev` or `batch_validator` is [`Some`].
+    pub batch_queue: Option<BatchQueue<P, F>>,
     /// The batch validator stage of the provider.
     ///
-    /// Must be [None] if `prev` or `batch_queue` is [Some].
-    batch_validator: Option<BatchValidator<P>>,
+    /// Must be [`None`] if `prev` or `batch_queue` is [`Some`].
+    pub batch_validator: Option<BatchValidator<P>>,
 }
 
 impl<P, F> BatchProvider<P, F>
@@ -53,7 +51,7 @@ where
     P: NextBatchProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
     F: L2ChainProvider + Clone + Debug,
 {
-    /// Creates a new [BatchProvider] with the given configuration and previous stage.
+    /// Creates a new [`BatchProvider`] with the given configuration and previous stage.
     pub const fn new(cfg: Arc<RollupConfig>, prev: P, provider: F) -> Self {
         Self { cfg, provider, prev: Some(prev), batch_queue: None, batch_validator: None }
     }

@@ -1,19 +1,17 @@
 //! Mock types for the [FrameQueue] stage.
 
 use crate::{
-    errors::PipelineError,
-    stages::FrameQueueProvider,
-    traits::{OriginAdvancer, OriginProvider, SignalReceiver},
-    types::{PipelineResult, Signal},
+    FrameQueueProvider, OriginAdvancer, OriginProvider, PipelineError, PipelineResult, Signal,
+    SignalReceiver,
 };
 use alloc::{boxed::Box, vec::Vec};
 use alloy_primitives::Bytes;
 use async_trait::async_trait;
 use kona_protocol::BlockInfo;
 
-/// A mock [FrameQueueProvider] for testing the [FrameQueue] stage.
+/// A mock [`FrameQueueProvider`] for testing the [`FrameQueue`] stage.
 ///
-/// [FrameQueue]: crate::stages::FrameQueue
+/// [`FrameQueue`]: crate::stages::FrameQueue
 #[derive(Debug, Default)]
 pub struct TestFrameQueueProvider {
     /// The data to return.
@@ -25,13 +23,13 @@ pub struct TestFrameQueueProvider {
 }
 
 impl TestFrameQueueProvider {
-    /// Creates a new [MockFrameQueueProvider] with the given data.
+    /// Creates a new [`MockFrameQueueProvider`] with the given data.
     pub const fn new(data: Vec<PipelineResult<Bytes>>) -> Self {
         Self { data, origin: None, reset: false }
     }
 
-    /// Sets the origin for the [MockFrameQueueProvider].
-    pub fn set_origin(&mut self, origin: BlockInfo) {
+    /// Sets the origin for the [`MockFrameQueueProvider`].
+    pub const fn set_origin(&mut self, origin: BlockInfo) {
         self.origin = Some(origin);
     }
 }

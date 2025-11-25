@@ -1,4 +1,4 @@
-//! Module containing the core [Batch] enum.
+//! Module containing the core [`Batch`] enum.
 
 use crate::{BatchDecodingError, BatchEncodingError, BatchType, SingleBatch, SpanBatch};
 use alloy_primitives::bytes;
@@ -13,6 +13,15 @@ pub enum Batch {
     Single(SingleBatch),
     /// Span Batches
     Span(SpanBatch),
+}
+
+impl core::fmt::Display for Batch {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Single(_) => write!(f, "single"),
+            Self::Span(_) => write!(f, "span"),
+        }
+    }
 }
 
 impl Batch {
@@ -32,20 +41,6 @@ impl Batch {
 
         r.advance(1);
 
-        // match batch_type {
-        //     BatchType::Single => {
-        //         let single_batch =
-        //             SingleBatch::decode(r).map_err(BatchDecodingError::AlloyRlpError)?;
-        //         Ok(Self::Single(single_batch))
-        //     }
-        //     BatchType::Span => {
-        //         let mut raw_span_batch = RawSpanBatch::decode(r)?;
-        //         let span_batch = raw_span_batch
-        //             .derive(cfg.block_time, cfg.genesis.l2_time, cfg.l2_chain_id)
-        //             .map_err(BatchDecodingError::SpanBatchError)?;
-        //         Ok(Self::Span(span_batch))
-        //     }
-        // }
         let single_batch = SingleBatch::decode(r).map_err(BatchDecodingError::AlloyRlpError)?;
         Ok(Self::Single(single_batch))
     }

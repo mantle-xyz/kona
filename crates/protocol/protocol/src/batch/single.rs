@@ -1,4 +1,4 @@
-//! This module contains the [SingleBatch] type.
+//! This module contains the [`SingleBatch`] type.
 
 use crate::{BatchValidity, BlockInfo, L2BlockInfo};
 use alloc::vec::Vec;
@@ -31,7 +31,7 @@ impl SingleBatch {
         self.transactions.iter().any(|tx| tx.0.is_empty() || tx.0[0] == OpTxType::Deposit as u8)
     }
 
-    /// Returns the [BlockNumHash] of the batch.
+    /// Returns the [`BlockNumHash`] of the batch.
     pub const fn epoch(&self) -> BlockNumHash {
         BlockNumHash { number: self.epoch_num, hash: self.epoch_hash }
     }
@@ -156,12 +156,14 @@ impl SingleBatch {
             }
         }
 
-        // If this is the first block in the interop hardfork, and the batch contains any
+        // If this is the first block in the jovian or interop hardfork, and the batch contains any
         // transactions, it must be dropped.
-        if cfg.is_first_interop_block(self.timestamp) && !self.transactions.is_empty() {
+        if (cfg.is_first_jovian_block(self.timestamp) || cfg.is_first_interop_block(self.timestamp)) &&
+            !self.transactions.is_empty()
+        {
             warn!(
                 target: "single_batch",
-                "Sequencer included user transactions in interop transition block. Dropping batch."
+                "Sequencer included user transactions in jovian or interop transition block. Dropping batch."
             );
             return BatchValidity::Drop;
         }
@@ -563,13 +565,13 @@ mod tests {
             source_hash: Default::default(),
             from: Address::left_padding_from(&[7]),
             to: TxKind::Create,
-            mint: None,
+            mint: 0,
             value: U256::from(7_u64),
             gas_limit: 5,
             is_system_transaction: false,
             input: Default::default(),
             eth_tx_value: None,
-            eth_value: None,
+            eth_value: 0,
         };
         let envelope = OpTxEnvelope::Deposit(Sealed::new(tx));
         let encoded = envelope.encoded_2718();
@@ -634,8 +636,11 @@ mod tests {
             BatchValidity::Drop
         );
 
-        assert!(trace_store.get_by_level(Level::WARN).iter().any(|s| {
-            s.contains("Sequencer included user transactions in interop transition block.")
-        }))
+        assert!(
+            trace_store
+                .get_by_level(Level::WARN)
+                .iter()
+                .any(|s| { s.contains("Sequencer included user transactions") })
+        )
     }
 }

@@ -5,24 +5,21 @@ use alloc::{boxed::Box, sync::Arc};
 use async_trait::async_trait;
 use core::fmt::Debug;
 use kona_derive::{
-    errors::PipelineErrorKind,
-    pipeline::{DerivationPipeline, PipelineBuilder},
-    prelude::{AttributesQueueStage, StatefulAttributesBuilder},
-    traits::{
-        ChainProvider, DataAvailabilityProvider, L2ChainProvider, OriginProvider, Pipeline,
-        SignalReceiver,
-    },
-    types::{PipelineResult, ResetSignal, Signal, StepResult},
+    ChainProvider, DataAvailabilityProvider, DerivationPipeline, L2ChainProvider, OriginProvider,
+    Pipeline, PipelineBuilder, PipelineErrorKind, PipelineResult, PolledAttributesQueueStage,
+    ResetSignal, Signal, SignalReceiver, StatefulAttributesBuilder, StepResult,
 };
 use kona_driver::{DriverPipeline, PipelineCursor};
-use kona_genesis::{RollupConfig, SystemConfig};
+use kona_genesis::{L1ChainConfig, RollupConfig, SystemConfig};
 use kona_preimage::CommsClient;
 use kona_protocol::{BlockInfo, L2BlockInfo, OpAttributesWithParent};
 use spin::RwLock;
 
 /// An oracle-backed derivation pipeline.
-pub type ProviderDerivationPipeline<L1, L2, DA> =
-    DerivationPipeline<AttributesQueueStage<DA, L1, L2, ProviderAttributesBuilder<L1, L2>>, L2>;
+pub type ProviderDerivationPipeline<L1, L2, DA> = DerivationPipeline<
+    PolledAttributesQueueStage<DA, L1, L2, ProviderAttributesBuilder<L1, L2>>,
+    L2,
+>;
 
 /// An oracle-backed payload attributes builder for the `AttributesQueue` stage of the derivation
 /// pipeline.
@@ -45,7 +42,7 @@ where
 
 impl<O, L1, L2, DA> OraclePipeline<O, L1, L2, DA>
 where
-    O: CommsClient + FlushableCache + FlushableCache + Send + Sync + Debug,
+    O: CommsClient + FlushableCache + Send + Sync + Debug,
     L1: ChainProvider + Send + Sync + Debug + Clone,
     L2: L2ChainProvider + Send + Sync + Debug + Clone,
     DA: DataAvailabilityProvider + Send + Sync + Debug + Clone,
@@ -53,6 +50,7 @@ where
     /// Constructs a new oracle-backed derivation pipeline.
     pub async fn new(
         cfg: Arc<RollupConfig>,
+        _l1_cfg: Arc<L1ChainConfig>,
         sync_start: Arc<RwLock<PipelineCursor>>,
         caching_oracle: Arc<O>,
         da_provider: DA,
@@ -61,6 +59,7 @@ where
     ) -> PipelineResult<Self> {
         let attributes = StatefulAttributesBuilder::new(
             cfg.clone(),
+            Arc::new(Default::default()),
             l2_chain_provider.clone(),
             chain_provider.clone(),
         );
@@ -72,7 +71,7 @@ where
             .chain_provider(chain_provider)
             .builder(attributes)
             .origin(sync_start.read().origin())
-            .build();
+            .build_polled();
 
         // Reset the pipeline to populate the initial system configuration in L1 Traversal.
         let l2_safe_head = *sync_start.read().l2_safe_head();

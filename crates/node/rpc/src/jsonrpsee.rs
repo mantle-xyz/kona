@@ -1,23 +1,24 @@
 //! The Optimism RPC API using `jsonrpsee`
 
-use crate::{OutputResponse, ProtocolVersion, SafeHeadResponse, SuperchainSignal};
+use crate::{OutputResponse, SafeHeadResponse};
 use alloy_eips::BlockNumberOrTag;
 use alloy_primitives::B256;
 use core::net::IpAddr;
-use jsonrpsee::{core::RpcResult, proc_macros::rpc};
+use ipnet::IpNet;
+use jsonrpsee::{
+    core::{RpcResult, SubscriptionResult},
+    proc_macros::rpc,
+};
 use kona_genesis::RollupConfig;
-use kona_interop::{ExecutingDescriptor, SafetyLevel};
-use kona_p2p::{PeerCount, PeerDump, PeerInfo, PeerStats};
+use kona_gossip::{PeerCount, PeerDump, PeerInfo, PeerStats};
 use kona_protocol::SyncStatus;
+use op_alloy_rpc_types_engine::OpExecutionPayloadEnvelope;
 
 #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), allow(unused_imports))]
 use getrandom as _; // required for compiling wasm32-unknown-unknown
 
 // Re-export apis defined in upstream `op-alloy-rpc-jsonrpsee`
 pub use op_alloy_rpc_jsonrpsee::traits::{MinerApiExtServer, OpAdminApiServer};
-
-#[cfg(feature = "client")]
-pub use op_alloy_rpc_jsonrpsee::traits::{MinerApiExtClient, OpAdminApiClient};
 
 /// Optimism specified rpc interface.
 ///
@@ -63,9 +64,9 @@ pub trait OpP2PApi {
     #[method(name = "peerCount")]
     async fn opp2p_peer_count(&self) -> RpcResult<PeerCount>;
 
-    /// Returns information of peers
+    /// Returns information of peers. If `connected` is true, only returns connected peers.
     #[method(name = "peers")]
-    async fn opp2p_peers(&self) -> RpcResult<PeerDump>;
+    async fn opp2p_peers(&self, connected: bool) -> RpcResult<PeerDump>;
 
     /// Returns statistics of peers
     #[method(name = "peerStats")]
@@ -78,6 +79,10 @@ pub trait OpP2PApi {
     /// Blocks the given peer
     #[method(name = "blockPeer")]
     async fn opp2p_block_peer(&self, peer: String) -> RpcResult<()>;
+
+    /// Unblocks the given peer
+    #[method(name = "unblockPeer")]
+    async fn opp2p_unblock_peer(&self, peer: String) -> RpcResult<()>;
 
     /// Lists blocked peers
     #[method(name = "listBlockedPeers")]
@@ -95,20 +100,17 @@ pub trait OpP2PApi {
     #[method(name = "listBlockedAddrs")]
     async fn opp2p_list_blocked_addrs(&self) -> RpcResult<Vec<IpAddr>>;
 
-    // TODO: should be IPNet?
     /// Blocks the given subnet
     #[method(name = "blockSubnet")]
-    async fn opp2p_block_subnet(&self, subnet: String) -> RpcResult<()>;
+    async fn opp2p_block_subnet(&self, subnet: IpNet) -> RpcResult<()>;
 
-    // TODO: should be IPNet?
     /// Unblocks the given subnet
     #[method(name = "unblockSubnet")]
-    async fn opp2p_unblock_subnet(&self, subnet: String) -> RpcResult<()>;
+    async fn opp2p_unblock_subnet(&self, subnet: IpNet) -> RpcResult<()>;
 
-    // TODO: should be IPNet?
     /// Lists blocked subnets
     #[method(name = "listBlockedSubnets")]
-    async fn opp2p_list_blocked_subnets(&self) -> RpcResult<Vec<String>>;
+    async fn opp2p_list_blocked_subnets(&self) -> RpcResult<Vec<IpNet>>;
 
     /// Protects the given peer
     #[method(name = "protectPeer")]
@@ -127,50 +129,68 @@ pub trait OpP2PApi {
     async fn opp2p_disconnect_peer(&self, peer: String) -> RpcResult<()>;
 }
 
-/// Engine API extension for Optimism superchain signaling
-#[cfg_attr(not(feature = "client"), rpc(server, namespace = "engine"))]
-#[cfg_attr(feature = "client", rpc(server, client, namespace = "engine"))]
-pub trait EngineApiExt {
-    /// Signal superchain v1 message
-    ///
-    /// The execution engine SHOULD warn when the recommended version is newer than the current
-    /// version. The execution engine SHOULD take safety precautions if it does not meet
-    /// the required version.
-    ///
-    /// # Returns
-    /// The latest supported OP-Stack protocol version of the execution engine.
-    ///
-    /// See: <https://specs.optimism.io/protocol/exec-engine.html#engine_signalsuperchainv1>
-    #[method(name = "signalSuperchainV1")]
-    async fn signal_superchain_v1(&self, signal: SuperchainSignal) -> RpcResult<ProtocolVersion>;
+/// Websockets API for the node.
+#[cfg_attr(not(feature = "client"), rpc(server, namespace = "ws"))]
+#[cfg_attr(feature = "client", rpc(server, client, namespace = "ws"))]
+#[async_trait]
+pub trait Ws {
+    /// Subscribes to the stream of finalized head updates.
+    #[subscription(name = "subscribe_finalized_head", item = kona_protocol::L2BlockInfo)]
+    async fn ws_finalized_head_updates(&self) -> SubscriptionResult;
+
+    /// Subscribes to the stream of safe head updates.
+    #[subscription(name = "subscribe_safe_head", item = kona_protocol::L2BlockInfo)]
+    async fn ws_safe_head_updates(&self) -> SubscriptionResult;
+
+    /// Subscribes to the stream of unsafe head updates.
+    #[subscription(name = "subscribe_unsafe_head", item = kona_protocol::L2BlockInfo)]
+    async fn ws_unsafe_head_updates(&self) -> SubscriptionResult;
 }
 
-/// Supervisor API for interop.
-#[cfg_attr(not(feature = "client"), rpc(server, namespace = "supervisor"))]
-#[cfg_attr(feature = "client", rpc(server, client, namespace = "supervisor"))]
-pub trait SupervisorApi {
-    /// Checks if the given inbox entries meet the given minimum safety level.
-    #[method(name = "checkAccessList")]
-    async fn check_access_list(
-        &self,
-        inbox_entries: Vec<B256>,
-        min_safety: SafetyLevel,
-        executing_descriptor: ExecutingDescriptor,
-    ) -> RpcResult<()>;
+/// Development RPC API for engine state introspection.
+#[cfg_attr(not(feature = "client"), rpc(server, namespace = "dev"))]
+#[cfg_attr(feature = "client", rpc(server, client, namespace = "dev"))]
+#[async_trait]
+pub trait DevEngineApi {
+    /// Subscribe to engine queue length updates.
+    #[subscription(name = "subscribe_engine_queue_size", item = usize)]
+    async fn dev_subscribe_engine_queue_length(&self) -> SubscriptionResult;
+
+    /// Get the current number of tasks in the engine queue.
+    #[method(name = "taskQueueLength")]
+    async fn dev_task_queue_length(&self) -> RpcResult<usize>;
 }
 
-#[cfg(feature = "client")]
-impl<T> crate::CheckAccessList for T
-where
-    T: SupervisorApiClient + Send + Sync,
-{
-    async fn check_access_list(
-        &self,
-        inbox_entries: &[B256],
-        min_safety: SafetyLevel,
-        executing_descriptor: ExecutingDescriptor,
-    ) -> Result<(), crate::InteropTxValidatorError> {
-        Ok(T::check_access_list(self, inbox_entries.to_vec(), min_safety, executing_descriptor)
-            .await?)
-    }
+/// The admin namespace for the consensus node.
+#[cfg_attr(not(feature = "client"), rpc(server, namespace = "admin"))]
+#[cfg_attr(feature = "client", rpc(server, client, namespace = "admin"))]
+pub trait AdminApi {
+    /// Posts the unsafe payload.
+    #[method(name = "postUnsafePayload")]
+    async fn admin_post_unsafe_payload(&self, payload: OpExecutionPayloadEnvelope)
+    -> RpcResult<()>;
+
+    /// Checks if the sequencer is active.
+    #[method(name = "sequencerActive")]
+    async fn admin_sequencer_active(&self) -> RpcResult<bool>;
+
+    /// Starts the sequencer.
+    #[method(name = "startSequencer")]
+    async fn admin_start_sequencer(&self) -> RpcResult<()>;
+
+    /// Stops the sequencer.
+    #[method(name = "stopSequencer")]
+    async fn admin_stop_sequencer(&self) -> RpcResult<B256>;
+
+    /// Checks if the conductor is enabled.
+    #[method(name = "conductorEnabled")]
+    async fn admin_conductor_enabled(&self) -> RpcResult<bool>;
+
+    /// Sets the recover mode.
+    #[method(name = "setRecoverMode")]
+    async fn admin_set_recover_mode(&self, mode: bool) -> RpcResult<()>;
+
+    /// Overrides the leader in the conductor.
+    #[method(name = "overrideLeader")]
+    async fn admin_override_leader(&self) -> RpcResult<()>;
 }

@@ -3,19 +3,17 @@
 //! [ChannelReader]: crate::stages::ChannelReader
 
 use crate::{
-    errors::PipelineError,
-    stages::ChannelReaderProvider,
-    traits::{OriginAdvancer, OriginProvider, SignalReceiver},
-    types::{PipelineResult, Signal},
+    ChannelReaderProvider, OriginAdvancer, OriginProvider, PipelineError, PipelineResult, Signal,
+    SignalReceiver,
 };
 use alloc::{boxed::Box, vec::Vec};
 use alloy_primitives::Bytes;
 use async_trait::async_trait;
 use kona_protocol::BlockInfo;
 
-/// A mock [ChannelReaderProvider] for testing the [ChannelReader] stage.
+/// A mock [`ChannelReaderProvider`] for testing the [`ChannelReader`] stage.
 ///
-/// [ChannelReader]: crate::stages::ChannelReader
+/// [`ChannelReader`]: crate::stages::ChannelReader
 #[derive(Debug, Default)]
 pub struct TestChannelReaderProvider {
     /// The data to return.
@@ -27,7 +25,7 @@ pub struct TestChannelReaderProvider {
 }
 
 impl TestChannelReaderProvider {
-    /// Creates a new [TestChannelReaderProvider] with the given data.
+    /// Creates a new [`TestChannelReaderProvider`] with the given data.
     pub fn new(data: Vec<PipelineResult<Option<Bytes>>>) -> Self {
         Self { data, block_info: Some(BlockInfo::default()), reset: false }
     }

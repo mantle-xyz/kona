@@ -1,13 +1,13 @@
 //! Blob Data Source
 
 use crate::{
-    errors::{BlobProviderError, PipelineError},
-    sources::BlobData,
-    traits::{BlobProvider, ChainProvider, DataAvailabilityProvider},
-    types::PipelineResult,
+    BlobData, BlobProvider, BlobProviderError, ChainProvider, DataAvailabilityProvider,
+    PipelineError, PipelineResult,
 };
 use alloc::{boxed::Box, string::ToString, vec::Vec};
-use alloy_consensus::{Transaction, TxEip4844Variant, TxEnvelope, TxType};
+use alloy_consensus::{
+    Transaction, TxEip4844Variant, TxEnvelope, TxType, transaction::SignerRecoverable,
+};
 use alloy_eips::eip4844::IndexedBlobHash;
 use alloy_primitives::{Address, Bytes};
 use async_trait::async_trait;
@@ -103,6 +103,12 @@ where
                 index += 1;
             }
         }
+        #[cfg(feature = "metrics")]
+        metrics::gauge!(
+            crate::metrics::Metrics::PIPELINE_DATA_AVAILABILITY_PROVIDER,
+            "source" => "blobs",
+        )
+        .increment(data.len() as f64);
         (data, hashes)
     }
 
@@ -131,10 +137,13 @@ where
             return Ok(());
         }
 
-        let blobs = self.blob_fetcher.get_blobs(block_ref, &blob_hashes).await.map_err(|e| {
-            warn!(target: "blob_source", "Failed to fetch blobs: {e}");
-            BlobProviderError::Backend(e.to_string())
-        })?;
+        let blobs =
+            self.blob_fetcher.get_and_validate_blobs(block_ref, &blob_hashes).await.map_err(
+                |e| {
+                    warn!(target: "blob_source", "Failed to fetch blobs: {e}");
+                    BlobProviderError::Backend(e.to_string())
+                },
+            )?;
 
         // Fill the blob pointers.
         let mut blob_index = 0;
@@ -157,9 +166,9 @@ where
     }
 
     /// Extracts the next data from the source.
-    fn next_data(&mut self) -> Result<BlobData, PipelineResult<Bytes>> {
+    fn next_data(&mut self) -> PipelineResult<BlobData> {
         if self.data.is_empty() {
-            return Err(Err(PipelineError::Eof.temp()));
+            return Err(PipelineError::Eof.temp());
         }
 
         Ok(self.data.remove(0))
@@ -181,10 +190,7 @@ where
     ) -> PipelineResult<Self::Item> {
         self.load_blobs(block_ref, batcher_address).await?;
 
-        let next_data = match self.next_data() {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
+        let next_data = self.next_data()?;
         if let Some(c) = next_data.calldata {
             return Ok(c);
         }

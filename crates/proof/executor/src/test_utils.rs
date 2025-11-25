@@ -8,15 +8,17 @@ use alloy_provider::{Provider, RootProvider, network::primitives::BlockTransacti
 use alloy_rlp::Decodable;
 use alloy_rpc_client::RpcClient;
 use alloy_rpc_types_engine::PayloadAttributes;
-use alloy_transport_http::{Client, Http};
+use alloy_transport_http::Http;
 use kona_genesis::RollupConfig;
 use kona_mpt::{NoopTrieHinter, TrieNode, TrieProvider};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
+use reqwest::Client;
 use rocksdb::{DB, Options};
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
 use tokio::{fs, runtime::Handle, sync::Mutex};
 use tracing::{info, warn};
+use url::Url;
 
 /// Executes a [ExecutorTestFixture] stored at the passed `fixture_path` and asserts that the
 /// produced block hash matches the expected block hash.
@@ -89,9 +91,10 @@ pub struct ExecutorTestFixtureCreator {
 impl ExecutorTestFixtureCreator {
     /// Creates a new [`ExecutorTestFixtureCreator`] with the given parameters.
     pub fn new(provider_url: &str, block_number: u64, base_fixture_directory: PathBuf) -> Self {
-        let base = base_fixture_directory.join(format!("block-{}", block_number));
+        let base = base_fixture_directory.join(format!("block-{block_number}"));
 
-        let url = provider_url.parse().expect("Invalid provider URL");
+        let url: Url = provider_url.parse().expect("Invalid provider URL");
+        // Use reqwest::Client for HTTPS support
         let http = Http::<Client>::new(url);
         let provider = RootProvider::new(RpcClient::new(http, false));
 
@@ -106,7 +109,7 @@ impl ExecutorTestFixtureCreator {
 }
 
 fn mock_rollup_config() -> RollupConfig {
-    let mut rollup_config = RollupConfig { l2_chain_id: 561113, ..Default::default() };
+    let mut rollup_config = RollupConfig { l2_chain_id: 5000, ..Default::default() };
     rollup_config.mantle_skadi_time = Some(0);
     rollup_config
 }
@@ -117,56 +120,50 @@ impl ExecutorTestFixtureCreator {
         // let chain_id = self.provider.get_chain_id().await.expect("Failed to get chain ID");
         let rollup_config = mock_rollup_config();
 
-        let executing_block = match self
-            .provider
-            .get_block_by_number(self.block_number.into())
-            .await
-        {
-            Ok(Some(block)) => block,
-            Ok(None) => {
-                warn!(
-                    target: "kona_executor::test_utils",
-                    block_number = self.block_number,
-                    "Block not found"
-                );
-                return Err(TestTrieNodeProviderError::PreimageNotFound);
-            }
-            Err(e) => {
-                warn!(
-                    target: "kona_executor::test_utils",
-                    block_number = self.block_number,
-                    error = ?e,
-                    "Failed to get executing block"
-                );
-                return Err(TestTrieNodeProviderError::PreimageNotFound);
-            }
-        };
-        
-        let parent_block = match self
-            .provider
-            .get_block_by_number((self.block_number - 1).into())
-            .await
-        {
-            Ok(Some(block)) => block,
-            Ok(None) => {
-                warn!(
-                    target: "kona_executor::test_utils",
-                    block_number = self.block_number - 1,
-                    "Parent block not found"
-                );
-                return Err(TestTrieNodeProviderError::PreimageNotFound);
-            }
-            Err(e) => {
-                warn!(
-                    target: "kona_executor::test_utils",
-                    block_number = self.block_number - 1,
-                    error = ?e,
-                    "Failed to get parent block"
-                );
-                return Err(TestTrieNodeProviderError::PreimageNotFound);
-            }
-        };
-        
+        let executing_block =
+            match self.provider.get_block_by_number(self.block_number.into()).await {
+                Ok(Some(block)) => block,
+                Ok(None) => {
+                    warn!(
+                        target: "kona_executor::test_utils",
+                        block_number = self.block_number,
+                        "Block not found"
+                    );
+                    return Err(TestTrieNodeProviderError::PreimageNotFound);
+                }
+                Err(e) => {
+                    warn!(
+                        target: "kona_executor::test_utils",
+                        block_number = self.block_number,
+                        error = ?e,
+                        "Failed to get executing block"
+                    );
+                    return Err(TestTrieNodeProviderError::PreimageNotFound);
+                }
+            };
+
+        let parent_block =
+            match self.provider.get_block_by_number((self.block_number - 1).into()).await {
+                Ok(Some(block)) => block,
+                Ok(None) => {
+                    warn!(
+                        target: "kona_executor::test_utils",
+                        block_number = self.block_number - 1,
+                        "Parent block not found"
+                    );
+                    return Err(TestTrieNodeProviderError::PreimageNotFound);
+                }
+                Err(e) => {
+                    warn!(
+                        target: "kona_executor::test_utils",
+                        block_number = self.block_number - 1,
+                        error = ?e,
+                        "Failed to get parent block"
+                    );
+                    return Err(TestTrieNodeProviderError::PreimageNotFound);
+                }
+            };
+
         let executing_header = executing_block.header;
         let parent_header = parent_block.header.inner.seal_slow();
 
@@ -178,7 +175,7 @@ impl ExecutorTestFixtureCreator {
                     tx_count = transactions.len(),
                     "Processing transactions"
                 );
-                
+
                 for (i, tx_hash) in transactions.iter().enumerate() {
                     match self
                         .provider
@@ -224,6 +221,7 @@ impl ExecutorTestFixtureCreator {
             transactions: Some(encoded_executing_transactions),
             no_tx_pool: Some(true),
             eip_1559_params: None,
+            min_base_fee: None,
         };
 
         info!(
@@ -238,7 +236,7 @@ impl ExecutorTestFixtureCreator {
             NoopTrieHinter,
             parent_header,
         );
-        
+
         let outcome = match executor.build_block(payload_attrs) {
             Ok(outcome) => outcome,
             Err(e) => {
@@ -252,13 +250,16 @@ impl ExecutorTestFixtureCreator {
         };
 
         let success = *outcome.header.inner() == executing_header.inner;
-        info!(
-            target: "kona_executor::test_utils",
-            executing = ?executing_header.inner,
-            result = ?outcome.header.inner(),
-            success = success,
-            "Block execution completed"
-        );
+        if !success {
+            println!("┌─────────────────────────────────────────────────────────┐");
+            println!("│ Block Execution Results  failed                           │");
+            println!("├─────────────────────────────────────────────────────────┤");
+            println!("│ {:<55} │", format!("executing = {:?}", executing_header.inner));
+            println!("├─────────────────────────────────────────────────────────┤");
+            println!("│ {:<55} │", format!("result = {:?}", outcome.header.inner()));
+            println!("├─────────────────────────────────────────────────────────┤");
+            println!("└─────────────────────────────────────────────────────────┘");
+        }
         Ok(success)
     }
 }
@@ -270,12 +271,9 @@ impl TrieProvider for ExecutorTestFixtureCreator {
         // Fetch the preimage from the L2 chain provider.
         let preimage: Bytes = tokio::task::block_in_place(move || {
             Handle::current().block_on(async {
-                let preimage_result: Result<Bytes, _> = self
-                    .provider
-                    .client()
-                    .request("debug_dbGet", &[key])
-                    .await;
-                
+                let preimage_result: Result<Bytes, _> =
+                    self.provider.client().request("debug_dbGet", &[key]).await;
+
                 let preimage = match preimage_result {
                     Ok(data) => data,
                     Err(e) => {
@@ -344,7 +342,7 @@ impl TrieDBProvider for ExecutorTestFixtureCreator {
                             error = ?e,
                             "Failed to get bytecode with prefix, trying without prefix"
                         );
-                        
+
                         match self
                             .provider
                             .client()
@@ -386,12 +384,9 @@ impl TrieDBProvider for ExecutorTestFixtureCreator {
     fn header_by_hash(&self, hash: B256) -> Result<Header, Self::Error> {
         let encoded_header: Bytes = tokio::task::block_in_place(move || {
             Handle::current().block_on(async {
-                let header_result: Result<Bytes, _> = self
-                    .provider
-                    .client()
-                    .request("debug_getRawHeader", &[hash])
-                    .await;
-                
+                let header_result: Result<Bytes, _> =
+                    self.provider.client().request("debug_getRawHeader", &[hash]).await;
+
                 let preimage = match header_result {
                     Ok(data) => data,
                     Err(e) => {

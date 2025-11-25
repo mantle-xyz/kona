@@ -15,19 +15,19 @@ use kona_genesis::RollupConfig;
 use kona_protocol::{BlockInfo, L2BlockInfo, OpAttributesWithParent, SingleBatch};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 
-/// [AttributesQueue] accepts batches from the [BatchQueue] stage
-/// and transforms them into [OpPayloadAttributes].
+/// [`AttributesQueue`] accepts batches from the [`BatchQueue`] stage
+/// and transforms them into [`OpPayloadAttributes`].
 ///
 /// The outputted payload attributes cannot be buffered because each batch->attributes
 /// transformation pulls in data about the current L2 safe head.
 ///
-/// [AttributesQueue] also buffers batches that have been output because
+/// [`AttributesQueue`] also buffers batches that have been output because
 /// multiple batches can be created at once.
 ///
 /// This stage can be reset by clearing its batch buffer.
 /// This stage does not need to retain any references to L1 blocks.
 ///
-/// [BatchQueue]: crate::stages::BatchQueue
+/// [`BatchQueue`]: crate::stages::BatchQueue
 #[derive(Debug)]
 pub struct AttributesQueue<P, AB>
 where
@@ -35,15 +35,15 @@ where
     AB: AttributesBuilder + Debug,
 {
     /// The rollup config.
-    cfg: Arc<RollupConfig>,
+    pub cfg: Arc<RollupConfig>,
     /// The previous stage of the derivation pipeline.
-    prev: P,
+    pub prev: P,
     /// Whether the current batch is the last in its span.
-    is_last_in_span: bool,
+    pub is_last_in_span: bool,
     /// The current batch being processed.
-    batch: Option<SingleBatch>,
+    pub batch: Option<SingleBatch>,
     /// The attributes builder.
-    builder: AB,
+    pub builder: AB,
 }
 
 impl<P, AB> AttributesQueue<P, AB>
@@ -51,12 +51,12 @@ where
     P: AttributesProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
     AB: AttributesBuilder + Debug,
 {
-    /// Create a new [AttributesQueue] stage.
+    /// Create a new [`AttributesQueue`] stage.
     pub const fn new(cfg: Arc<RollupConfig>, prev: P, builder: AB) -> Self {
         Self { cfg, prev, is_last_in_span: false, batch: None, builder }
     }
 
-    /// Loads a [SingleBatch] from the [AttributesProvider] if needed.
+    /// Loads a [`SingleBatch`] from the [`AttributesProvider`] if needed.
     pub async fn load_batch(&mut self, parent: L2BlockInfo) -> PipelineResult<SingleBatch> {
         if self.batch.is_none() {
             let batch = self.prev.next_batch(parent).await?;
@@ -66,7 +66,7 @@ where
         self.batch.as_ref().cloned().ok_or(PipelineError::Eof.temp())
     }
 
-    /// Returns the next [OpAttributesWithParent] from the current batch.
+    /// Returns the next [`OpAttributesWithParent`] from the current batch.
     pub async fn next_attributes(
         &mut self,
         parent: L2BlockInfo,
@@ -79,14 +79,22 @@ where
         };
 
         // Construct the payload attributes from the loaded batch.
+        #[cfg(feature = "metrics")]
+        let start = std::time::Instant::now();
         let attributes = match self.create_next_attributes(batch, parent).await {
             Ok(attributes) => attributes,
             Err(e) => {
                 return Err(e);
             }
         };
+        let origin = self.origin().ok_or(PipelineError::MissingOrigin.crit())?;
         let populated_attributes =
-            OpAttributesWithParent { attributes, parent, is_last_in_span: self.is_last_in_span };
+            OpAttributesWithParent::new(attributes, parent, Some(origin), self.is_last_in_span);
+        kona_macros::record!(
+            histogram,
+            crate::metrics::Metrics::PIPELINE_ATTRIBUTES_BUILD_DURATION,
+            start.elapsed().as_secs_f64()
+        );
 
         // Clear out the local state once payload attributes are prepared.
         self.batch = None;
@@ -94,7 +102,7 @@ where
         Ok(populated_attributes)
     }
 
-    /// Creates the next attributes, transforming a [SingleBatch] into [OpPayloadAttributes].
+    /// Creates the next attributes, transforming a [`SingleBatch`] into [`OpPayloadAttributes`].
     /// This sets `no_tx_pool` and appends the batched txs to the attributes tx list.
     pub async fn create_next_attributes(
         &mut self,
@@ -188,6 +196,9 @@ where
                 self.batch = None;
                 self.prev.signal(s).await?;
             }
+            s @ Signal::ProvideBlock(_) => {
+                self.prev.signal(s).await?;
+            }
         }
         Ok(())
     }
@@ -218,6 +229,7 @@ mod tests {
             transactions: None,
             gas_limit: None,
             eip_1559_params: None,
+            min_base_fee: None,
         }
     }
 
@@ -366,7 +378,8 @@ mod tests {
     #[tokio::test]
     async fn test_next_attributes_load_batch_last_in_span() {
         let cfg = RollupConfig::default();
-        let mock = new_test_attributes_provider(None, vec![Ok(Default::default())]);
+        let mock =
+            new_test_attributes_provider(Some(Default::default()), vec![Ok(Default::default())]);
         let mut pa = default_optimism_payload_attributes();
         let mock_builder = TestAttributesBuilder { attributes: vec![Ok(pa.clone())] };
         let mut aq = AttributesQueue::new(Arc::new(cfg), mock, mock_builder);
@@ -380,8 +393,9 @@ mod tests {
         let attributes = aq.next_attributes(L2BlockInfo::default()).await.unwrap();
         pa.no_tx_pool = Some(true);
         let populated_attributes = OpAttributesWithParent {
-            attributes: pa,
+            inner: pa,
             parent: L2BlockInfo::default(),
+            derived_from: Some(BlockInfo::default()),
             is_last_in_span: true,
         };
         assert_eq!(attributes, populated_attributes);

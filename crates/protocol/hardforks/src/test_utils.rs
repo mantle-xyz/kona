@@ -27,7 +27,7 @@ pub(crate) fn check_deployment_code(
             // Deposit + OP meta
             tx.deposit = DepositTransactionParts {
                 source_hash: deployment_tx.source_hash,
-                mint: deployment_tx.mint,
+                mint: Some(deployment_tx.mint),
                 is_system_transaction: deployment_tx.is_system_transaction,
                 eth_tx_value: deployment_tx.eth_tx_value,
                 eth_value: deployment_tx.eth_value,
@@ -46,11 +46,17 @@ pub(crate) fn check_deployment_code(
     let mut evm = ctx.build_mainnet();
 
     let res = evm.replay_commit().expect("Failed to run deployment transaction");
-    let ExecutionResult::Success { output: Output::Create(_, Some(address)), .. } = res else {
-        panic!("Failed to deploy contract");
-    };
 
-    assert_eq!(address, expected_address, "Contract deployed to an unexpected address");
+    let address = match res {
+        ExecutionResult::Success { output: Output::Create(_, Some(address)), .. } => {
+            assert_eq!(address, expected_address, "Contract deployed to an unexpected address");
+            address
+        }
+        ExecutionResult::Success { output: Output::Create(_, None), .. } => {
+            panic!("Contract deployed to the zero address");
+        }
+        res => panic!("Failed to deploy contract: {res:?}"),
+    };
 
     let code = evm.load_account_code(address).expect("Account does not exist");
     assert_eq!(keccak256(code.as_ref()), expected_code_hash);

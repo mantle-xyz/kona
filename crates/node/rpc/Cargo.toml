@@ -1,6 +1,6 @@
 [package]
 name = "kona-rpc"
-version = "0.2.0"
+version = "0.3.2"
 description = "Optimism RPC Types and API"
 
 edition.workspace = true
@@ -17,23 +17,24 @@ workspace = true
 [dependencies]
 # Workspace
 kona-protocol = {workspace = true, features = ["serde", "std"]}
-kona-p2p.workspace = true
+kona-gossip.workspace = true
 kona-engine.workspace = true
 kona-macros.workspace = true
 kona-genesis = {workspace = true, features = ["serde", "std"]}
 
-# `interop` feature
-kona-interop = { workspace = true, features = ["serde"] }
-
 # OP Alloy
 op-alloy-consensus.workspace = true
 op-alloy-rpc-types-engine = {workspace = true, features = ["serde", "std"]}
+op-alloy-rpc-types.workspace = true
 
 # Alloy
 alloy-eips = { workspace = true, features = ["serde", "std"] }
+alloy-rpc-types-engine = { workspace = true, features = ["serde", "std"] }
 alloy-primitives = { workspace = true, features = ["map", "rlp", "serde", "std"] }
 
 # Misc
+libp2p.workspace = true
+tracing.workspace = true
 thiserror.workspace = true
 derive_more = { workspace = true, default-features = false, features = [
     "display",
@@ -43,6 +44,8 @@ derive_more = { workspace = true, default-features = false, features = [
 ] }
 async-trait.workspace = true
 tokio = { workspace = true, features = ["time"] }
+ipnet = { workspace = true }
+backon = { workspace = true }
 
 # `serde`
 serde = { workspace = true, features = ["std"] }
@@ -63,10 +66,16 @@ serde_json.workspace = true
 
 [features]
 default = []
-reqwest = ["dep:alloy-rpc-client"]
+reqwest = [ "client", "dep:alloy-rpc-client" ]
 client = [
-    "jsonrpsee/client",
-    "jsonrpsee/async-client",
-    "op-alloy-rpc-jsonrpsee/client",
+	"jsonrpsee/async-client",
+	"jsonrpsee/client",
+	"op-alloy-rpc-jsonrpsee/client",
+	"op-alloy-rpc-types/jsonrpsee",
 ]
-metrics = ["dep:metrics"]
+metrics = [
+	"dep:metrics",
+	"kona-engine/metrics",
+	"kona-gossip/metrics",
+	"libp2p/metrics",
+]

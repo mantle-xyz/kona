@@ -5,27 +5,52 @@
     issue_tracker_base_url = "https://github.com/op-rs/kona/issues/"
 )]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
-#![no_std]
+#![cfg_attr(not(feature = "metrics"), no_std)]
 
 extern crate alloc;
 
 #[macro_use]
 extern crate tracing;
 
-/// Required types and traits for kona's derivation pipeline.
-pub mod prelude {
-    pub use crate::{
-        attributes::*, errors::*, pipeline::*, sources::*, stages::*, traits::*, types::*,
-    };
-}
+mod attributes;
+pub use attributes::StatefulAttributesBuilder;
 
-pub mod attributes;
-pub mod errors;
-pub mod pipeline;
-pub mod sources;
-pub mod stages;
-pub mod traits;
-pub mod types;
+mod errors;
+pub use errors::{
+    BatchDecompressionError, BlobDecodingError, BlobProviderError, BuilderError,
+    PipelineEncodingError, PipelineError, PipelineErrorKind, ResetError,
+};
 
-#[cfg(feature = "test-utils")]
+mod pipeline;
+pub use pipeline::{
+    AttributesQueueStage, BatchProviderStage, BatchStreamStage, ChannelProviderStage,
+    ChannelReaderStage, DerivationPipeline, FrameQueueStage, IndexedAttributesQueueStage,
+    L1RetrievalStage, PipelineBuilder, PolledAttributesQueueStage,
+};
+
+mod sources;
+pub use sources::{BlobData, BlobSource, CalldataSource, EthereumDataSource};
+
+mod stages;
+pub use stages::{
+    AttributesQueue, BatchProvider, BatchQueue, BatchStream, BatchStreamProvider, BatchValidator,
+    ChannelAssembler, ChannelBank, ChannelProvider, ChannelReader, ChannelReaderProvider,
+    FrameQueue, FrameQueueProvider, IndexedTraversal, L1Retrieval, L1RetrievalProvider,
+    NextBatchProvider, NextFrameProvider, PollingTraversal, TraversalStage,
+};
+
+mod traits;
+pub use traits::{
+    AttributesBuilder, AttributesProvider, BatchValidationProviderDerive, BlobProvider,
+    ChainProvider, DataAvailabilityProvider, L2ChainProvider, NextAttributes, OriginAdvancer,
+    OriginProvider, Pipeline, ResetProvider, SignalReceiver,
+};
+
+mod types;
+pub use types::{ActivationSignal, PipelineResult, ResetSignal, Signal, StepResult};
+
+mod metrics;
+pub use metrics::Metrics;
+
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils;

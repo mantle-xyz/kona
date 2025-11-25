@@ -6,6 +6,9 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
+mod metrics;
+pub use metrics::Metrics;
+
 mod beacon_client;
 pub use beacon_client::{
     APIConfigResponse, APIGenesisResponse, BeaconClient, OnlineBeaconClient, ReducedConfigData,
@@ -13,7 +16,7 @@ pub use beacon_client::{
 };
 
 mod blobs;
-pub use blobs::{BlobSidecarProvider, OnlineBlobProvider};
+pub use blobs::{BoxedBlobWithIndex, OnlineBlobProvider};
 
 mod chain_provider;
 pub use chain_provider::{AlloyChainProvider, AlloyChainProviderError};

@@ -12,9 +12,9 @@ extern crate alloc;
 mod batch;
 pub use batch::{
     Batch, BatchDecodingError, BatchEncodingError, BatchReader, BatchTransaction, BatchType,
-    BatchValidationProvider, BatchValidity, BatchWithInclusionBlock, MAX_SPAN_BATCH_ELEMENTS,
-    RawSpanBatch, SINGLE_BATCH_TYPE, SPAN_BATCH_TYPE, SingleBatch, SpanBatch, SpanBatchBits,
-    SpanBatchEip1559TransactionData, SpanBatchEip2930TransactionData,
+    BatchValidationProvider, BatchValidity, BatchWithInclusionBlock, DecompressionError,
+    MAX_SPAN_BATCH_ELEMENTS, RawSpanBatch, SINGLE_BATCH_TYPE, SPAN_BATCH_TYPE, SingleBatch,
+    SpanBatch, SpanBatchBits, SpanBatchEip1559TransactionData, SpanBatchEip2930TransactionData,
     SpanBatchEip7702TransactionData, SpanBatchElement, SpanBatchError,
     SpanBatchLegacyTransactionData, SpanBatchPayload, SpanBatchPrefix, SpanBatchTransactionData,
     SpanBatchTransactions, SpanDecodingError,
@@ -58,7 +58,7 @@ pub use deposits::{
 mod info;
 pub use info::{
     BlockInfoError, DecodeError, L1BlockInfoBedrock, L1BlockInfoEcotone, L1BlockInfoIsthmus,
-    L1BlockInfoTx,
+    L1BlockInfoJovian, L1BlockInfoTx,
 };
 
 mod predeploys;
@@ -67,5 +67,5 @@ pub use predeploys::Predeploys;
 mod output_root;
 pub use output_root::OutputRoot;
 
-#[cfg(feature = "test-utils")]
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils;

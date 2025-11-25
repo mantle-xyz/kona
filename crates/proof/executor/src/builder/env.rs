@@ -9,6 +9,7 @@ use kona_mpt::TrieHinter;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use op_revm::OpSpecId;
 use revm::context::{BlockEnv, CfgEnv};
+use alloy_primitives::U256;
 
 impl<P, H, Evm> StatelessL2Builder<'_, P, H, Evm>
 where
@@ -23,9 +24,15 @@ where
         parent_header: &Header,
         payload_attrs: &OpPayloadAttributes,
         base_fee_params: &BaseFeeParams,
+        min_base_fee: u64,
     ) -> ExecutorResult<EvmEnv<OpSpecId>> {
-        let block_env =
-            Self::prepare_block_env(spec_id, parent_header, payload_attrs, base_fee_params)?;
+        let block_env = self.prepare_block_env(
+            spec_id,
+            parent_header,
+            payload_attrs,
+            base_fee_params,
+            min_base_fee,
+        )?;
         let cfg_env = self.evm_cfg_env(payload_attrs.payload_attributes.timestamp);
         Ok(EvmEnv::new(cfg_env, block_env))
     }
@@ -37,32 +44,75 @@ where
             .with_spec(self.config.spec_id(timestamp))
     }
 
+    // fn next_block_base_fee(
+    //     &self,
+    //     params: BaseFeeParams,
+    //     parent: &Header,
+    //     min_base_fee: u64,
+    // ) -> Option<u64> {
+    //     if !self.config.is_jovian_active(parent.timestamp()) {
+    //         return parent.next_block_base_fee(params);
+    //     }
+
+    //     // Starting from Jovian, we use the maximum of the gas used and the blob gas used to
+    //     // calculate the next base fee.
+    //     let gas_used = if parent.blob_gas_used().unwrap_or_default() > parent.gas_used() {
+    //         parent.blob_gas_used().unwrap_or_default()
+    //     } else {
+    //         parent.gas_used()
+    //     };
+
+    //     let mut next_block_base_fee = calc_next_block_base_fee(
+    //         gas_used,
+    //         parent.gas_limit(),
+    //         parent.base_fee_per_gas().unwrap_or_default(),
+    //         params,
+    //     );
+
+    //     // If the next block base fee is less than the min base fee, set it to the min base fee.
+    //     // # Note
+    //     // Before Jovian activation, the min-base-fee is 0 so this is a no-op.
+    //     if next_block_base_fee < min_base_fee {
+    //         next_block_base_fee = min_base_fee;
+    //     }
+
+    //     Some(next_block_base_fee)
+    // }
+
     /// Prepares a [BlockEnv] with the given [OpPayloadAttributes].
     pub(crate) fn prepare_block_env(
+        &self,
         _spec_id: OpSpecId,
         parent_header: &Header,
         payload_attrs: &OpPayloadAttributes,
         _base_fee_params: &BaseFeeParams,
+        _min_base_fee: u64,
     ) -> ExecutorResult<BlockEnv> {
+        // let (params, fraction) = if spec_id.is_enabled_in(OpSpecId::ISTHMUS) {
+        //     (Some(BlobParams::prague()), BLOB_BASE_FEE_UPDATE_FRACTION_PRAGUE)
+        // } else if spec_id.is_enabled_in(OpSpecId::ECOTONE) {
+        //     (Some(BlobParams::cancun()), BLOB_BASE_FEE_UPDATE_FRACTION_CANCUN)
+        // } else {
+        //     (None, 0)
+        // };
+
         // let blob_excess_gas_and_price = parent_header
-        //     .maybe_next_block_excess_blob_gas(if spec_id.is_enabled_in(OpSpecId::ISTHMUS) {
-        //         Some(BlobParams::prague())
-        //     } else if spec_id.is_enabled_in(OpSpecId::ECOTONE) {
-        //         Some(BlobParams::cancun())
-        //     } else {
-        //         None
-        //     })
+        //     .maybe_next_block_excess_blob_gas(params)
         //     .or_else(|| spec_id.is_enabled_in(OpSpecId::ECOTONE).then_some(0))
-        //     .map(|e| BlobExcessGasAndPrice::new(e, spec_id.is_enabled_in(OpSpecId::ISTHMUS)));
-        
-        // [Mantle]: blob_excess_gas_and_price is not used in Mantle.
-        let blob_excess_gas_and_price = None;
-        let next_block_base_fee = parent_header.base_fee_per_gas.unwrap_or_default();
+        //     .map(|excess| BlobExcessGasAndPrice::new(excess, fraction));
+
+        // let next_block_base_fee = self
+        //     .next_block_base_fee(*base_fee_params, parent_header, min_base_fee)
+        //     .unwrap_or_default();
+
+         // [Mantle]: blob_excess_gas_and_price is not used in Mantle.
+         let blob_excess_gas_and_price = None;
+         let next_block_base_fee = parent_header.base_fee_per_gas.unwrap_or_default();
 
         Ok(BlockEnv {
-            number: parent_header.number + 1,
+            number: U256::from(parent_header.number + 1),
             beneficiary: payload_attrs.payload_attributes.suggested_fee_recipient,
-            timestamp: payload_attrs.payload_attributes.timestamp,
+            timestamp: U256::from(payload_attrs.payload_attributes.timestamp),
             gas_limit: payload_attrs.gas_limit.ok_or(ExecutorError::MissingGasLimit)?,
             basefee: next_block_base_fee,
             prevrandao: Some(payload_attrs.payload_attributes.prev_randao),
@@ -71,33 +121,39 @@ where
         })
     }
 
-    // /// Returns the active base fee parameters for the given payload attributes.
+    // /// Returns the active base fee parameters for the parent header.
+    // /// Returns the min-base-fee as the second element of the tuple.
+    // ///
+    // /// ## Note
+    // /// Before Jovian activation, the min-base-fee is 0.
     // pub(crate) fn active_base_fee_params(
     //     config: &RollupConfig,
-    //     _parent_header: &Header,
-    //     payload_attrs: &OpPayloadAttributes,
-    // ) -> ExecutorResult<BaseFeeParams> {
-    //     let base_fee_params =
-    //         if config.is_holocene_active(payload_attrs.payload_attributes.timestamp) {
-    //             // After Holocene activation, the base fee parameters are stored in the
-    //             // `extraData` field of the parent header. If Holocene wasn't active in the
-    //             // parent block, the default base fee parameters are used.
-    //             // config
-    //             //     .is_holocene_active(parent_header.timestamp)
-    //             //     .then(|| decode_holocene_eip_1559_params(parent_header))
-    //             //     .transpose()?
-    //             //     .unwrap_or(config.chain_op_config.as_canyon_base_fee_params())
-    //             config.as_canyon_base_fee_params()
-    //         } else if config.is_canyon_active(payload_attrs.payload_attributes.timestamp) {
+    //     parent_header: &Header,
+    //     payload_timestamp: u64,
+    // ) -> ExecutorResult<(BaseFeeParams, u64)> {
+    //     match config {
+    //         // After Holocene activation, the base fee parameters are stored in the
+    //         // `extraData` field of the parent header. If Holocene wasn't active in the
+    //         // parent block, the default base fee parameters are used.
+    //         _ if config.is_jovian_active(parent_header.timestamp) => {
+    //             decode_jovian_eip_1559_params_block_header(parent_header)
+    //         }
+    //         _ if config.is_holocene_active(parent_header.timestamp) => {
+    //             decode_holocene_eip_1559_params_block_header(parent_header)
+    //                 .map(|base_fee_params| (base_fee_params, 0))
+    //         }
+    //         // If the next payload attribute timestamp is past canyon activation,
+    //         // use the canyon base fee params from the rollup config.
+    //         _ if config.is_canyon_active(payload_timestamp) => {
     //             // If the payload attribute timestamp is past canyon activation,
     //             // use the canyon base fee params from the rollup config.
-    //             config.chain_op_config.as_canyon_base_fee_params()
-    //         } else {
-    //             // If the payload attribute timestamp is prior to canyon activation,
+    //             Ok((config.chain_op_config.as_canyon_base_fee_params(), 0))
+    //         }
+    //         _ => {
+    //             // If the next payload attribute timestamp is prior to canyon activation,
     //             // use the default base fee params from the rollup config.
-    //             config.chain_op_config.as_base_fee_params()
-    //         };
-
-    //     Ok(base_fee_params)
+    //             Ok((config.chain_op_config.as_base_fee_params(), 0))
+    //         }
+    //     }
     // }
 }

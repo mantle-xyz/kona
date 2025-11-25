@@ -7,7 +7,7 @@ use alloy_eips::eip2718::Decodable2718;
 use alloy_primitives::{Address, B256, Bytes};
 use alloy_rlp::Decodable;
 use async_trait::async_trait;
-use kona_derive::traits::L2ChainProvider;
+use kona_derive::L2ChainProvider;
 use kona_driver::PipelineCursor;
 use kona_executor::TrieDBProvider;
 use kona_genesis::{RollupConfig, SystemConfig};
@@ -39,7 +39,7 @@ impl<T: CommsClient> OracleL2ChainProvider<T> {
     }
 
     /// Sets the L2 chain ID to use for the provider's hints.
-    pub fn set_chain_id(&mut self, chain_id: Option<u64>) {
+    pub const fn set_chain_id(&mut self, chain_id: Option<u64>) {
         self.chain_id = chain_id;
     }
 

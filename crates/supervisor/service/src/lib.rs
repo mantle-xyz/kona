@@ -2,4 +2,8 @@
 //! It integrates the core logic with the RPC server.
 
 mod service;
-pub use service::{Config, Service};
+
+pub use service::Service;
+
+mod actors;
+pub use actors::SupervisorActor;

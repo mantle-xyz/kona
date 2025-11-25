@@ -1,6 +1,6 @@
 [package]
 name = "kona-registry"
-version = "0.3.0"
+version = "0.4.5"
 description = "A registry of superchain configs"
 
 edition.workspace = true
@@ -20,7 +20,11 @@ kona-genesis = { workspace = true, features = ["serde"] }
 
 # Alloy
 alloy-primitives = { workspace = true, features = ["map"] }
+alloy-genesis.workspace = true
+alloy-eips.workspace = true 
+alloy-hardforks.workspace = true
 alloy-chains = { workspace = true, features = ["serde"] }
+alloy-op-hardforks = { workspace = true }
 
 # `serde`
 serde = { workspace = true, features = ["derive", "alloc"] }
@@ -42,14 +46,14 @@ alloy-eips.workspace = true
 
 [features]
 default = []
-tabled = [
-	"std",
-	"dep:tabled",
-]
+tabled = [ "dep:tabled", "std" ]
 std = [
-	"kona-genesis/std",
-	"serde_json/std",
+	"alloy-chains/std",
+	"alloy-eips/std",
+	"alloy-genesis/std",
 	"alloy-primitives/std",
+	"kona-genesis/std",
 	"serde/std",
-	"alloy-chains/std"
+	"serde_json/std",
+	"tabled?/std",
 ]

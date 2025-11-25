@@ -1,67 +1,123 @@
 //! Node Subcommand.
 
+use crate::{
+    flags::{GlobalArgs, P2PArgs, RpcArgs, SequencerArgs},
+    metrics::{CliMetrics, init_rollup_config_metrics},
+};
 use alloy_rpc_types_engine::JwtSecret;
 use anyhow::{Result, bail};
+use backon::{ExponentialBuilder, Retryable};
 use clap::Parser;
-use kona_engine::EngineKind;
-use kona_genesis::RollupConfig;
-use kona_node_service::{RollupNode, RollupNodeService};
+use kona_cli::{LogConfig, MetricsArgs};
+use kona_genesis::{L1ChainConfig, RollupConfig};
+use kona_node_service::{NodeMode, RollupNode, RollupNodeService};
+use kona_registry::{L1Config, scr_rollup_config_by_alloy_ident};
 use op_alloy_provider::ext::engine::OpEngineApi;
 use serde_json::from_reader;
 use std::{fs::File, path::PathBuf, sync::Arc};
-use tracing::{debug, error};
+use strum::IntoEnumIterator;
+use tracing::{debug, error, info};
 use url::Url;
 
-use crate::flags::{GlobalArgs, MetricsArgs, P2PArgs, RpcArgs, SequencerArgs};
+/// A JWT token validation error.
+#[derive(Debug, thiserror::Error)]
+pub(super) enum JwtValidationError {
+    #[error("JWT signature is invalid")]
+    InvalidSignature,
+    #[error("Failed to exchange capabilities with engine: {0}")]
+    CapabilityExchange(String),
+}
 
-/// The Node subcommand.
+/// Command-line interface for running a Kona rollup node.
 ///
-/// For compatibility with the [op-node], relevant flags retain an alias that matches that
-/// of the [op-node] CLI.
+/// The `NodeCommand` struct defines all the configuration options needed to start and run
+/// a rollup node in the Kona ecosystem. It supports multiple node modes including validator
+/// and sequencer modes, and provides comprehensive networking and RPC configuration options.
 ///
-/// [op-node]: https://github.com/ethereum-optimism/optimism/blob/develop/op-node/flags/flags.go
-#[derive(Parser, Debug, Clone)]
+/// # Node Modes
+///
+/// The node can operate in different modes:
+/// - **Validator**: Validates L2 blocks and participates in consensus
+/// - **Sequencer**: Sequences transactions and produces L2 blocks
+///
+/// # Configuration Sources
+///
+/// Configuration can be provided through:
+/// - Command-line arguments
+/// - Environment variables (prefixed with `KONA_NODE_`)
+/// - Configuration files (for rollup config)
+///
+/// # Examples
+///
+/// ```bash
+/// # Run as validator with default settings
+/// kona node --l1-eth-rpc http://localhost:8545 \
+///           --l1-beacon http://localhost:5052 \
+///           --l2-engine-rpc http://localhost:8551
+///
+/// # Run as sequencer with custom JWT secret
+/// kona node --mode sequencer \
+///           --l1-eth-rpc http://localhost:8545 \
+///           --l1-beacon http://localhost:5052 \
+///           --l2-engine-rpc http://localhost:8551 \
+///           --l2-engine-jwt-secret /path/to/jwt.hex
+/// ```
+#[derive(Parser, PartialEq, Debug, Clone)]
 #[command(about = "Runs the consensus node")]
 pub struct NodeCommand {
+    /// The mode to run the node in.
+    #[arg(
+        long = "mode",
+        default_value_t = NodeMode::Validator,
+        env = "KONA_NODE_MODE",
+        help = format!(
+            "The mode to run the node in. Supported modes are: {}",
+            NodeMode::iter()
+                .map(|mode| format!("\"{}\"", mode.to_string()))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    )]
+    pub node_mode: NodeMode,
     /// URL of the L1 execution client RPC API.
-    #[arg(long, visible_alias = "l1", env = "L1_ETH_RPC")]
+    #[arg(long, visible_alias = "l1", env = "KONA_NODE_L1_ETH_RPC")]
     pub l1_eth_rpc: Url,
+    /// Whether to trust the L1 RPC.
+    /// If false, block hash verification is performed for all retrieved blocks.
+    #[arg(
+        long,
+        visible_alias = "l1.trust-rpc",
+        env = "KONA_NODE_L1_TRUST_RPC",
+        default_value = "true"
+    )]
+    pub l1_trust_rpc: bool,
     /// URL of the L1 beacon API.
-    #[arg(long, visible_alias = "l1.beacon", env = "L1_BEACON")]
+    #[arg(long, visible_alias = "l1.beacon", env = "KONA_NODE_L1_BEACON")]
     pub l1_beacon: Url,
     /// URL of the engine API endpoint of an L2 execution client.
-    #[arg(long, visible_alias = "l2", env = "L2_ENGINE_RPC")]
+    #[arg(long, visible_alias = "l2", env = "KONA_NODE_L2_ENGINE_RPC")]
     pub l2_engine_rpc: Url,
-    /// An L2 RPC Url.
-    #[arg(long, visible_alias = "l2.provider", env = "L2_ETH_RPC")]
-    pub l2_provider_rpc: Url,
+    /// Whether to trust the L2 RPC.
+    /// If false, block hash verification is performed for all retrieved blocks.
+    #[arg(
+        long,
+        visible_alias = "l2.trust-rpc",
+        env = "KONA_NODE_L2_TRUST_RPC",
+        default_value = "true"
+    )]
+    pub l2_trust_rpc: bool,
     /// JWT secret for the auth-rpc endpoint of the execution client.
     /// This MUST be a valid path to a file containing the hex-encoded JWT secret.
-    #[arg(long, visible_alias = "l2.jwt-secret", env = "L2_ENGINE_AUTH")]
+    #[arg(long, visible_alias = "l2.jwt-secret", env = "KONA_NODE_L2_ENGINE_AUTH")]
     pub l2_engine_jwt_secret: Option<PathBuf>,
     /// Path to a custom L2 rollup configuration file
     /// (overrides the default rollup configuration from the registry)
-    #[arg(long, visible_alias = "rollup-cfg")]
+    #[arg(long, visible_alias = "rollup-cfg", env = "KONA_NODE_ROLLUP_CONFIG")]
     pub l2_config_file: Option<PathBuf>,
-    /// Engine kind.
-    #[arg(
-        long,
-        visible_alias = "l2.enginekind",
-        default_value = "geth",
-        env = "L2_ENGINE_KIND",
-        help = "DEPRECATED. The kind of engine client, used to control the behavior of optimism in respect to different types of engine clients. Supported engine clients are: [\"geth\", \"reth\", \"erigon\"]."
-    )]
-    pub l2_engine_kind: EngineKind,
-    /// Poll interval (in seconds) for reloading the runtime config.
-    /// Provides a backup for when config events are not being picked up.
-    /// Disabled if `0`.
-    #[arg(
-        long,
-        visible_alias = "l1.runtime-config-reload-interval",
-        default_value = "600", // 10 minutes in seconds
-        env = "L1_RUNTIME_CONFIG_RELOAD_INTERVAL",
-    )]
-    pub l1_runtime_config_reload_interval: u64,
+    /// Path to a custom L1 rollup configuration file
+    /// (overrides the default rollup configuration from the registry)
+    #[arg(long, visible_alias = "rollup-l1-cfg", env = "KONA_NODE_L1_CHAIN_CONFIG")]
+    pub l1_config_file: Option<PathBuf>,
     /// P2P CLI arguments.
     #[command(flatten)]
     pub p2p_flags: P2PArgs,
@@ -73,15 +129,106 @@ pub struct NodeCommand {
     pub sequencer_flags: SequencerArgs,
 }
 
+impl Default for NodeCommand {
+    fn default() -> Self {
+        Self {
+            l1_eth_rpc: Url::parse("http://localhost:8545").unwrap(),
+            l1_trust_rpc: true,
+            l1_beacon: Url::parse("http://localhost:5052").unwrap(),
+            l2_engine_rpc: Url::parse("http://localhost:8551").unwrap(),
+            l2_trust_rpc: true,
+            l2_engine_jwt_secret: None,
+            l2_config_file: None,
+            l1_config_file: None,
+            node_mode: NodeMode::Validator,
+            p2p_flags: P2PArgs::default(),
+            rpc_flags: RpcArgs::default(),
+            sequencer_flags: SequencerArgs::default(),
+        }
+    }
+}
+
 impl NodeCommand {
-    /// Initializes the telemetry stack and Prometheus metrics recorder.
-    pub fn init_telemetry(&self, args: &GlobalArgs, metrics: &MetricsArgs) -> anyhow::Result<()> {
+    /// Initializes the logging system based on global arguments.
+    pub fn init_logs(&self, args: &GlobalArgs) -> anyhow::Result<()> {
         // Filter out discovery warnings since they're very very noisy.
         let filter = tracing_subscriber::EnvFilter::from_default_env()
             .add_directive("discv5=error".parse()?);
 
-        args.init_tracing(Some(filter))?;
-        metrics.init_metrics()
+        LogConfig::new(args.log_args.clone()).init_tracing_subscriber(Some(filter))?;
+        Ok(())
+    }
+
+    /// Initializes CLI metrics for the Node subcommand.
+    pub fn init_cli_metrics(&self, args: &MetricsArgs) -> anyhow::Result<()> {
+        if !args.enabled {
+            debug!("CLI metrics are disabled");
+            return Ok(());
+        }
+        metrics::gauge!(
+            CliMetrics::IDENTIFIER,
+            &[
+                (CliMetrics::P2P_PEER_SCORING_LEVEL, self.p2p_flags.scoring.to_string()),
+                (CliMetrics::P2P_TOPIC_SCORING_ENABLED, self.p2p_flags.topic_scoring.to_string()),
+                (CliMetrics::P2P_BANNING_ENABLED, self.p2p_flags.ban_enabled.to_string()),
+                (
+                    CliMetrics::P2P_PEER_REDIALING,
+                    self.p2p_flags.peer_redial.unwrap_or(0).to_string()
+                ),
+                (CliMetrics::P2P_FLOOD_PUBLISH, self.p2p_flags.gossip_flood_publish.to_string()),
+                (CliMetrics::P2P_DISCOVERY_INTERVAL, self.p2p_flags.discovery_interval.to_string()),
+                (
+                    CliMetrics::P2P_ADVERTISE_IP,
+                    self.p2p_flags
+                        .advertise_ip
+                        .map(|ip| ip.to_string())
+                        .unwrap_or(String::from("0.0.0.0"))
+                ),
+                (
+                    CliMetrics::P2P_ADVERTISE_TCP_PORT,
+                    self.p2p_flags
+                        .advertise_tcp_port
+                        .map_or_else(|| "auto".to_string(), |p| p.to_string())
+                ),
+                (
+                    CliMetrics::P2P_ADVERTISE_UDP_PORT,
+                    self.p2p_flags
+                        .advertise_udp_port
+                        .map_or_else(|| "auto".to_string(), |p| p.to_string())
+                ),
+                (CliMetrics::P2P_PEERS_LO, self.p2p_flags.peers_lo.to_string()),
+                (CliMetrics::P2P_PEERS_HI, self.p2p_flags.peers_hi.to_string()),
+                (CliMetrics::P2P_GOSSIP_MESH_D, self.p2p_flags.gossip_mesh_d.to_string()),
+                (CliMetrics::P2P_GOSSIP_MESH_D_LO, self.p2p_flags.gossip_mesh_dlo.to_string()),
+                (CliMetrics::P2P_GOSSIP_MESH_D_HI, self.p2p_flags.gossip_mesh_dhi.to_string()),
+                (CliMetrics::P2P_GOSSIP_MESH_D_LAZY, self.p2p_flags.gossip_mesh_dlazy.to_string()),
+                (CliMetrics::P2P_BAN_DURATION, self.p2p_flags.ban_duration.to_string()),
+            ]
+        )
+        .set(1);
+        Ok(())
+    }
+
+    /// Check if the error is related to JWT signature validation
+    fn is_jwt_signature_error(error: &dyn std::error::Error) -> bool {
+        let mut source = Some(error);
+        while let Some(err) = source {
+            let err_str = err.to_string().to_lowercase();
+            if err_str.contains("signature invalid") ||
+                (err_str.contains("jwt") && err_str.contains("invalid")) ||
+                err_str.contains("unauthorized") ||
+                err_str.contains("authentication failed")
+            {
+                return true;
+            }
+            source = err.source();
+        }
+        false
+    }
+
+    /// Helper to check JWT signature error from anyhow::Error (for retry condition)
+    fn is_jwt_signature_error_from_anyhow(error: &anyhow::Error) -> bool {
+        Self::is_jwt_signature_error(error.as_ref() as &dyn std::error::Error)
     }
 
     /// Validate the jwt secret if specified by exchanging capabilities with the engine.
@@ -91,55 +238,103 @@ impl NodeCommand {
         let jwt_secret = self.jwt_secret().ok_or(anyhow::anyhow!("Invalid JWT secret"))?;
         let engine_client = kona_engine::EngineClient::new_http(
             self.l2_engine_rpc.clone(),
-            self.l2_provider_rpc.clone(),
+            self.l1_eth_rpc.clone(),
             Arc::new(config.clone()),
             jwt_secret,
         );
-        match engine_client.exchange_capabilities(vec![]).await {
-            Ok(_) => {
-                debug!("Successfully exchanged capabilities with engine");
-                Ok(jwt_secret)
-            }
-            Err(e) => {
-                if e.to_string().contains("signature invalid") {
-                    error!(
-                        "Engine API JWT secret differs from the one specified by --l2.jwt-secret"
-                    );
-                    error!(
-                        "Ensure that the JWT secret file specified is correct (by default it is `jwt.hex` in the current directory)"
-                    );
+
+        let exchange = || async {
+            match engine_client.exchange_capabilities(vec![]).await {
+                Ok(_) => {
+                    debug!("Successfully exchanged capabilities with engine");
+                    Ok(jwt_secret)
                 }
-                bail!("Failed to exchange capabilities with engine: {}", e);
+                Err(e) => {
+                    if Self::is_jwt_signature_error(&e) {
+                        error!(
+                            "Engine API JWT secret differs from the one specified by --l2.jwt-secret"
+                        );
+                        error!(
+                            "Ensure that the JWT secret file specified is correct (by default it is `jwt.hex` in the current directory)"
+                        );
+                        return Err(JwtValidationError::InvalidSignature.into())
+                    }
+                    Err(JwtValidationError::CapabilityExchange(e.to_string()).into())
+                }
             }
-        }
+        };
+
+        exchange
+            .retry(ExponentialBuilder::default())
+            .when(|e| !Self::is_jwt_signature_error_from_anyhow(e))
+            .notify(|_, duration| {
+                debug!("Retrying engine capability handshake after {duration:?}");
+            })
+            .await
     }
 
     /// Run the Node subcommand.
     pub async fn run(self, args: &GlobalArgs) -> anyhow::Result<()> {
         let cfg = self.get_l2_config(args)?;
+        let l1_cfg = self.get_l1_config(cfg.l1_chain_id)?;
+
+        // If metrics are enabled, initialize the global cli metrics.
+        args.metrics.enabled.then(|| init_rollup_config_metrics(&cfg));
+
         let jwt_secret = self.validate_jwt(&cfg).await?;
 
         self.p2p_flags.check_ports()?;
         let p2p_config = self.p2p_flags.config(&cfg, args, Some(self.l1_eth_rpc.clone())).await?;
         let rpc_config = self.rpc_flags.into();
 
-        let runtime_interval =
-            std::time::Duration::from_secs(self.l1_runtime_config_reload_interval);
+        info!(
+            target: "rollup_node",
+            chain_id = cfg.l2_chain_id,
+            "Starting rollup node services"
+        );
+        for hf in cfg.hardforks.to_string().lines() {
+            info!(target: "rollup_node", "{hf}");
+        }
 
-        RollupNode::builder(cfg)
+        RollupNode::builder(cfg, l1_cfg)
+            .with_mode(self.node_mode)
             .with_jwt_secret(jwt_secret)
             .with_l1_provider_rpc_url(self.l1_eth_rpc)
+            .with_l1_trust_rpc(self.l1_trust_rpc)
             .with_l1_beacon_api_url(self.l1_beacon)
-            .with_l2_provider_rpc_url(self.l2_provider_rpc)
             .with_l2_engine_rpc_url(self.l2_engine_rpc)
-            .with_runtime_load_interval(runtime_interval)
+            .with_l2_trust_rpc(self.l2_trust_rpc)
             .with_p2p_config(p2p_config)
-            .with_network_disabled(self.p2p_flags.disabled)
             .with_rpc_config(rpc_config)
+            .with_sequencer_config(self.sequencer_flags.config())
             .build()
             .start()
             .await
-            .map_err(Into::into)
+            .map_err(|e| {
+                error!(target: "rollup_node", "Failed to start rollup node service: {e}");
+                anyhow::anyhow!("{e}")
+            })?;
+
+        Ok(())
+    }
+
+    /// Get the L1 config, either from a file or the known chains.
+    pub fn get_l1_config(&self, l1_chain_id: u64) -> Result<L1ChainConfig> {
+        match &self.l1_config_file {
+            Some(path) => {
+                debug!("Loading l1 config from file: {:?}", path);
+                let file = File::open(path)
+                    .map_err(|e| anyhow::anyhow!("Failed to open l1 config file: {e}"))?;
+                from_reader(file).map_err(|e| anyhow::anyhow!("Failed to parse l1 config: {e}"))
+            }
+            None => {
+                debug!("Loading l1 config from known chains");
+                let cfg = L1Config::get_l1_genesis(l1_chain_id).map_err(|e| {
+                    anyhow::anyhow!("Failed to find l1 config for chain ID {l1_chain_id}: {e}")
+                })?;
+                Ok(cfg.into())
+            }
+        }
     }
 
     /// Get the L2 rollup config, either from a file or the superchain registry.
@@ -148,15 +343,15 @@ impl NodeCommand {
             Some(path) => {
                 debug!("Loading l2 config from file: {:?}", path);
                 let file = File::open(path)
-                    .map_err(|e| anyhow::anyhow!("Failed to open l2 config file: {}", e))?;
-                from_reader(file).map_err(|e| anyhow::anyhow!("Failed to parse l2 config: {}", e))
+                    .map_err(|e| anyhow::anyhow!("Failed to open l2 config file: {e}"))?;
+                from_reader(file).map_err(|e| anyhow::anyhow!("Failed to parse l2 config: {e}"))
             }
             None => {
                 debug!("Loading l2 config from superchain registry");
-                let Some(cfg) = args.rollup_config() else {
+                let Some(cfg) = scr_rollup_config_by_alloy_ident(&args.l2_chain_id) else {
                     bail!("Failed to find l2 config for chain ID {}", args.l2_chain_id);
                 };
-                Ok(cfg)
+                Ok(cfg.clone())
             }
         }
     }
@@ -199,6 +394,20 @@ impl NodeCommand {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::anyhow;
+
+    #[derive(Debug)]
+    struct MockError {
+        message: String,
+    }
+
+    impl std::fmt::Display for MockError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.message)
+        }
+    }
+
+    impl std::error::Error for MockError {}
 
     const fn default_flags() -> &'static [&'static str] {
         &[
@@ -208,9 +417,13 @@ mod tests {
             "http://localhost:5052",
             "--l2-engine-rpc",
             "http://localhost:8551",
-            "--l2-provider-rpc",
-            "http://localhost:8545",
         ]
+    }
+
+    #[test]
+    fn test_node_cli_defaults() {
+        let args = NodeCommand::parse_from(["node"].iter().chain(default_flags().iter()).copied());
+        assert_eq!(args.node_mode, NodeMode::Validator);
     }
 
     #[test]
@@ -240,43 +453,20 @@ mod tests {
     }
 
     #[test]
-    fn test_node_cli_missing_l2_provider_rpc() {
-        let err = NodeCommand::try_parse_from([
-            "node",
-            "--l1-eth-rpc",
-            "http://localhost:8545",
-            "--l1-beacon",
-            "http://localhost:5052",
-            "--l2-engine-rpc",
-            "http://localhost:8551",
-        ])
-        .unwrap_err();
-        assert!(err.to_string().contains("--l2-provider-rpc"));
+    fn test_is_jwt_signature_error() {
+        let jwt_error = MockError { message: "signature invalid".to_string() };
+        assert!(NodeCommand::is_jwt_signature_error(&jwt_error));
+
+        let other_error = MockError { message: "network timeout".to_string() };
+        assert!(!NodeCommand::is_jwt_signature_error(&other_error));
     }
 
     #[test]
-    fn test_node_cli_defaults() {
-        let args = NodeCommand::parse_from(["node"].iter().chain(default_flags().iter()).copied());
-        assert_eq!(args.l2_engine_kind, EngineKind::Geth);
-        assert_eq!(args.l1_runtime_config_reload_interval, 600);
-    }
+    fn test_is_jwt_signature_error_from_anyhow() {
+        let jwt_anyhow_error = anyhow!("signature invalid");
+        assert!(NodeCommand::is_jwt_signature_error_from_anyhow(&jwt_anyhow_error));
 
-    #[test]
-    fn test_node_cli_runtime_config_default() {
-        let args = NodeCommand::parse_from(
-            ["node", "--l1.runtime-config-reload-interval", "0"]
-                .iter()
-                .chain(default_flags().iter())
-                .copied(),
-        );
-        assert_eq!(args.l1_runtime_config_reload_interval, 0);
-    }
-
-    #[test]
-    fn test_node_cli_engine_kind() {
-        let args = NodeCommand::parse_from(
-            ["node", "--l2.enginekind", "reth"].iter().chain(default_flags().iter()).copied(),
-        );
-        assert_eq!(args.l2_engine_kind, EngineKind::Reth);
+        let other_anyhow_error = anyhow!("network timeout");
+        assert!(!NodeCommand::is_jwt_signature_error_from_anyhow(&other_anyhow_error));
     }
 }

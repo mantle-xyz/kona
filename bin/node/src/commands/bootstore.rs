@@ -1,8 +1,9 @@
 //! Bootstore Subcommand
 
-use crate::flags::{GlobalArgs, MetricsArgs};
+use crate::flags::GlobalArgs;
 use clap::Parser;
-use kona_p2p::BootStore;
+use kona_cli::LogConfig;
+use kona_peers::{BootStore, BootStoreFile};
 use std::path::PathBuf;
 
 /// The `bootstore` Subcommand
@@ -14,7 +15,7 @@ use std::path::PathBuf;
 /// ```sh
 /// kona-node bootstore [FLAGS] [OPTIONS]
 /// ```
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Default, PartialEq, Debug, Clone)]
 #[command(about = "Utility tool to interact with local bootstores")]
 pub struct BootstoreCommand {
     /// Optionally prints all bootstores.
@@ -27,10 +28,10 @@ pub struct BootstoreCommand {
 }
 
 impl BootstoreCommand {
-    /// Initializes the telemetry stack and Prometheus metrics recorder.
-    pub fn init_telemetry(&self, args: &GlobalArgs, metrics: &MetricsArgs) -> anyhow::Result<()> {
-        args.init_tracing(None)?;
-        metrics.init_metrics()
+    /// Initializes the logging system based on global arguments.
+    pub fn init_logs(&self, args: &GlobalArgs) -> anyhow::Result<()> {
+        LogConfig::new(args.log_args.clone()).init_tracing_subscriber(None)?;
+        Ok(())
     }
 
     /// Runs the subcommand.
@@ -39,7 +40,7 @@ impl BootstoreCommand {
         if self.all {
             self.all()?;
         } else {
-            self.info(args.l2_chain_id)?;
+            self.info(args.l2_chain_id.into())?;
         }
         Ok(())
     }
@@ -56,10 +57,14 @@ impl BootstoreCommand {
     pub fn info(&self, chain_id: u64) -> anyhow::Result<()> {
         let chain = kona_registry::OPCHAINS
             .get(&chain_id)
-            .ok_or(anyhow::anyhow!("Chain ID {} not found in the registry", chain_id))?;
-        println!("{} Bootstore (Chain ID: {})", chain.name, chain_id);
-        let bootstore = BootStore::from_chain_id(chain_id, self.bootstore.clone(), vec![]);
-        println!("Path: {}", bootstore.path.display());
+            .ok_or(anyhow::anyhow!("Chain ID {chain_id} not found in the registry"))?;
+        println!("{} Bootstore (Chain ID: {chain_id})", chain.name);
+        let bootstore: BootStoreFile = self
+            .bootstore
+            .clone()
+            .map_or(BootStoreFile::Default { chain_id }, BootStoreFile::Custom);
+        let bootstore: BootStore = bootstore.try_into()?;
+        println!("Path: {}", self.bootstore.clone().unwrap_or_default().display());
         println!("Peer Count: {}", bootstore.peers.len());
         println!("Valid peers: {}", bootstore.valid_peers_with_chain_id(chain_id).len());
         println!("--------------------------");

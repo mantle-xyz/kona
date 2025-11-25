@@ -29,7 +29,7 @@ pub enum DepositError {
     #[error("Unexpected number of deposit event log topics: {0}")]
     UnexpectedTopicsLen(usize),
     /// Invalid deposit event selector.
-    /// Expected: [B256] (deposit event selector), Actual: [B256] (event log topic).
+    /// Expected: [`B256`] (deposit event selector), Actual: [`B256`] (event log topic).
     #[error("Invalid deposit event selector: {1}, expected {0}")]
     InvalidSelector(B256, B256),
     /// Incomplete opaqueData slice header (incomplete length).
@@ -214,18 +214,7 @@ pub(crate) fn unmarshal_deposit_version0(
     let raw_mint: [u8; 16] = data[offset + 16..offset + 32].try_into().map_err(|_| {
         DepositError::MintDecode(Bytes::copy_from_slice(&data[offset + 16..offset + 32]))
     })?;
-    let mint = u128::from_be_bytes(raw_mint);
-
-    // 0 mint is represented as nil to skip minting code
-    if mint == 0 {
-        // Since `None` is functionally equivalent to `Some(0)` in revm, we need to make sure
-        // that the attributes produced by the derivation pipeline are consistent with the block
-        // received over the engine api. Instead of setting `mint` to `None`, we set it to
-        // `Some(0)` to ensure that the produced attributes are consistent.
-        tx.mint = Some(0);
-    } else {
-        tx.mint = Some(mint);
-    }
+    tx.mint = u128::from_be_bytes(raw_mint);
     offset += 32;
 
     // uint256 value
@@ -272,7 +261,7 @@ pub(crate) fn unmarshal_deposit_version1(
     let mut offset = 0;
 
     // u128 mint mnt value
-    tx.mint = decode_u128_field(data, offset, DepositError::MintDecode)?;
+    tx.mint = decode_u128_field(data, offset, DepositError::MintDecode)?.unwrap_or(0);
     offset += 32;
 
     // uint256 value
@@ -280,7 +269,7 @@ pub(crate) fn unmarshal_deposit_version1(
     offset += 32;
 
     // u128 mint eth_value
-    tx.eth_value = decode_u128_field(data, offset, DepositError::EthValueDecode)?;
+    tx.eth_value = decode_u128_field(data, offset, DepositError::EthValueDecode)?.unwrap_or(0);
     offset += 32;
 
     // uint256 eth_tx_value
@@ -586,7 +575,7 @@ mod test {
             to: TxKind::Call(address!("2222222222222222222222222222222222222222")),
             value: U256::from(100),
             gas_limit: 1000,
-            mint: Some(10),
+            mint: 10,
             ..Default::default()
         };
         let to = address!("5555555555555555555555555555555555555555");

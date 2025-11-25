@@ -1,4 +1,4 @@
-//! Module containing a [TxDeposit] builder for the Fjord network upgrade transactions.
+//! Module containing a [`TxDeposit`] builder for the Fjord network upgrade transactions.
 
 use alloc::{string::String, vec::Vec};
 use alloy_eips::eip2718::Encodable2718;
@@ -63,7 +63,7 @@ impl Fjord {
             .into()
     }
 
-    /// Returns the list of [TxDeposit]s for the Fjord network upgrade.
+    /// Returns the list of [`TxDeposit`]s for the Fjord network upgrade.
     pub fn deposits() -> impl Iterator<Item = TxDeposit> {
         ([
             // Deploys the Fjord Gas Price Oracle contract.
@@ -72,12 +72,12 @@ impl Fjord {
                 source_hash: Self::deploy_fjord_gas_price_oracle_source(),
                 from: Self::GAS_PRICE_ORACLE_FJORD_DEPLOYER,
                 to: TxKind::Create,
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 1_450_000,
                 is_system_transaction: false,
                 input: Self::gas_price_oracle_deployment_bytecode(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             // Updates the gas price Oracle proxy to point to the Fjord Gas Price Oracle.
@@ -86,12 +86,12 @@ impl Fjord {
                 source_hash: Self::update_fjord_gas_price_oracle_source(),
                 from: Address::ZERO,
                 to: TxKind::Call(Predeploys::GAS_PRICE_ORACLE),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::FJORD_GAS_PRICE_ORACLE),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             // Enables the Fjord Gas Price Oracle.
@@ -100,12 +100,12 @@ impl Fjord {
                 source_hash: Self::enable_fjord_source(),
                 from: Self::L1_INFO_DEPOSITER,
                 to: TxKind::Call(Predeploys::GAS_PRICE_ORACLE),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 90_000,
                 is_system_transaction: false,
                 input: Self::SET_FJORD_METHOD_SIGNATURE.into(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
         ])

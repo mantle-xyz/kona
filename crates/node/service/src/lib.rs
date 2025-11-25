@@ -10,17 +10,21 @@
 extern crate tracing;
 
 mod service;
-pub use service::{
-    NodeMode, RollupNode, RollupNodeBuilder, RollupNodeError, RollupNodeService,
-    SequencerNodeService, ValidatorNodeService,
-};
+pub use service::{InteropMode, NodeMode, RollupNode, RollupNodeBuilder, RollupNodeService};
 
 mod actors;
 pub use actors::{
-    DerivationActor, DerivationError, EngineActor, EngineError, EngineLauncher,
-    InboundDerivationMessage, L1WatcherRpc, L1WatcherRpcError, NetworkActor, NetworkActorError,
-    NodeActor, RpcActor, RpcActorError, RuntimeActor, RuntimeLauncher,
+    AttributesBuilderConfig, CancellableContext, ConductorClient, ConductorError,
+    DelayedL1OriginSelectorProvider, DerivationActor, DerivationBuilder, DerivationContext,
+    DerivationError, DerivationInboundChannels, DerivationState, EngineActor, EngineBuilder,
+    EngineContext, EngineError, EngineInboundData, InboundDerivationMessage, L1OriginSelector,
+    L1OriginSelectorError, L1OriginSelectorProvider, L1WatcherRpc, L1WatcherRpcContext,
+    L1WatcherRpcError, L1WatcherRpcInboundChannels, L1WatcherRpcState, L2Finalizer, NetworkActor,
+    NetworkActorError, NetworkBuilder, NetworkBuilderError, NetworkConfig, NetworkContext,
+    NetworkDriver, NetworkDriverError, NetworkHandler, NetworkInboundData, NodeActor,
+    PipelineBuilder, RpcActor, RpcActorError, RpcContext, SequencerActor, SequencerActorError,
+    SequencerBuilder, SequencerConfig, SequencerContext, SequencerInboundData,
 };
 
-mod sync_start;
-pub use sync_start::{L2ForkchoiceState, SyncStartError, find_starting_forkchoice};
+mod metrics;
+pub use metrics::Metrics;

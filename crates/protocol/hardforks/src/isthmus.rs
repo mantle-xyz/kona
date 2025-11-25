@@ -1,4 +1,4 @@
-//! Module containing a [TxDeposit] builder for the Isthmus network upgrade transactions.
+//! Module containing a [`TxDeposit`] builder for the Isthmus network upgrade transactions.
 //!
 //! Isthmus network upgrade transactions are defined in the [OP Stack Specs][specs].
 //!
@@ -65,7 +65,7 @@ impl Isthmus {
     pub const GAS_PRICE_ORACLE_CODE_HASH: B256 = alloy_primitives::b256!(
         "0x4d195a9d7caf9fb6d4beaf80de252c626c853afd5868c4f4f8d19c9d301c2679"
     );
-    /// The Isthmus Operatpr Fee Vault Code Hash
+    /// The Isthmus Operator Fee Vault Code Hash
     /// See: <https://specs.optimism.io/protocol/isthmus/derivation.html#operator-fee-vault-deployment>
     pub const OPERATOR_FEE_VAULT_CODE_HASH: B256 = alloy_primitives::b256!(
         "0x57dc55c9c09ca456fa728f253fe7b895d3e6aae0706104935fe87c7721001971"
@@ -145,18 +145,18 @@ impl Isthmus {
             .into()
     }
 
-    /// Returns the list of [TxDeposit]s for the network upgrade.
+    /// Returns the list of [`TxDeposit`]s for the network upgrade.
     pub fn deposits() -> impl Iterator<Item = TxDeposit> {
         ([
             TxDeposit {
                 source_hash: Self::deploy_l1_block_source(),
                 from: Self::L1_BLOCK_DEPLOYER,
                 to: TxKind::Create,
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 425_000,
                 is_system_transaction: false,
-                eth_value: None,
+                eth_value: 0,
                 input: Self::l1_block_deployment_bytecode(),
                 eth_tx_value: None,
             },
@@ -164,11 +164,11 @@ impl Isthmus {
                 source_hash: Self::deploy_gas_price_oracle_source(),
                 from: Self::GAS_PRICE_ORACLE_DEPLOYER,
                 to: TxKind::Create,
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 1_625_000,
                 is_system_transaction: false,
-                eth_value: None,
+                eth_value: 0,
                 input: Self::gas_price_oracle_deployment_bytecode(),
                 eth_tx_value: None,
             },
@@ -176,11 +176,11 @@ impl Isthmus {
                 source_hash: Self::deploy_operator_fee_vault_source(),
                 from: Self::OPERATOR_FEE_VAULT_DEPLOYER,
                 to: TxKind::Create,
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 500_000,
                 is_system_transaction: false,
-                eth_value: None,
+                eth_value: 0,
                 input: Self::operator_fee_vault_deployment_bytecode(),
                 eth_tx_value: None,
             },
@@ -188,60 +188,60 @@ impl Isthmus {
                 source_hash: Self::update_l1_block_source(),
                 from: Address::default(),
                 to: TxKind::Call(Predeploys::L1_BLOCK_INFO),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::NEW_L1_BLOCK),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::update_gas_price_oracle_source(),
                 from: Address::default(),
                 to: TxKind::Call(Predeploys::GAS_PRICE_ORACLE),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::GAS_PRICE_ORACLE),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::update_operator_fee_vault_source(),
                 from: Address::default(),
                 to: TxKind::Call(Predeploys::OPERATOR_FEE_VAULT),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::OPERATOR_FEE_VAULT),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::enable_isthmus_source(),
                 from: Self::DEPOSITOR_ACCOUNT,
                 to: TxKind::Call(Predeploys::GAS_PRICE_ORACLE),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 90_000,
                 is_system_transaction: false,
                 input: Self::ENABLE_ISTHMUS_INPUT.into(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::block_hash_history_contract_source(),
                 from: Self::EIP2935_FROM,
                 to: TxKind::Create,
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 250_000,
                 is_system_transaction: false,
                 input: Self::eip2935_creation_data(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
         ])

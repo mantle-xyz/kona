@@ -13,7 +13,7 @@ use core::marker::PhantomData;
 /// A [OrderedListWalker] allows for traversing over a Merkle Patricia Trie containing a derivable
 /// ordered list.
 ///
-/// Once it has ben hydrated with [Self::hydrate], the elements in the derivable list can be
+/// Once it has been hydrated with [Self::hydrate], the elements in the derivable list can be
 /// iterated over using the [Iterator] implementation.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct OrderedListWalker<F: TrieProvider> {
@@ -77,7 +77,7 @@ where
 
     /// Takes the inner list of the [OrderedListWalker], returning it and setting the inner list to
     /// [None].
-    pub fn take_inner(&mut self) -> Option<VecDeque<(Bytes, Bytes)>> {
+    pub const fn take_inner(&mut self) -> Option<VecDeque<(Bytes, Bytes)>> {
         self.inner.take()
     }
 

@@ -1,3 +1,9 @@
+//! Engine query interface for external communication.
+//!
+//! Provides a channel-based API for querying engine state and configuration
+//! from external actors. Uses oneshot channels for responses to maintain
+//! clean async communication patterns.
+
 use std::sync::Arc;
 
 use alloy_eips::BlockNumberOrTag;
@@ -9,24 +15,35 @@ use tokio::sync::oneshot::Sender;
 
 use crate::{EngineClient, EngineClientError, EngineState};
 
-/// The type of data that can be requested from the engine.
+/// Channel sender for submitting [`EngineQueries`] to the engine.
 pub type EngineQuerySender = tokio::sync::mpsc::Sender<EngineQueries>;
 
-/// Returns the full engine state.
+/// Query types supported by the engine for external communication.
+///
+/// Each variant includes a oneshot sender for the response, enabling
+/// async request-response patterns. The engine processes these queries
+/// and sends responses back through the provided channels.
 #[derive(Debug)]
 pub enum EngineQueries {
-    /// Returns the rollup config.
+    /// Request the current rollup configuration.
     Config(Sender<RollupConfig>),
-    /// Returns L2 engine state information.
+    /// Request the current [`EngineState`] snapshot.
     State(Sender<EngineState>),
-    /// Returns the L2 output at the specified block with a tuple of the block info and associated
-    /// engine state.
+    /// Request the L2 output root for a specific block.
+    ///
+    /// Returns a tuple of block info, output root, and engine state at the requested block.
     OutputAtBlock {
-        /// The block number or tag of the block to retrieve the output for.
+        /// The block number or tag to retrieve the output for.
         block: BlockNumberOrTag,
-        /// A channel to send back the output and engine state.
+        /// Response channel for (block_info, output_root, engine_state).
         sender: Sender<(L2BlockInfo, OutputRoot, EngineState)>,
     },
+    /// Subscribe to engine state updates via a watch channel receiver.
+    StateReceiver(Sender<tokio::sync::watch::Receiver<EngineState>>),
+    /// Development API: Subscribe to task queue length updates.
+    QueueLengthReceiver(Sender<tokio::sync::watch::Receiver<usize>>),
+    /// Development API: Get the current number of pending tasks in the queue.
+    TaskQueueLength(Sender<usize>),
 }
 
 /// An error that can occur when querying the engine.
@@ -54,10 +71,12 @@ impl EngineQueries {
     pub async fn handle(
         self,
         state_recv: &tokio::sync::watch::Receiver<EngineState>,
+        queue_length_recv: &tokio::sync::watch::Receiver<usize>,
         client: &Arc<EngineClient>,
         rollup_config: &Arc<RollupConfig>,
     ) -> Result<(), EngineQueriesError> {
         let state = *state_recv.borrow();
+
         match self {
             Self::Config(sender) => sender
                 .send((**rollup_config).clone())
@@ -66,18 +85,18 @@ impl EngineQueries {
                 sender.send(state).map_err(|_| EngineQueriesError::OutputChannelClosed)
             }
             Self::OutputAtBlock { block, sender } => {
-                // TODO(@theochap): it is not very efficient to fetch the block info and the full
-                // block with two separate RPC calls. We can get the block info from
-                // the full block by using the `from_rpc_block_and_genesis` method which requires
-                // accessing the `ChainGenesis` struct.
-                let (output_block, output_block_info) = tokio::try_join!(
-                    client.l2_block_by_label(block),
-                    client.l2_block_info_by_label(block)
-                )?;
-
+                let output_block = client.l2_block_by_label(block).await?;
                 let output_block = output_block.ok_or(EngineQueriesError::NoL2BlockFound(block))?;
+                // Cloning the l2 block below is cheaper than sending a network request to get the
+                // l2 block info. Querying the `L2BlockInfo` from the client ends up
+                // fetching the full l2 block again.
+                let consensus_block = output_block.clone().into_consensus();
                 let output_block_info =
-                    output_block_info.ok_or(EngineQueriesError::NoL2BlockFound(block))?;
+                    L2BlockInfo::from_block_and_genesis::<op_alloy_consensus::OpTxEnvelope>(
+                        &consensus_block.map_transactions(|tx| tx.inner.inner.into_inner()),
+                        &rollup_config.genesis,
+                    )
+                    .map_err(|_| EngineQueriesError::NoL2BlockFound(block))?;
 
                 let state_root = output_block.header.state_root;
 
@@ -106,6 +125,19 @@ impl EngineQueries {
                 sender
                     .send((output_block_info, output_response_v0, state))
                     .map_err(|_| EngineQueriesError::OutputChannelClosed)
+            }
+            Self::StateReceiver(subscription) => subscription
+                .send(state_recv.clone())
+                .map_err(|_| EngineQueriesError::OutputChannelClosed),
+            Self::QueueLengthReceiver(subscription) => subscription
+                .send(queue_length_recv.clone())
+                .map_err(|_| EngineQueriesError::OutputChannelClosed),
+            Self::TaskQueueLength(sender) => {
+                let queue_length = *queue_length_recv.borrow();
+                if sender.send(queue_length).is_err() {
+                    warn!(target: "engine", "Failed to send task queue length response");
+                }
+                Ok(())
             }
         }
     }

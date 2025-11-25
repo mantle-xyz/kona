@@ -8,7 +8,7 @@ use core::cmp::Ordering;
 
 /// Type for span batch bits.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct SpanBatchBits(Vec<u8>);
+pub struct SpanBatchBits(pub Vec<u8>);
 
 impl AsRef<[u8]> for SpanBatchBits {
     fn as_ref(&self) -> &[u8] {
@@ -26,7 +26,7 @@ impl SpanBatchBits {
     /// The bitlist is encoded as big-endian integer, left-padded with zeroes to a multiple of 8
     /// bits. The encoded bitlist cannot be longer than `bit_length`.
     pub fn decode(b: &mut &[u8], bit_length: usize) -> Result<Self, SpanBatchError> {
-        let buffer_len = bit_length / 8 + if bit_length % 8 != 0 { 1 } else { 0 };
+        let buffer_len = bit_length / 8 + if !bit_length.is_multiple_of(8) { 1 } else { 0 };
         let bits = if b.len() < buffer_len {
             let mut bits = vec![0; buffer_len];
             bits[..b.len()].copy_from_slice(b);
@@ -60,14 +60,14 @@ impl SpanBatchBits {
 
         // Round up, ensure enough bytes when number of bits is not a multiple of 8.
         // Alternative of (L+7)/8 is not overflow-safe.
-        let buf_len = bit_length / 8 + if bit_length % 8 != 0 { 1 } else { 0 };
+        let buf_len = bit_length / 8 + if !bit_length.is_multiple_of(8) { 1 } else { 0 };
         let mut buf = vec![0; buf_len];
         buf[buf_len - bits.0.len()..].copy_from_slice(bits.as_ref());
         w.put_slice(&buf);
         Ok(())
     }
 
-    /// Get a bit from the [SpanBatchBits] bitlist.
+    /// Get a bit from the [`SpanBatchBits`] bitlist.
     pub fn get_bit(&self, index: usize) -> Option<u8> {
         let byte_index = index / 8;
         let bit_index = index % 8;
@@ -87,7 +87,7 @@ impl SpanBatchBits {
         }
     }
 
-    /// Sets a bit in the [SpanBatchBits] bitlist.
+    /// Sets a bit in the [`SpanBatchBits`] bitlist.
     pub fn set_bit(&mut self, index: usize, value: bool) {
         let byte_index = index / 8;
         let bit_index = index % 8;
@@ -111,7 +111,7 @@ impl SpanBatchBits {
         }
     }
 
-    /// Calculates the bit length of the [SpanBatchBits] bitfield.
+    /// Calculates the bit length of the [`SpanBatchBits`] bitfield.
     pub fn bit_len(&self) -> usize {
         // Iterate over the bytes from left to right to find the first non-zero byte
         for (i, &byte) in self.0.iter().enumerate() {

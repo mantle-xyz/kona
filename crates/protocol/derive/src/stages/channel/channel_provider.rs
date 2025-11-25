@@ -13,40 +13,41 @@ use core::fmt::Debug;
 use kona_genesis::RollupConfig;
 use kona_protocol::BlockInfo;
 
-/// The [ChannelProvider] stage is a mux between the [ChannelBank] and [ChannelAssembler] stages.
+/// The [`ChannelProvider`] stage is a mux between the [`ChannelBank`] and [`ChannelAssembler`]
+/// stages.
 ///
 /// Rules:
-/// When Holocene is not active, the [ChannelBank] is used.
-/// When Holocene is active, the [ChannelAssembler] is used.
+/// When Holocene is not active, the [`ChannelBank`] is used.
+/// When Holocene is active, the [`ChannelAssembler`] is used.
 #[derive(Debug)]
 pub struct ChannelProvider<P>
 where
     P: NextFrameProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
     /// The rollup configuration.
-    cfg: Arc<RollupConfig>,
+    pub cfg: Arc<RollupConfig>,
     /// The previous stage of the derivation pipeline.
     ///
-    /// If this is set to [None], the multiplexer has been activated and the active stage
+    /// If this is set to [`None`], the multiplexer has been activated and the active stage
     /// owns the previous stage.
     ///
-    /// Must be [None] if `channel_bank` or `channel_assembler` is [Some].
-    prev: Option<P>,
+    /// Must be [`None`] if `channel_bank` or `channel_assembler` is [`Some`].
+    pub prev: Option<P>,
     /// The channel bank stage of the provider.
     ///
-    /// Must be [None] if `prev` or `channel_assembler` is [Some].
-    channel_bank: Option<ChannelBank<P>>,
+    /// Must be [`None`] if `prev` or `channel_assembler` is [`Some`].
+    pub channel_bank: Option<ChannelBank<P>>,
     /// The channel assembler stage of the provider.
     ///
-    /// Must be [None] if `prev` or `channel_bank` is [Some].
-    channel_assembler: Option<ChannelAssembler<P>>,
+    /// Must be [`None`] if `prev` or `channel_bank` is [`Some`].
+    pub channel_assembler: Option<ChannelAssembler<P>>,
 }
 
 impl<P> ChannelProvider<P>
 where
     P: NextFrameProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
-    /// Creates a new [ChannelProvider] with the given configuration and previous stage.
+    /// Creates a new [`ChannelProvider`] with the given configuration and previous stage.
     pub const fn new(cfg: Arc<RollupConfig>, prev: P) -> Self {
         Self { cfg, prev: Some(prev), channel_bank: None, channel_assembler: None }
     }
@@ -134,13 +135,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::ChannelProvider;
     use crate::{
-        prelude::{OriginProvider, PipelineError},
-        stages::ChannelReaderProvider,
-        test_utils::TestNextFrameProvider,
-        traits::SignalReceiver,
-        types::ResetSignal,
+        ChannelProvider, ChannelReaderProvider, OriginProvider, PipelineError, ResetSignal,
+        SignalReceiver, test_utils::TestNextFrameProvider,
     };
     use alloc::{sync::Arc, vec};
     use kona_genesis::{HardForkConfig, RollupConfig};

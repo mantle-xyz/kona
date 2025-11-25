@@ -1,10 +1,8 @@
 //! This module contains the [FrameQueue] stage of the derivation pipeline.
 
 use crate::{
-    errors::PipelineError,
-    stages::NextFrameProvider,
-    traits::{OriginAdvancer, OriginProvider, SignalReceiver},
-    types::{PipelineResult, Signal},
+    NextFrameProvider, OriginAdvancer, OriginProvider, PipelineError, PipelineResult, Signal,
+    SignalReceiver,
 };
 use alloc::{boxed::Box, collections::VecDeque, sync::Arc};
 use alloy_primitives::Bytes;
@@ -13,7 +11,7 @@ use core::fmt::Debug;
 use kona_genesis::RollupConfig;
 use kona_protocol::{BlockInfo, Frame};
 
-/// Provides data frames for the [FrameQueue] stage.
+/// Provides data frames for the [`FrameQueue`] stage.
 #[async_trait]
 pub trait FrameQueueProvider {
     /// An item that can be converted into a byte array.
@@ -25,10 +23,10 @@ pub trait FrameQueueProvider {
     async fn next_data(&mut self) -> PipelineResult<Self::Item>;
 }
 
-/// The [FrameQueue] stage of the derivation pipeline.
-/// This stage takes the output of the [L1Retrieval] stage and parses it into frames.
+/// The [`FrameQueue`] stage of the derivation pipeline.
+/// This stage takes the output of the [`L1Retrieval`] stage and parses it into frames.
 ///
-/// [L1Retrieval]: crate::stages::L1Retrieval
+/// [`L1Retrieval`]: crate::stages::L1Retrieval
 #[derive(Debug)]
 pub struct FrameQueue<P>
 where
@@ -37,7 +35,7 @@ where
     /// The previous stage in the pipeline.
     pub prev: P,
     /// The current frame queue.
-    queue: VecDeque<Frame>,
+    pub queue: VecDeque<Frame>,
     /// The rollup config.
     _rollup_config: Arc<RollupConfig>,
 }
@@ -46,9 +44,9 @@ impl<P> FrameQueue<P>
 where
     P: FrameQueueProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
 {
-    /// Create a new [FrameQueue] stage with the given previous [L1Retrieval] stage.
+    /// Create a new [`FrameQueue`] stage with the given previous [`L1Retrieval`] stage.
     ///
-    /// [L1Retrieval]: crate::stages::L1Retrieval
+    /// [`L1Retrieval`]: crate::stages::L1Retrieval
     pub const fn new(prev: P, cfg: Arc<RollupConfig>) -> Self {
         Self { prev, queue: VecDeque::new(), _rollup_config: cfg }
     }
@@ -107,7 +105,7 @@ where
         }
     }
 
-    /// Loads more frames into the [FrameQueue].
+    /// Loads more frames into the [`FrameQueue`].
     pub async fn load_frames(&mut self) -> PipelineResult<()> {
         // Skip loading frames if the queue is not empty.
         if !self.queue.is_empty() {
@@ -132,6 +130,15 @@ where
 
         // Optimistically extend the queue with the new frames.
         self.queue.extend(frames);
+
+        // Update metrics with last frame count
+        kona_macros::set!(
+            gauge,
+            crate::metrics::Metrics::PIPELINE_FRAME_QUEUE_BUFFER,
+            self.queue.len() as f64
+        );
+        let _queue_size = self.queue.iter().map(|f| f.size()).sum::<usize>() as f64;
+        kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_FRAME_QUEUE_MEM, queue_size);
 
         // Prune frames if Holocene is active.
         let origin = self.origin().ok_or(PipelineError::MissingOrigin.crit())?;

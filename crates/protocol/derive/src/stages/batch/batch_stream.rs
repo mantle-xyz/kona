@@ -1,10 +1,8 @@
 //! This module contains the `BatchStream` stage.
 
 use crate::{
-    errors::{PipelineEncodingError, PipelineError},
-    stages::NextBatchProvider,
-    traits::{L2ChainProvider, OriginAdvancer, OriginProvider, SignalReceiver},
-    types::{PipelineResult, Signal},
+    L2ChainProvider, NextBatchProvider, OriginAdvancer, OriginProvider, PipelineEncodingError,
+    PipelineError, PipelineResult, Signal, SignalReceiver,
 };
 use alloc::{boxed::Box, collections::VecDeque, sync::Arc};
 use async_trait::async_trait;
@@ -14,25 +12,25 @@ use kona_protocol::{
     Batch, BatchValidity, BatchWithInclusionBlock, BlockInfo, L2BlockInfo, SingleBatch, SpanBatch,
 };
 
-/// Provides [Batch]es for the [BatchStream] stage.
+/// Provides [`Batch`]es for the [`BatchStream`] stage.
 #[async_trait]
 pub trait BatchStreamProvider {
-    /// Returns the next [Batch] in the [BatchStream] stage.
+    /// Returns the next [`Batch`] in the [`BatchStream`] stage.
     async fn next_batch(&mut self) -> PipelineResult<Batch>;
 
     /// Drains the recent `Channel` if an invalid span batch is found post-holocene.
     fn flush(&mut self);
 }
 
-/// [BatchStream] stage in the derivation pipeline.
+/// [`BatchStream`] stage in the derivation pipeline.
 ///
-/// This stage is introduced in the [Holocene] hardfork.
-/// It slots in between the [ChannelReader] and [BatchQueue]
+/// This stage is introduced in the [`Holocene`] hardfork.
+/// It slots in between the [`ChannelReader`] and [`BatchQueue`]
 /// stages, buffering span batches until they are validated.
 ///
-/// [Holocene]: https://specs.optimism.io/protocol/holocene/overview.html
-/// [ChannelReader]: crate::stages::ChannelReader
-/// [BatchQueue]: crate::stages::BatchQueue
+/// [`Holocene`]: https://specs.optimism.io/protocol/holocene/overview.html
+/// [`ChannelReader`]: crate::stages::ChannelReader
+/// [`BatchQueue`]: crate::stages::BatchQueue
 #[derive(Debug)]
 pub struct BatchStream<P, BF>
 where
@@ -40,16 +38,16 @@ where
     BF: L2ChainProvider + Debug,
 {
     /// The previous stage in the derivation pipeline.
-    prev: P,
+    pub prev: P,
     /// There can only be a single staged span batch.
-    span: Option<SpanBatch>,
-    /// A buffer of single batches derived from the [SpanBatch].
-    buffer: VecDeque<SingleBatch>,
+    pub span: Option<SpanBatch>,
+    /// A buffer of single batches derived from the [`SpanBatch`].
+    pub buffer: VecDeque<SingleBatch>,
     /// A reference to the rollup config, used to check
-    /// if the [BatchStream] stage should be activated.
-    config: Arc<RollupConfig>,
+    /// if the [`BatchStream`] stage should be activated.
+    pub config: Arc<RollupConfig>,
     /// Used to validate the batches.
-    fetcher: BF,
+    pub fetcher: BF,
 }
 
 impl<P, BF> BatchStream<P, BF>
@@ -57,19 +55,19 @@ where
     P: BatchStreamProvider + OriginAdvancer + OriginProvider + SignalReceiver + Debug,
     BF: L2ChainProvider + Debug,
 {
-    /// Create a new [BatchStream] stage.
+    /// Create a new [`BatchStream`] stage.
     pub const fn new(prev: P, config: Arc<RollupConfig>, fetcher: BF) -> Self {
         Self { prev, span: None, buffer: VecDeque::new(), config, fetcher }
     }
 
-    /// Returns if the [BatchStream] stage is active based on the
+    /// Returns if the [`BatchStream`] stage is active based on the
     /// origin timestamp and holocene activation timestamp.
     pub fn is_active(&self) -> PipelineResult<bool> {
         let origin = self.prev.origin().ok_or(PipelineError::MissingOrigin.crit())?;
         Ok(self.config.is_holocene_active(origin.timestamp))
     }
 
-    /// Gets a [SingleBatch] from the in-memory buffer.
+    /// Gets a [`SingleBatch`] from the in-memory buffer.
     pub fn get_single_batch(
         &mut self,
         parent: L2BlockInfo,
@@ -95,6 +93,11 @@ where
                 })?,
             );
         }
+        let _batch_count = self.buffer.len() as f64;
+        kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_BATCH_BUFFER, _batch_count);
+        #[cfg(feature = "metrics")]
+        let batch_size = std::mem::size_of_val(&self.buffer) as f64;
+        kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_BATCH_MEM, batch_size);
         Ok(())
     }
 }
@@ -143,6 +146,8 @@ where
             match batch_with_inclusion.batch {
                 Batch::Single(b) => return Ok(Batch::Single(b)),
                 Batch::Span(b) => {
+                    #[cfg(feature = "metrics")]
+                    let start = std::time::Instant::now();
                     let (validity, _) = b
                         .check_batch_prefix(
                             self.config.as_ref(),
@@ -152,6 +157,17 @@ where
                             &mut self.fetcher,
                         )
                         .await;
+                    kona_macros::record!(
+                        histogram,
+                        crate::metrics::Metrics::PIPELINE_CHECK_BATCH_PREFIX,
+                        start.elapsed().as_secs_f64()
+                    );
+
+                    kona_macros::inc!(
+                        gauge,
+                        crate::metrics::Metrics::PIPELINE_BATCH_VALIDITY,
+                        "validity" => validity.to_string(),
+                    );
 
                     match validity {
                         BatchValidity::Accept => self.span = Some(b),
@@ -159,7 +175,7 @@ where
                             // Flush the stage.
                             self.flush();
 
-                            return Err(PipelineError::Eof.temp());
+                            return Err(PipelineError::NotEnoughData.temp());
                         }
                         BatchValidity::Past => {
                             if !self.is_active()? {

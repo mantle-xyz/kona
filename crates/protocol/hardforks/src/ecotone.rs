@@ -1,4 +1,4 @@
-//! Module containing a [TxDeposit] builder for the Ecotone network upgrade transactions.
+//! Module containing a [`TxDeposit`] builder for the Ecotone network upgrade transactions.
 
 use alloc::{string::String, vec::Vec};
 use alloy_eips::eip2718::Encodable2718;
@@ -22,7 +22,7 @@ impl Ecotone {
     pub const DEPOSITOR_ACCOUNT: Address = address!("DeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001");
 
     /// The Enable Ecotone Input Method 4Byte Signature
-    pub const ENABLE_ECOTONE_INPUT: [u8; 4] = hex!("22b908b3");
+    pub const ENABLE_ECOTONE_INPUT: [u8; 4] = hex!("22b90ab3");
 
     /// L1 Block Deployer Address
     pub const L1_BLOCK_DEPLOYER: Address = address!("4210000000000000000000000000000000000000");
@@ -108,7 +108,7 @@ impl Ecotone {
             .into()
     }
 
-    /// Returns the list of [TxDeposit]s for the Ecotone network upgrade.
+    /// Returns the list of [`TxDeposit`]s for the Ecotone network upgrade.
     pub fn deposits() -> impl Iterator<Item = TxDeposit> {
         ([
             // Deploy the L1 Block contract for Ecotone.
@@ -117,12 +117,12 @@ impl Ecotone {
                 source_hash: Self::deploy_l1_block_source(),
                 from: Self::L1_BLOCK_DEPLOYER,
                 to: TxKind::Create,
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 375_000,
                 is_system_transaction: false,
                 input: Self::l1_block_deployment_bytecode(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             // Deploy the Gas Price Oracle contract for Ecotone.
@@ -131,12 +131,12 @@ impl Ecotone {
                 source_hash: Self::deploy_gas_price_oracle_source(),
                 from: Self::GAS_PRICE_ORACLE_DEPLOYER,
                 to: TxKind::Create,
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 1_000_000,
                 is_system_transaction: false,
                 input: Self::ecotone_gas_price_oracle_deployment_bytecode(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             // Updates the l1 block proxy to point to the new L1 Block contract.
@@ -145,12 +145,12 @@ impl Ecotone {
                 source_hash: Self::update_l1_block_source(),
                 from: Address::ZERO,
                 to: TxKind::Call(Predeploys::L1_BLOCK_INFO),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::NEW_L1_BLOCK),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             // Updates the gas price oracle proxy to point to the new Gas Price Oracle contract.
@@ -159,12 +159,12 @@ impl Ecotone {
                 source_hash: Self::update_gas_price_oracle_source(),
                 from: Address::ZERO,
                 to: TxKind::Call(Predeploys::GAS_PRICE_ORACLE),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::GAS_PRICE_ORACLE),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             // Enables the Ecotone Gas Price Oracle.
@@ -173,12 +173,12 @@ impl Ecotone {
                 source_hash: Self::enable_ecotone_source(),
                 from: Self::DEPOSITOR_ACCOUNT,
                 to: TxKind::Call(Predeploys::GAS_PRICE_ORACLE),
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 80_000,
                 is_system_transaction: false,
                 input: Self::ENABLE_ECOTONE_INPUT.into(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
             // Deploys the beacon block roots contract.
@@ -187,12 +187,12 @@ impl Ecotone {
                 source_hash: Self::beacon_roots_source(),
                 from: Self::EIP4788_FROM,
                 to: TxKind::Create,
-                mint: 0.into(),
+                mint: 0,
                 value: U256::ZERO,
                 gas_limit: 250_000,
                 is_system_transaction: false,
                 input: Self::eip4788_creation_data(),
-                eth_value: None,
+                eth_value: 0,
                 eth_tx_value: None,
             },
         ])

@@ -6,50 +6,47 @@
 )]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
-mod config;
-pub use config::RpcConfig;
+#[macro_use]
+extern crate tracing;
 
-mod launcher;
-pub use launcher::{RpcLauncher, RpcLauncherError};
+mod admin;
+pub use admin::{AdminRpc, NetworkAdminQuery, SequencerAdminQuery};
+
+mod config;
+pub use config::RpcBuilder;
 
 mod net;
-pub use net::NetworkRpc;
+pub use net::P2pRpc;
 
 mod p2p;
 
 mod response;
 pub use response::SafeHeadResponse;
 
-mod superchain;
-pub use superchain::{
-    ProtocolVersion, ProtocolVersionError, ProtocolVersionFormatV0, SuperchainSignal,
-};
-
 mod output;
 pub use output::OutputResponse;
 
+mod dev;
+pub use dev::DevEngineRpc;
+
 mod jsonrpsee;
-#[cfg(feature = "client")]
-pub use jsonrpsee::SupervisorApiClient;
-#[cfg(feature = "client")]
 pub use jsonrpsee::{
-    EngineApiExtClient, MinerApiExtClient, OpAdminApiClient, OpP2PApiClient, RollupNodeApiClient,
+    AdminApiServer, DevEngineApiServer, MinerApiExtServer, OpAdminApiServer, OpP2PApiServer,
+    RollupNodeApiServer, WsServer,
 };
-pub use jsonrpsee::{
-    EngineApiExtServer, MinerApiExtServer, OpAdminApiServer, OpP2PApiServer, RollupNodeApiServer,
-    SupervisorApiServer,
-};
-
-#[cfg(feature = "reqwest")]
-pub mod reqwest;
-#[cfg(all(feature = "reqwest", feature = "client"))]
-pub use reqwest::SupervisorClient;
-
-mod interop;
-pub use interop::{CheckAccessList, InteropTxValidator, InteropTxValidatorError};
 
 mod rollup;
 pub use rollup::RollupRpc;
 
 mod l1_watcher;
 pub use l1_watcher::{L1State, L1WatcherQueries, L1WatcherQuerySender};
+
+mod ws;
+pub use ws::WsRPC;
+
+/// A healthcheck response for the RPC server.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub struct HealthzResponse {
+    /// The application version.
+    pub version: String,
+}

@@ -8,8 +8,9 @@ on:
         description: Which image to release
         required: true
         options:
-          - kona-node
           - kona-host
+          - kona-node
+          - kona-supervisor
           - asterisc-builder
           - cannon-builder
           - kona-asterisc-prestate
@@ -18,6 +19,10 @@ on:
     tags:
       # matches tags like `service/v1.0.0`
       - '*/v*'
+
+permissions:
+  contents: read
+  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -35,7 +40,7 @@ jobs:
       bin_target: ${{ steps.target-spec.outputs.bin_target }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Get Valid Targets
         id: get-targets
@@ -56,7 +61,7 @@ jobs:
           echo "target=$TARGET" >> $GITHUB_OUTPUT
 
           # Check if target is in valid targets list
-          if echo "${{ steps.get-targets.outputs.targets }}" | jq -e 'contains(["'"$TARGET"'"])' > /dev/null; then
+          if echo '${{ steps.get-targets.outputs.targets }}' | jq -e 'contains(["'$TARGET'"])' > /dev/null; then
             echo "bake_target=$TARGET" >> $GITHUB_OUTPUT
             echo "bin_target=" >> $GITHUB_OUTPUT
             echo "Target '$TARGET' is a valid bake target"
@@ -93,7 +98,7 @@ jobs:
           mv "${{ steps.meta.outputs.bake-file }}" "${{ runner.temp }}/bake-meta.json"
 
       - name: Upload meta bake definition
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: bake-meta
           path: ${{ runner.temp }}/bake-meta.json
@@ -111,7 +116,7 @@ jobs:
         platform: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare
         run: |
@@ -119,7 +124,7 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
       - name: Download meta bake definition
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: bake-meta
           path: ${{ runner.temp }}
@@ -156,7 +161,7 @@ jobs:
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
@@ -171,13 +176,13 @@ jobs:
       - build
     steps:
       - name: Download meta bake definition
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: bake-meta
           path: ${{ runner.temp }}
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: ${{ runner.temp }}/digests
           pattern: digests-*

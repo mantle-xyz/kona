@@ -1,202 +1,154 @@
 //! A task to insert an unsafe payload into the execution engine.
 
 use crate::{
-    EngineClient, EngineForkchoiceVersion, EngineState, EngineTaskError, EngineTaskExt,
-    InsertUnsafeTaskError, SyncStatus,
+    EngineClient, EngineState, EngineTaskExt, InsertTaskError, SynchronizeTask,
+    state::EngineSyncStateUpdate,
 };
+use alloy_eips::eip7685::EMPTY_REQUESTS_HASH;
 use alloy_provider::ext::EngineApi;
 use alloy_rpc_types_engine::{
-    ExecutionPayloadInputV2, ForkchoiceState, INVALID_FORK_CHOICE_STATE_ERROR, PayloadStatusEnum,
+    CancunPayloadFields, ExecutionPayloadInputV2, PayloadStatusEnum, PraguePayloadFields,
 };
 use async_trait::async_trait;
 use kona_genesis::RollupConfig;
 use kona_protocol::L2BlockInfo;
 use op_alloy_consensus::OpBlock;
 use op_alloy_provider::ext::engine::OpEngineApi;
-use op_alloy_rpc_types_engine::{OpExecutionPayload, OpNetworkPayloadEnvelope};
+use op_alloy_rpc_types_engine::{
+    OpExecutionPayload, OpExecutionPayloadEnvelope, OpExecutionPayloadSidecar,
+};
 use std::{sync::Arc, time::Instant};
 
-/// The task to insert an unsafe payload into the execution engine.
+/// The task to insert a payload into the execution engine.
 #[derive(Debug, Clone)]
-pub struct InsertUnsafeTask {
+pub struct InsertTask {
     /// The engine client.
     client: Arc<EngineClient>,
     /// The rollup config.
     rollup_config: Arc<RollupConfig>,
-    /// The engine forkchoice version.
-    version: EngineForkchoiceVersion,
     /// The network payload envelope.
-    envelope: OpNetworkPayloadEnvelope,
+    envelope: OpExecutionPayloadEnvelope,
+    /// If the payload is safe this is true.
+    /// A payload is safe if it is derived from a safe block.
+    is_payload_safe: bool,
 }
 
-impl InsertUnsafeTask {
+impl InsertTask {
     /// Creates a new insert task.
-    pub fn new(
+    pub const fn new(
         client: Arc<EngineClient>,
         rollup_config: Arc<RollupConfig>,
-        envelope: OpNetworkPayloadEnvelope,
+        envelope: OpExecutionPayloadEnvelope,
+        is_attributes_derived: bool,
     ) -> Self {
-        let version =
-            EngineForkchoiceVersion::from_cfg(rollup_config.as_ref(), envelope.payload.timestamp());
-        Self { client, rollup_config, version, envelope }
+        Self { client, rollup_config, envelope, is_payload_safe: is_attributes_derived }
     }
 
-    /// Checks the response of the `engine_newPayload` call, and updates the sync status if
-    /// necessary.
-    fn check_new_payload_status(
-        &self,
-        state: &mut EngineState,
-        status: &PayloadStatusEnum,
-    ) -> bool {
-        debug!(target: "engine", ?status, "Checking payload status");
-        if matches!(status, PayloadStatusEnum::Valid) {
-            debug!(target: "engine", "Valid new payload status. Finished execution layer sync");
-            state.sync_status = SyncStatus::ExecutionLayerFinished;
-        }
-        matches!(status, PayloadStatusEnum::Valid | PayloadStatusEnum::Syncing)
-    }
-
-    /// Checks the response of the `engine_forkchoiceUpdated` call, and updates the sync status if
-    /// necessary.
-    fn check_forkchoice_updated_status(
-        &self,
-        state: &mut EngineState,
-        status: &PayloadStatusEnum,
-    ) -> bool {
-        if matches!(status, PayloadStatusEnum::Valid) &&
-            state.sync_status == SyncStatus::ExecutionLayerStarted
-        {
-            state.sync_status = SyncStatus::ExecutionLayerNotFinalized;
-        }
+    /// Checks the response of the `engine_newPayload` call.
+    const fn check_new_payload_status(&self, status: &PayloadStatusEnum) -> bool {
         matches!(status, PayloadStatusEnum::Valid | PayloadStatusEnum::Syncing)
     }
 }
 
 #[async_trait]
-impl EngineTaskExt for InsertUnsafeTask {
-    async fn execute(&self, state: &mut EngineState) -> Result<(), EngineTaskError> {
-        // Always transition to EL sync on startup.
-        if state.sync_status == SyncStatus::ExecutionLayerWillStart {
-            info!(target: "engine", "Starting execution layer sync");
-            state.sync_status = SyncStatus::ExecutionLayerStarted;
-        }
+impl EngineTaskExt for InsertTask {
+    type Output = ();
 
+    type Error = InsertTaskError;
+
+    async fn execute(&self, state: &mut EngineState) -> Result<(), InsertTaskError> {
         let time_start = Instant::now();
 
         // Insert the new payload.
-        let block_root = self.envelope.parent_beacon_block_root.unwrap_or_default();
+        // Form the new unsafe block ref from the execution payload.
+        let parent_beacon_block_root = self.envelope.parent_beacon_block_root.unwrap_or_default();
         let insert_time_start = Instant::now();
-        let response = match self.envelope.payload.clone() {
-            OpExecutionPayload::V1(payload) => self.client.new_payload_v1(payload).await,
+        let (response, block): (_, OpBlock) = match self.envelope.execution_payload.clone() {
+            OpExecutionPayload::V1(payload) => (
+                self.client.new_payload_v1(payload).await,
+                self.envelope
+                    .execution_payload
+                    .clone()
+                    .try_into_block()
+                    .map_err(InsertTaskError::FromBlockError)?,
+            ),
             OpExecutionPayload::V2(payload) => {
                 let payload_input = ExecutionPayloadInputV2 {
                     execution_payload: payload.payload_inner,
                     withdrawals: Some(payload.withdrawals),
                 };
-                self.client.new_payload_v2(payload_input).await
+                (
+                    self.client.new_payload_v2(payload_input).await,
+                    self.envelope
+                        .execution_payload
+                        .clone()
+                        .try_into_block()
+                        .map_err(InsertTaskError::FromBlockError)?,
+                )
             }
-            OpExecutionPayload::V3(payload) => {
-                self.client.new_payload_v3(payload, block_root).await
-            }
-            OpExecutionPayload::V4(payload) => {
-                self.client.new_payload_v4(payload, block_root).await
-            }
+            OpExecutionPayload::V3(payload) => (
+                self.client.new_payload_v3(payload, parent_beacon_block_root).await,
+                self.envelope
+                    .execution_payload
+                    .clone()
+                    .try_into_block_with_sidecar(&OpExecutionPayloadSidecar::v3(
+                        CancunPayloadFields::new(parent_beacon_block_root, vec![]),
+                    ))
+                    .map_err(InsertTaskError::FromBlockError)?,
+            ),
+            OpExecutionPayload::V4(payload) => (
+                self.client.new_payload_v4(payload, parent_beacon_block_root).await,
+                self.envelope
+                    .execution_payload
+                    .clone()
+                    .try_into_block_with_sidecar(&OpExecutionPayloadSidecar::v4(
+                        CancunPayloadFields::new(parent_beacon_block_root, vec![]),
+                        PraguePayloadFields::new(EMPTY_REQUESTS_HASH),
+                    ))
+                    .map_err(InsertTaskError::FromBlockError)?,
+            ),
         };
 
         // Check the `engine_newPayload` response.
         let response = match response {
             Ok(resp) => resp,
-            Err(e) => return Err(InsertUnsafeTaskError::InsertFailed(e).into()),
+            Err(e) => return Err(InsertTaskError::InsertFailed(e)),
         };
-        if !self.check_new_payload_status(state, &response.status) {
-            return Err(InsertUnsafeTaskError::UnexpectedPayloadStatus(response.status).into());
+        if !self.check_new_payload_status(&response.status) {
+            return Err(InsertTaskError::UnexpectedPayloadStatus(response.status));
         }
         let insert_duration = insert_time_start.elapsed();
 
-        // Form the new unsafe block ref from the execution payload.
-        let block: OpBlock = self
-            .envelope
-            .payload
-            .clone()
-            .try_into_block()
-            .map_err(InsertUnsafeTaskError::FromBlockError)?;
         let new_unsafe_ref =
             L2BlockInfo::from_block_and_genesis(&block, &self.rollup_config.genesis)
-                .map_err(InsertUnsafeTaskError::L2BlockInfoConstruction)?;
+                .map_err(InsertTaskError::L2BlockInfoConstruction)?;
 
-        let mut fcu = ForkchoiceState {
-            head_block_hash: self.envelope.payload.block_hash(),
-            safe_block_hash: state.safe_head().block_info.hash,
-            finalized_block_hash: state.finalized_head().block_info.hash,
-        };
-        if state.sync_status == SyncStatus::ExecutionLayerNotFinalized {
-            // Use the new payload as the safe and finalized block for the FCU.
-            fcu.safe_block_hash = self.envelope.payload.block_hash();
-            fcu.finalized_block_hash = self.envelope.payload.block_hash();
+        // Send a FCU to canonicalize the imported block.
+        SynchronizeTask::new(
+            Arc::clone(&self.client),
+            self.rollup_config.clone(),
+            EngineSyncStateUpdate {
+                cross_unsafe_head: Some(new_unsafe_ref),
+                unsafe_head: Some(new_unsafe_ref),
+                local_safe_head: self.is_payload_safe.then_some(new_unsafe_ref),
+                safe_head: self.is_payload_safe.then_some(new_unsafe_ref),
+                ..Default::default()
+            },
+        )
+        .execute(state)
+        .await?;
 
-            // Update the local engine state to match.
-            state.set_unsafe_head(new_unsafe_ref);
-            state.set_safe_head(new_unsafe_ref);
-            state.set_local_safe_head(new_unsafe_ref);
-            state.set_finalized_head(new_unsafe_ref);
-        }
-
-        // Send the forkchoice update to finalize the payload insertion.
-        let fcu_time_start = Instant::now();
-        let response = match self.version {
-            EngineForkchoiceVersion::V1 => self.client.fork_choice_updated_v1(fcu, None).await,
-            EngineForkchoiceVersion::V2 => self.client.fork_choice_updated_v2(fcu, None).await,
-            EngineForkchoiceVersion::V3 => self.client.fork_choice_updated_v3(fcu, None).await,
-        };
-        let fcu_duration = fcu_time_start.elapsed();
         let total_duration = time_start.elapsed();
-
-        let response = match response {
-            Ok(resp) => resp,
-            Err(e) => {
-                // Check if the error is due to an inconsistent forkchoice state. If so, we need to
-                // signal for a pipeline reset.
-                let e = e
-                    .as_error_resp()
-                    .and_then(|err| {
-                        (err.code == INVALID_FORK_CHOICE_STATE_ERROR as i64)
-                            .then_some(InsertUnsafeTaskError::InconsistentForkchoiceState)
-                    })
-                    .unwrap_or(InsertUnsafeTaskError::ForkchoiceUpdateFailed(e));
-                return Err(e.into());
-            }
-        };
-        if !self.check_forkchoice_updated_status(state, &response.payload_status.status) {
-            return Err(InsertUnsafeTaskError::UnexpectedPayloadStatus(
-                response.payload_status.status,
-            )
-            .into());
-        }
-
-        // Update the local engine state.
-        state.set_unsafe_head(new_unsafe_ref);
-        state.forkchoice_update_needed = false;
-
-        // Finish EL sync if the EL sync state was finished, but not finalized before this
-        // operation.
-        if state.sync_status == SyncStatus::ExecutionLayerNotFinalized {
-            info!(
-                target: "engine",
-                finalized_block = new_unsafe_ref.block_info.number,
-                "Finished execution layer sync."
-            );
-            state.sync_status = SyncStatus::ExecutionLayerFinished;
-        }
 
         info!(
             target: "engine",
-            hash = new_unsafe_ref.block_info.hash.to_string(),
+            hash = %new_unsafe_ref.block_info.hash,
             number = new_unsafe_ref.block_info.number,
             total_duration = ?total_duration,
             insert_duration = ?insert_duration,
-            fcu_duration = ?fcu_duration,
             "Inserted new unsafe block"
         );
+
         Ok(())
     }
 }

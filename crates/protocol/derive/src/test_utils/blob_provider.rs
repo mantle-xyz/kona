@@ -1,6 +1,6 @@
 //! An implementation of the [BlobProvider] trait for tests.
 
-use crate::{errors::BlobProviderError, traits::BlobProvider};
+use crate::{BlobProvider, errors::BlobProviderError};
 use alloc::{boxed::Box, vec::Vec};
 use alloy_eips::eip4844::{Blob, IndexedBlobHash};
 use alloy_primitives::{B256, map::HashMap};
@@ -32,7 +32,7 @@ impl TestBlobProvider {
 impl BlobProvider for TestBlobProvider {
     type Error = BlobProviderError;
 
-    async fn get_blobs(
+    async fn get_and_validate_blobs(
         &mut self,
         _block_ref: &BlockInfo,
         blob_hashes: &[IndexedBlobHash],

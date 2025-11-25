@@ -4,12 +4,12 @@
 use alloy_consensus::Header;
 use alloy_eips::BlockNumHash;
 use alloy_primitives::{Address, B256, Bytes, Sealable, Sealed, TxKind, U256, address};
-use kona_genesis::{RollupConfig, SystemConfig};
+use kona_genesis::{L1ChainConfig, RollupConfig, SystemConfig};
 use op_alloy_consensus::{DepositSourceDomain, L1InfoDepositSource, TxDeposit};
 
 use crate::{
     BlockInfoError, DecodeError, L1BlockInfoBedrock, L1BlockInfoEcotone, L1BlockInfoIsthmus,
-    Predeploys,
+    Predeploys, info::L1BlockInfoJovian,
 };
 
 /// The system transaction gas limit post-Regolith
@@ -19,7 +19,7 @@ const REGOLITH_SYSTEM_TX_GAS: u64 = 1_000_000;
 pub(crate) const L1_INFO_DEPOSITOR_ADDRESS: Address =
     address!("deaddeaddeaddeaddeaddeaddeaddeaddead0001");
 
-/// The [L1BlockInfoTx] enum contains variants for the different versions of the L1 block info
+/// The [`L1BlockInfoTx`] enum contains variants for the different versions of the L1 block info
 /// transaction on OP Stack chains.
 ///
 /// This transaction always sits at the top of the block, and alters the `L1 Block` contract's
@@ -33,10 +33,12 @@ pub enum L1BlockInfoTx {
     Ecotone(L1BlockInfoEcotone),
     /// An Isthmus L1 info transaction
     Isthmus(L1BlockInfoIsthmus),
+    /// A Jovian L1 info transaction
+    Jovian(L1BlockInfoJovian),
 }
 
 impl L1BlockInfoTx {
-    /// Creates a new [L1BlockInfoTx] from the given information.
+    /// Creates a new [`L1BlockInfoTx`] from the given information.
     pub fn try_new(
         system_config: &SystemConfig,
         sequence_number: u64,
@@ -54,10 +56,11 @@ impl L1BlockInfoTx {
         }))
     }
 
-    /// Creates a new [L1BlockInfoTx] from the given information and returns a typed [TxDeposit] to
-    /// include at the top of a block.
+    /// Creates a new [`L1BlockInfoTx`] from the given information and returns a typed [`TxDeposit`]
+    /// to include at the top of a block.
     pub fn try_new_with_deposit_tx(
         rollup_config: &RollupConfig,
+        _l1_config: &L1ChainConfig,
         system_config: &SystemConfig,
         sequence_number: u64,
         l1_header: &Header,
@@ -74,12 +77,12 @@ impl L1BlockInfoTx {
             source_hash: source.source_hash(),
             from: L1_INFO_DEPOSITOR_ADDRESS,
             to: TxKind::Call(Predeploys::L1_BLOCK_INFO),
-            mint: None,
+            mint: 0,
             value: U256::ZERO,
             gas_limit: 150_000_000,
             is_system_transaction: true,
             input: l1_info.encode_calldata(),
-            eth_value: None,
+            eth_value: 0,
             eth_tx_value: None,
         };
 
@@ -93,7 +96,7 @@ impl L1BlockInfoTx {
         Ok((l1_info, deposit_tx.seal_slow()))
     }
 
-    /// Decodes the [L1BlockInfoEcotone] object from Ethereum transaction calldata.
+    /// Decodes the [`L1BlockInfoTx`] object from Ethereum transaction calldata.
     pub fn decode_calldata(r: &[u8]) -> Result<Self, DecodeError> {
         if r.len() < 4 {
             return Err(DecodeError::MissingSelector);
@@ -111,6 +114,9 @@ impl L1BlockInfoTx {
             L1BlockInfoIsthmus::L1_INFO_TX_SELECTOR => {
                 L1BlockInfoIsthmus::decode_calldata(r).map(Self::Isthmus)
             }
+            L1BlockInfoJovian::L1_INFO_TX_SELECTOR => {
+                L1BlockInfoJovian::decode_calldata(r).map(Self::Jovian)
+            }
             _ => Err(DecodeError::InvalidSelector),
         }
     }
@@ -118,35 +124,38 @@ impl L1BlockInfoTx {
     /// Returns whether the scalars are empty.
     pub const fn empty_scalars(&self) -> bool {
         match self {
-            Self::Bedrock(_) | Self::Isthmus(..) => false,
+            Self::Bedrock(_) | Self::Isthmus(..) | Self::Jovian(_) => false,
             Self::Ecotone(L1BlockInfoEcotone { empty_scalars, .. }) => *empty_scalars,
         }
     }
 
-    /// Returns the block hash for the [L1BlockInfoTx].
+    /// Returns the block hash for the [`L1BlockInfoTx`].
     pub const fn block_hash(&self) -> B256 {
         match self {
             Self::Bedrock(tx) => tx.block_hash,
             Self::Ecotone(tx) => tx.block_hash,
             Self::Isthmus(tx) => tx.block_hash,
+            Self::Jovian(tx) => tx.block_hash,
         }
     }
 
-    /// Encodes the [L1BlockInfoTx] object into Ethereum transaction calldata.
+    /// Encodes the [`L1BlockInfoTx`] object into Ethereum transaction calldata.
     pub fn encode_calldata(&self) -> Bytes {
         match self {
             Self::Bedrock(bedrock_tx) => bedrock_tx.encode_calldata(),
             Self::Ecotone(ecotone_tx) => ecotone_tx.encode_calldata(),
             Self::Isthmus(isthmus_tx) => isthmus_tx.encode_calldata(),
+            Self::Jovian(jovian_tx) => jovian_tx.encode_calldata(),
         }
     }
 
-    /// Returns the L1 [BlockNumHash] for the info transaction.
+    /// Returns the L1 [`BlockNumHash`] for the info transaction.
     pub const fn id(&self) -> BlockNumHash {
         match self {
-            Self::Ecotone(L1BlockInfoEcotone { number, block_hash, .. })
-            | Self::Bedrock(L1BlockInfoBedrock { number, block_hash, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { number, block_hash, .. }) => {
+            Self::Ecotone(L1BlockInfoEcotone { number, block_hash, .. }) |
+            Self::Bedrock(L1BlockInfoBedrock { number, block_hash, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { number, block_hash, .. }) |
+            Self::Jovian(L1BlockInfoJovian { number, block_hash, .. }) => {
                 BlockNumHash { number: *number, hash: *block_hash }
             }
         }
@@ -155,6 +164,7 @@ impl L1BlockInfoTx {
     /// Returns the operator fee scalar.
     pub const fn operator_fee_scalar(&self) -> u32 {
         match self {
+            Self::Jovian(L1BlockInfoJovian { operator_fee_scalar, .. }) |
             Self::Isthmus(L1BlockInfoIsthmus { operator_fee_scalar, .. }) => *operator_fee_scalar,
             _ => 0,
         }
@@ -163,6 +173,7 @@ impl L1BlockInfoTx {
     /// Returns the operator fee constant.
     pub const fn operator_fee_constant(&self) -> u64 {
         match self {
+            Self::Jovian(L1BlockInfoJovian { operator_fee_constant, .. }) |
             Self::Isthmus(L1BlockInfoIsthmus { operator_fee_constant, .. }) => {
                 *operator_fee_constant
             }
@@ -170,12 +181,23 @@ impl L1BlockInfoTx {
         }
     }
 
+    /// Returns the da footprint
+    pub const fn da_footprint(&self) -> Option<u16> {
+        match self {
+            Self::Jovian(L1BlockInfoJovian { da_footprint_gas_scalar, .. }) => {
+                Some(*da_footprint_gas_scalar)
+            }
+            _ => None,
+        }
+    }
+
     /// Returns the l1 base fee.
     pub fn l1_base_fee(&self) -> U256 {
         match self {
-            Self::Bedrock(L1BlockInfoBedrock { base_fee, .. })
-            | Self::Ecotone(L1BlockInfoEcotone { base_fee, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { base_fee, .. }) => U256::from(*base_fee),
+            Self::Bedrock(L1BlockInfoBedrock { base_fee, .. }) |
+            Self::Ecotone(L1BlockInfoEcotone { base_fee, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { base_fee, .. }) |
+            Self::Jovian(L1BlockInfoJovian { base_fee, .. }) => U256::from(*base_fee),
         }
     }
 
@@ -183,10 +205,9 @@ impl L1BlockInfoTx {
     pub fn l1_fee_scalar(&self) -> U256 {
         match self {
             Self::Bedrock(L1BlockInfoBedrock { l1_fee_scalar, .. }) => *l1_fee_scalar,
-            Self::Ecotone(L1BlockInfoEcotone { base_fee_scalar, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { base_fee_scalar, .. }) => {
-                U256::from(*base_fee_scalar)
-            }
+            Self::Ecotone(L1BlockInfoEcotone { base_fee_scalar, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { base_fee_scalar, .. }) |
+            Self::Jovian(L1BlockInfoJovian { base_fee_scalar, .. }) => U256::from(*base_fee_scalar),
         }
     }
 
@@ -194,8 +215,9 @@ impl L1BlockInfoTx {
     pub fn blob_base_fee(&self) -> U256 {
         match self {
             Self::Bedrock(_) => U256::ZERO,
-            Self::Ecotone(L1BlockInfoEcotone { blob_base_fee, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { blob_base_fee, .. }) => U256::from(*blob_base_fee),
+            Self::Ecotone(L1BlockInfoEcotone { blob_base_fee, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { blob_base_fee, .. }) |
+            Self::Jovian(L1BlockInfoJovian { blob_base_fee, .. }) => U256::from(*blob_base_fee),
         }
     }
 
@@ -203,8 +225,9 @@ impl L1BlockInfoTx {
     pub fn blob_base_fee_scalar(&self) -> U256 {
         match self {
             Self::Bedrock(_) => U256::ZERO,
-            Self::Ecotone(L1BlockInfoEcotone { blob_base_fee_scalar, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { blob_base_fee_scalar, .. }) => {
+            Self::Ecotone(L1BlockInfoEcotone { blob_base_fee_scalar, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { blob_base_fee_scalar, .. }) |
+            Self::Jovian(L1BlockInfoJovian { blob_base_fee_scalar, .. }) => {
                 U256::from(*blob_base_fee_scalar)
             }
         }
@@ -215,25 +238,27 @@ impl L1BlockInfoTx {
         match self {
             Self::Bedrock(L1BlockInfoBedrock { l1_fee_overhead, .. }) => *l1_fee_overhead,
             Self::Ecotone(L1BlockInfoEcotone { l1_fee_overhead, .. }) => *l1_fee_overhead,
-            Self::Isthmus(_) => U256::ZERO,
+            Self::Isthmus(_) | Self::Jovian(_) => U256::ZERO,
         }
     }
 
     /// Returns the batcher address for the info transaction
     pub const fn batcher_address(&self) -> Address {
         match self {
-            Self::Bedrock(L1BlockInfoBedrock { batcher_address, .. })
-            | Self::Ecotone(L1BlockInfoEcotone { batcher_address, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { batcher_address, .. }) => *batcher_address,
+            Self::Bedrock(L1BlockInfoBedrock { batcher_address, .. }) |
+            Self::Ecotone(L1BlockInfoEcotone { batcher_address, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { batcher_address, .. }) |
+            Self::Jovian(L1BlockInfoJovian { batcher_address, .. }) => *batcher_address,
         }
     }
 
     /// Returns the sequence number for the info transaction
     pub const fn sequence_number(&self) -> u64 {
         match self {
-            Self::Bedrock(L1BlockInfoBedrock { sequence_number, .. })
-            | Self::Ecotone(L1BlockInfoEcotone { sequence_number, .. })
-            | Self::Isthmus(L1BlockInfoIsthmus { sequence_number, .. }) => *sequence_number,
+            Self::Bedrock(L1BlockInfoBedrock { sequence_number, .. }) |
+            Self::Ecotone(L1BlockInfoEcotone { sequence_number, .. }) |
+            Self::Isthmus(L1BlockInfoIsthmus { sequence_number, .. }) |
+            Self::Jovian(L1BlockInfoJovian { sequence_number, .. }) => *sequence_number,
         }
     }
 }
@@ -245,6 +270,7 @@ mod test {
     use alloc::{string::ToString, vec::Vec};
     use alloy_primitives::{address, b256};
     use kona_genesis::HardForkConfig;
+    use kona_registry::L1Config;
     use rstest::rstest;
 
     #[test]
@@ -611,6 +637,7 @@ mod test {
     #[test]
     fn test_try_new_bedrock() {
         let rollup_config = RollupConfig::default();
+        let l1_config = L1Config::sepolia();
         let system_config = SystemConfig::default();
         let sequence_number = 0;
         let l1_header = Header::default();
@@ -618,6 +645,7 @@ mod test {
 
         let l1_info = L1BlockInfoTx::try_new(
             &rollup_config,
+            &l1_config,
             &system_config,
             sequence_number,
             &l1_header,
@@ -645,6 +673,7 @@ mod test {
             hardforks: HardForkConfig { ecotone_time: Some(1), ..Default::default() },
             ..Default::default()
         };
+        let l1_config = L1Config::sepolia();
         let system_config = SystemConfig::default();
         let sequence_number = 0;
         let l1_header = Header::default();
@@ -652,6 +681,7 @@ mod test {
 
         let l1_info = L1BlockInfoTx::try_new(
             &rollup_config,
+            &l1_config,
             &system_config,
             sequence_number,
             &l1_header,
@@ -672,13 +702,15 @@ mod test {
         assert_eq!(l1_info.blob_base_fee, l1_header.blob_fee(BlobParams::cancun()).unwrap_or(1));
 
         let scalar = system_config.scalar.to_be_bytes::<32>();
-        let blob_base_fee_scalar = (scalar[0] == L1BlockInfoEcotone::L1_SCALAR)
-            .then(|| {
+        let blob_base_fee_scalar = if scalar[0] == L1BlockInfoEcotone::L1_SCALAR {
+            {
                 u32::from_be_bytes(
                     scalar[24..28].try_into().expect("Failed to parse L1 blob base fee scalar"),
                 )
-            })
-            .unwrap_or_default();
+            }
+        } else {
+            Default::default()
+        };
         let base_fee_scalar =
             u32::from_be_bytes(scalar[28..32].try_into().expect("Failed to parse base fee scalar"));
         assert_eq!(l1_info.blob_base_fee_scalar, blob_base_fee_scalar);
@@ -704,6 +736,9 @@ mod test {
             },
             ..Default::default()
         };
+        let mut l1_genesis: L1ChainConfig = L1Config::sepolia().into();
+        l1_genesis.prague_time = Some(2);
+
         let system_config = SystemConfig::default();
         let sequence_number = 0;
         let l1_header = Header {
@@ -717,6 +752,7 @@ mod test {
 
         let l1_info = L1BlockInfoTx::try_new(
             &rollup_config,
+            &l1_genesis,
             &system_config,
             sequence_number,
             &l1_header,
@@ -746,13 +782,15 @@ mod test {
         );
 
         let scalar = system_config.scalar.to_be_bytes::<32>();
-        let blob_base_fee_scalar = (scalar[0] == L1BlockInfoEcotone::L1_SCALAR)
-            .then(|| {
+        let blob_base_fee_scalar = if scalar[0] == L1BlockInfoEcotone::L1_SCALAR {
+            {
                 u32::from_be_bytes(
                     scalar[24..28].try_into().expect("Failed to parse L1 blob base fee scalar"),
                 )
-            })
-            .unwrap_or_default();
+            }
+        } else {
+            Default::default()
+        };
         let base_fee_scalar =
             u32::from_be_bytes(scalar[28..32].try_into().expect("Failed to parse base fee scalar"));
         assert_eq!(l1_info.blob_base_fee_scalar, blob_base_fee_scalar);
@@ -769,6 +807,7 @@ mod test {
             },
             ..Default::default()
         };
+        let l1_config = L1Config::sepolia();
         let system_config = SystemConfig {
             batcher_address: address!("6887246668a3b87f54deb3b94ba47a6f63f32985"),
             operator_fee_scalar: Some(0xabcd),
@@ -788,6 +827,7 @@ mod test {
 
         let l1_info = L1BlockInfoTx::try_new(
             &rollup_config,
+            &l1_config,
             &system_config,
             sequence_number,
             &l1_header,
@@ -798,13 +838,15 @@ mod test {
         assert!(matches!(l1_info, L1BlockInfoTx::Isthmus(_)));
 
         let scalar = system_config.scalar.to_be_bytes::<32>();
-        let blob_base_fee_scalar = (scalar[0] == L1BlockInfoIsthmus::L1_SCALAR)
-            .then(|| {
+        let blob_base_fee_scalar = if scalar[0] == L1BlockInfoIsthmus::L1_SCALAR {
+            {
                 u32::from_be_bytes(
                     scalar[24..28].try_into().expect("Failed to parse L1 blob base fee scalar"),
                 )
-            })
-            .unwrap_or_default();
+            }
+        } else {
+            Default::default()
+        };
         let base_fee_scalar =
             u32::from_be_bytes(scalar[28..32].try_into().expect("Failed to parse base fee scalar"));
 
@@ -834,6 +876,7 @@ mod test {
             hardforks: HardForkConfig { isthmus_time: Some(1), ..Default::default() },
             ..Default::default()
         };
+        let l1_config = L1Config::sepolia();
         let system_config = SystemConfig {
             batcher_address: address!("6887246668a3b87f54deb3b94ba47a6f63f32985"),
             operator_fee_scalar: Some(0xabcd),
@@ -851,6 +894,7 @@ mod test {
 
         let l1_info = L1BlockInfoTx::try_new(
             &rollup_config,
+            &l1_config,
             &system_config,
             sequence_number,
             &l1_header,
@@ -861,13 +905,15 @@ mod test {
         assert!(matches!(l1_info, L1BlockInfoTx::Isthmus(_)));
 
         let scalar = system_config.scalar.to_be_bytes::<32>();
-        let blob_base_fee_scalar = (scalar[0] == L1BlockInfoIsthmus::L1_SCALAR)
-            .then(|| {
+        let blob_base_fee_scalar = if scalar[0] == L1BlockInfoIsthmus::L1_SCALAR {
+            {
                 u32::from_be_bytes(
                     scalar[24..28].try_into().expect("Failed to parse L1 blob base fee scalar"),
                 )
-            })
-            .unwrap_or_default();
+            }
+        } else {
+            Default::default()
+        };
         let base_fee_scalar =
             u32::from_be_bytes(scalar[28..32].try_into().expect("Failed to parse base fee scalar"));
 
@@ -895,6 +941,7 @@ mod test {
             hardforks: HardForkConfig { isthmus_time: Some(1), ..Default::default() },
             ..Default::default()
         };
+        let l1_config = L1Config::sepolia();
         let system_config = SystemConfig {
             batcher_address: address!("6887246668a3b87f54deb3b94ba47a6f63f32985"),
             operator_fee_scalar: Some(0xabcd),
@@ -912,6 +959,7 @@ mod test {
 
         let (l1_info, deposit_tx) = L1BlockInfoTx::try_new_with_deposit_tx(
             &rollup_config,
+            &l1_config,
             &system_config,
             sequence_number,
             &l1_header,
@@ -922,7 +970,7 @@ mod test {
         assert!(matches!(l1_info, L1BlockInfoTx::Isthmus(_)));
         assert_eq!(deposit_tx.from, L1_INFO_DEPOSITOR_ADDRESS);
         assert_eq!(deposit_tx.to, TxKind::Call(Predeploys::L1_BLOCK_INFO));
-        assert_eq!(deposit_tx.mint, None);
+        assert_eq!(deposit_tx.mint, 0);
         assert_eq!(deposit_tx.value, U256::ZERO);
         assert_eq!(deposit_tx.gas_limit, REGOLITH_SYSTEM_TX_GAS);
         assert!(!deposit_tx.is_system_transaction);

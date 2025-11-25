@@ -7,7 +7,7 @@ use alloy_eips::eip2718::Decodable2718;
 use alloy_primitives::B256;
 use alloy_rlp::Decodable;
 use async_trait::async_trait;
-use kona_derive::traits::ChainProvider;
+use kona_derive::ChainProvider;
 use kona_mpt::{OrderedListWalker, TrieNode, TrieProvider};
 use kona_preimage::{CommsClient, PreimageKey, PreimageKeyType};
 use kona_protocol::BlockInfo;
@@ -109,7 +109,7 @@ impl<T: CommsClient + Sync + Send> ChainProvider for OracleL1ChainProvider<T> {
         let transactions = trie_walker
             .into_iter()
             .map(|(_, rlp)| {
-                // note: not short-handed for error type coersion w/ `?`.
+                // note: not short-handed for error type coercion w/ `?`.
                 let rlp = TxEnvelope::decode_2718(&mut rlp.as_ref())?;
                 Ok(rlp)
             })

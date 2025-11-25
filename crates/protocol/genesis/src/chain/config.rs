@@ -9,6 +9,9 @@ use crate::{
     SuperchainLevel, base_fee_params, base_fee_params_canyon, params::base_fee_config,
 };
 
+/// L1 chain configuration from the `alloy-genesis` crate.
+pub type L1ChainConfig = alloy_genesis::ChainConfig;
+
 /// Defines core blockchain settings per block.
 ///
 /// Tailors unique settings for each network based on
@@ -21,11 +24,10 @@ use crate::{
 /// [opg]: https://github.com/ethereum-optimism/op-geth
 /// [scr]: https://github.com/ethereum-optimism/superchain-registry
 /// [ccg]: https://github.com/ethereum-optimism/op-geth/blob/optimism/params/config.go#L342
-/// [ccr]: https://github.com/ethereum-optimism/superchain-registry/blob/main/superchain/superchain.go#L80
+/// [ccr]: https://github.com/ethereum-optimism/superchain-registry/blob/main/ops/internal/config/superchain.go#L70
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct ChainConfig {
     /// Chain name (e.g. "Base")
     #[cfg_attr(feature = "serde", serde(rename = "Name", alias = "name"))]

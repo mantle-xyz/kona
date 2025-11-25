@@ -9,10 +9,10 @@ use op_alloy_consensus::OpBlock;
 
 use crate::{
     L1BlockInfoBedrock, L1BlockInfoEcotone, L1BlockInfoIsthmus, L1BlockInfoTx,
-    OpBlockConversionError, SpanBatchError, SpanDecodingError,
+    OpBlockConversionError, SpanBatchError, SpanDecodingError, info::L1BlockInfoJovian,
 };
 
-/// Converts the [OpBlock] to a partial [SystemConfig].
+/// Converts the [`OpBlock`] to a partial [`SystemConfig`].
 pub fn to_system_config(
     block: &OpBlock,
     rollup_config: &RollupConfig,
@@ -60,6 +60,9 @@ pub fn to_system_config(
             base_fee_scalar,
             blob_base_fee_scalar,
             ..
+        }) |
+        L1BlockInfoTx::Jovian(L1BlockInfoJovian {
+            base_fee_scalar, blob_base_fee_scalar, ..
         }) => {
             // Translate Ecotone values back into encoded scalar if needed.
             // We do not know if it was derived from a v0 or v1 scalar,
@@ -261,6 +264,8 @@ mod tests {
             eip1559_elasticity: None,
             operator_fee_scalar: None,
             operator_fee_constant: None,
+            min_base_fee: None,
+            da_footprint_gas_scalar: None,
         };
         assert_eq!(config, expected);
     }
@@ -308,6 +313,8 @@ mod tests {
             eip1559_elasticity: Some(0xbabe),
             operator_fee_scalar: None,
             operator_fee_constant: None,
+            min_base_fee: None,
+            da_footprint_gas_scalar: None,
         };
         assert_eq!(config, expected);
     }
@@ -359,6 +366,8 @@ mod tests {
             eip1559_elasticity: Some(0xbabe),
             operator_fee_scalar: Some(0xabcd),
             operator_fee_constant: Some(0xdcba),
+            min_base_fee: None,
+            da_footprint_gas_scalar: None,
         };
         assert_eq!(config, expected);
     }
