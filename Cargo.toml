@@ -158,10 +158,10 @@ op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", tag =
 op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v2.1.0", default-features = false }
 
 # Execution
-revm = { git = "https://github.com/mantle-xyz/revm", tag = "v2.1.0", default-features = false }
-op-revm = { git = "https://github.com/mantle-xyz/revm", tag = "v2.1.0", default-features = false }
-alloy-evm = { git = "https://github.com/mantle-xyz/evm", tag = "v2.1.0", default-features = false }
-alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", tag = "v2.1.0", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", tag = "v2.1.1", default-features = false }
+op-revm = { git = "https://github.com/mantle-xyz/revm", tag = "v2.1.1", default-features = false }
+alloy-evm = { git = "https://github.com/mantle-xyz/evm", tag = "v2.1.1", default-features = false }
+alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", tag = "v2.1.1", default-features = false }
 
 # Reth (pinned to v1.6.0 for kona-supervisor-storage)
 reth-db-api = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
