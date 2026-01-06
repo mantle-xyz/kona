@@ -1,33 +1,28 @@
 //! Testing utilities for the attributes queue stage.
 
 use crate::{
-    errors::{BuilderError, PipelineError, PipelineErrorKind},
+    errors::{PipelineError, PipelineErrorKind},
     traits::{
         AttributesBuilder, AttributesProvider, OriginAdvancer, OriginProvider, SignalReceiver,
     },
     types::{PipelineResult, Signal},
 };
-use alloc::{boxed::Box, string::ToString, vec::Vec};
+use alloc::{boxed::Box, vec::Vec};
 use alloy_eips::BlockNumHash;
 use async_trait::async_trait;
 use kona_protocol::{BlockInfo, L2BlockInfo, SingleBatch};
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
-use thiserror::Error;
-
-/// An error returned by the [`TestAttributesBuilder`].
-#[derive(Error, Debug, PartialEq, Eq)]
-pub enum TestAttributesBuilderError {}
 
 /// A mock implementation of the [`AttributesBuilder`] for testing.
 #[derive(Debug, Default)]
 pub struct TestAttributesBuilder {
     /// The attributes to return.
-    pub attributes: Vec<Result<OpPayloadAttributes, TestAttributesBuilderError>>,
+    pub attributes: Vec<Result<OpPayloadAttributes, PipelineErrorKind>>,
 }
 
 #[async_trait]
 impl AttributesBuilder for TestAttributesBuilder {
-    /// Prepares the [`OptimismPayloadAttributes`] for the next payload.
+    /// Prepares the [`OpPayloadAttributes`] for the next payload.
     async fn prepare_payload_attributes(
         &mut self,
         _l2_parent: L2BlockInfo,
@@ -35,15 +30,15 @@ impl AttributesBuilder for TestAttributesBuilder {
     ) -> PipelineResult<OpPayloadAttributes> {
         match self.attributes.pop() {
             Some(Ok(attrs)) => Ok(attrs),
-            Some(Err(err)) => {
-                Err(PipelineErrorKind::Temporary(BuilderError::Custom(err.to_string()).into()))
-            }
-            None => Err(PipelineErrorKind::Critical(BuilderError::AttributesUnavailable.into())),
+            Some(Err(err)) => Err(err),
+            None => panic!(
+                "Unexpected call to TestAttributesBuilder::prepare_payload_attributes. Configure the mocked result to return to avoid this error."
+            ),
         }
     }
 }
 
-/// A mock implementation of the [`BatchQueue`] stage for testing.
+/// A mock implementation of the [`AttributesProvider`] stage for testing.
 #[derive(Debug, Default)]
 pub struct TestAttributesProvider {
     /// The origin of the L1 block.

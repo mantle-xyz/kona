@@ -4,7 +4,7 @@ use super::{InteropHintHandler, InteropLocalInputs};
 use crate::{
     DiskKeyValueStore, MemoryKeyValueStore, OfflineHostBackend, OnlineHostBackend,
     OnlineHostBackendCfg, PreimageServer, SharedKeyValueStore, SplitKeyValueStore,
-    eth::http_provider, server::PreimageServerError,
+    eth::rpc_provider, server::PreimageServerError,
 };
 use alloy_primitives::{B256, Bytes};
 use alloy_provider::{Provider, RootProvider};
@@ -230,7 +230,7 @@ impl InteropHost {
             // Deserialize the config and return it.
             let cfg: RollupConfig = serde_json::from_str(&ser_config)?;
 
-            acc.insert(cfg.l2_chain_id, cfg);
+            acc.insert(cfg.l2_chain_id.id(), cfg);
             Ok(acc)
         }))
     }
@@ -271,9 +271,10 @@ impl InteropHost {
 
     /// Creates the providers required for the preimage server backend.
     async fn create_providers(&self) -> Result<InteropProviders, InteropHostError> {
-        let l1_provider = http_provider(
+        let l1_provider = rpc_provider(
             self.l1_node_address.as_ref().ok_or(InteropHostError::Other("Provider must be set"))?,
-        );
+        )
+        .await;
 
         let blob_provider = OnlineBlobProvider::init(OnlineBeaconClient::new_http(
             self.l1_beacon_address
@@ -289,7 +290,7 @@ impl InteropHost {
             .ok_or(InteropHostError::Other("L2 node addresses must be set"))?;
         let mut l2_providers = HashMap::default();
         for l2_node_address in l2_node_addresses {
-            let l2_provider = http_provider::<Optimism>(l2_node_address);
+            let l2_provider = rpc_provider::<Optimism>(l2_node_address).await;
             let chain_id = l2_provider.get_chain_id().await?;
             l2_providers.insert(chain_id, l2_provider);
         }

@@ -1,19 +1,22 @@
 //! [Header] assembly logic for the [StatelessL2Builder].
 
 use super::StatelessL2Builder;
-use crate::{ExecutorError, ExecutorResult, TrieDBError, TrieDBProvider};
+use crate::{
+    ExecutorError, ExecutorResult, TrieDBError, TrieDBProvider,
+    util::{encode_holocene_eip_1559_params, encode_jovian_eip_1559_params},
+};
 use alloc::vec::Vec;
 use alloy_consensus::{EMPTY_OMMER_ROOT_HASH, Header, Sealed};
-use alloy_eips::Encodable2718;
+use alloy_eips::{Encodable2718, eip7685::EMPTY_REQUESTS_HASH};
 use alloy_evm::{EvmFactory, block::BlockExecutionResult};
-use alloy_primitives::{B256, Sealable, U256, b256, logs_bloom};
+use alloy_primitives::{B256, Sealable, U256, logs_bloom};
+use alloy_trie::EMPTY_ROOT_HASH;
 use kona_genesis::RollupConfig;
 use kona_mpt::{TrieHinter, ordered_trie_with_encoder};
 use kona_protocol::{OutputRoot, Predeploys};
 use op_alloy_consensus::OpReceiptEnvelope;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use revm::{context::BlockEnv, database::BundleState};
-const EMPTY_REQUESTS_HASH: B256 = b256!("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 
 impl<P, H, Evm> StatelessL2Builder<'_, P, H, Evm>
 where
@@ -44,52 +47,44 @@ where
         )
         .root();
         let receipts_root = compute_receipts_root(&ex_result.receipts, self.config, timestamp);
-        // let withdrawals_root = if self.config.is_isthmus_active(timestamp) {
-        //     Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?)
-        // } else if self.config.is_canyon_active(timestamp) {
-        //     Some(EMPTY_ROOT_HASH)
-        // } else {
-        //     None
-        // };
-
-        // [Mantle]: hardfork is not implemented yet.
-        let withdrawals_root =
-            Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?);
+        let withdrawals_root = if self.config.is_isthmus_active(timestamp) {
+            Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?)
+        } else if self.config.is_canyon_active(timestamp) {
+            Some(EMPTY_ROOT_HASH)
+        } else {
+            None
+        };
 
         // Compute the logs bloom from the receipts generated during block execution.
         let logs_bloom = logs_bloom(ex_result.receipts.iter().flat_map(|r| r.logs()));
 
         // Compute Cancun fields, if active.
-        // let (blob_gas_used, excess_blob_gas) = if self.config.is_jovian_active(timestamp) {
-        //     (Some(ex_result.blob_gas_used), Some(0))
-        // } else if self.config.is_ecotone_active(timestamp) {
-        //     (Some(0), Some(0))
-        // } else {
-        //     Default::default()
-        // };
-        
-        // [Mantle]: blob is not implemented yet.
-        let (blob_gas_used, excess_blob_gas) = (Some(0), Some(0));
+        let (blob_gas_used, excess_blob_gas) = if self.config.is_jovian_active(timestamp) {
+            (Some(ex_result.blob_gas_used), Some(0))
+        } else if self.config.is_ecotone_active(timestamp) {
+            (Some(0), Some(0))
+        } else {
+            Default::default()
+        };
 
         // At holocene activation, the base fee parameters from the payload are placed
         // into the Header's `extra_data` field.
         //
         // If the payload's `eip_1559_params` are equal to `0`, then the header's `extraData`
         // field is set to the encoded canyon base fee parameters.
-        // let encoded_base_fee_params = match self.config {
-        //     config if config.is_jovian_active(timestamp) => {
-        //         let extra_data = encode_jovian_eip_1559_params(self.config, attrs)?;
-        //         Ok(extra_data)
-        //     }
-        //     config if config.is_holocene_active(timestamp) => {
-        //         encode_holocene_eip_1559_params(self.config, attrs)
-        //     }
-        //     _ => Ok(Default::default()),
-        // }?;
+        let encoded_base_fee_params = match self.config {
+            config if config.is_jovian_active(timestamp) => {
+                let extra_data = encode_jovian_eip_1559_params(self.config, attrs)?;
+                Ok(extra_data)
+            }
+            config if config.is_holocene_active(timestamp) => {
+                encode_holocene_eip_1559_params(self.config, attrs)
+            }
+            _ => Ok(Default::default()),
+        }?;
 
-        // [Mantle]: requests_hash is always the empty SHA256 hash.
-        // see: https://github.com/mantlenetworkio/op-geth/blob/v1.3.3/core/types/hashes.go#L44
-        let requests_hash = Some(EMPTY_REQUESTS_HASH);
+        // The requests hash on the OP Stack, if Isthmus is active, is always the empty SHA256 hash.
+        let requests_hash = self.config.is_isthmus_active(timestamp).then_some(EMPTY_REQUESTS_HASH);
 
         // Construct the new header.
         let header = Header {
@@ -113,9 +108,10 @@ where
             blob_gas_used,
             excess_blob_gas: excess_blob_gas.and_then(|x| x.try_into().ok()),
             parent_beacon_block_root: attrs.payload_attributes.parent_beacon_block_root,
-            extra_data: Default::default(),
+            extra_data: encoded_base_fee_params,
         }
         .seal_slow();
+
         Ok(header)
     }
 
@@ -179,7 +175,7 @@ pub fn compute_receipts_root(
     // the receipt root calculation does not include the deposit nonce in the
     // receipt encoding. In the Regolith hardfork, we must strip the deposit nonce
     // from the receipt encoding to match the receipt root calculation.
-    if config.is_regolith_active(timestamp) {
+    if config.is_regolith_active(timestamp) && !config.is_canyon_active(timestamp) {
         let receipts = receipts
             .iter()
             .cloned()

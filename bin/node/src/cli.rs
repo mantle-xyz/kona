@@ -8,9 +8,10 @@ use crate::{
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use kona_cli::cli_styles;
+use strum::Display;
 
 /// Subcommands for the CLI.
-#[derive(Debug, PartialEq, Clone, Subcommand)]
+#[derive(Debug, Clone, Subcommand, Display)]
 #[allow(clippy::large_enum_variant)]
 pub enum Commands {
     /// Runs the consensus node.
@@ -125,7 +126,7 @@ mod tests {
     fn test_parse_cli(#[case] subcommand: Commands, #[case] subcommand_alias: &str) {
         let args = vec!["kona-node", subcommand_alias, "--help"];
         let cli = Cli::parse_from(args);
-        assert_eq!(cli.subcommand, subcommand);
+        assert_eq!(cli.subcommand.to_string(), subcommand.to_string());
     }
 
     #[rstest]
@@ -143,7 +144,7 @@ mod tests {
         #[case] expected_id: u64,
     ) {
         let cli = Cli::try_parse_from(["kona-node", flag, value, "registry"]).unwrap();
-        assert_eq!(cli.global.l2_chain_id, expected_id);
+        assert_eq!(cli.global.l2_chain_id.id(), expected_id);
     }
 
     #[rstest]
@@ -158,6 +159,6 @@ mod tests {
     fn test_cli_l2_chain_id_default() {
         // Test that the default chain ID is 10 (Optimism)
         let cli = Cli::try_parse_from(["kona-node", "registry"]).unwrap();
-        assert_eq!(cli.global.l2_chain_id, 10);
+        assert_eq!(cli.global.l2_chain_id.id(), 10);
     }
 }

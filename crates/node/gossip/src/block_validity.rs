@@ -243,7 +243,7 @@ impl BlockHandler {
         }
 
         // CHECK: The signature is valid.
-        let msg = envelope.payload_hash.signature_message(self.rollup_config.l2_chain_id);
+        let msg = envelope.payload_hash.signature_message(self.rollup_config.l2_chain_id.id());
         let block_signer = *self.signer_recv.borrow();
 
         // The block has a valid signature.
@@ -253,7 +253,7 @@ impl BlockHandler {
 
         // The block is signed by the expected signer (the unsafe block signer).
         if msg_signer != block_signer {
-            return Err(BlockInvalidError::Signer { expected: msg_signer, received: block_signer });
+            return Err(BlockInvalidError::Signer { expected: block_signer, received: msg_signer });
         }
 
         self.seen_hashes

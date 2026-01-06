@@ -9,7 +9,7 @@ use alloy_op_evm::block::OpTxEnv;
 use alloy_primitives::{Address, B256, Bytes, Sealable, TxKind, U256, address};
 use alloy_rpc_types_engine::PayloadAttributes;
 use core::fmt::Debug;
-use kona_executor::{ExecutorError, StatelessL2Builder};
+use kona_executor::{Eip1559ValidationError, ExecutorError, StatelessL2Builder};
 use kona_interop::{MessageGraph, MessageGraphError};
 use kona_mpt::OrderedListWalker;
 use kona_preimage::CommsClient;
@@ -100,6 +100,7 @@ where
         let graph = MessageGraph::derive(
             self.interop_provider.local_safe_heads(),
             &self.interop_provider,
+            &self.boot_info.rollup_configs,
         )
         .await?;
 
@@ -201,9 +202,9 @@ where
                         // conversion cannot fail unless the protocol rules
                         // have been violated.
                         header.extra_data.get(1..9).and_then(|s| s.try_into().ok()).ok_or(
-                            ExecutorError::InvalidExtraData(
+                            ExecutorError::InvalidExtraData(Eip1559ValidationError::Decode(
                                 op_alloy_consensus::EIP1559ParamError::NoEIP1559Params,
-                            ),
+                            )),
                         )
                     })
                     .transpose()?,
@@ -215,9 +216,9 @@ where
                             .get(9..17)
                             .and_then(|s| <[u8; 8]>::try_from(s).ok())
                             .map(u64::from_be_bytes)
-                            .ok_or(ExecutorError::InvalidExtraData(
+                            .ok_or(ExecutorError::InvalidExtraData(Eip1559ValidationError::Decode(
                                 op_alloy_consensus::EIP1559ParamError::MinBaseFeeNotSet,
-                            ))
+                            )))
                     })
                     .transpose()?,
             };
@@ -270,8 +271,6 @@ where
                 gas_limit: REPLACEMENT_GAS,
                 is_system_transaction: false,
                 input: output_root.encode().into(),
-                eth_value: 0,
-                eth_tx_value: None,
             }
             .seal(),
         );

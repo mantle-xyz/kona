@@ -156,9 +156,7 @@ impl Isthmus {
                 value: U256::ZERO,
                 gas_limit: 425_000,
                 is_system_transaction: false,
-                eth_value: 0,
                 input: Self::l1_block_deployment_bytecode(),
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::deploy_gas_price_oracle_source(),
@@ -168,9 +166,7 @@ impl Isthmus {
                 value: U256::ZERO,
                 gas_limit: 1_625_000,
                 is_system_transaction: false,
-                eth_value: 0,
                 input: Self::gas_price_oracle_deployment_bytecode(),
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::deploy_operator_fee_vault_source(),
@@ -180,9 +176,7 @@ impl Isthmus {
                 value: U256::ZERO,
                 gas_limit: 500_000,
                 is_system_transaction: false,
-                eth_value: 0,
                 input: Self::operator_fee_vault_deployment_bytecode(),
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::update_l1_block_source(),
@@ -193,8 +187,6 @@ impl Isthmus {
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::NEW_L1_BLOCK),
-                eth_value: 0,
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::update_gas_price_oracle_source(),
@@ -205,8 +197,6 @@ impl Isthmus {
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::GAS_PRICE_ORACLE),
-                eth_value: 0,
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::update_operator_fee_vault_source(),
@@ -217,8 +207,6 @@ impl Isthmus {
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::OPERATOR_FEE_VAULT),
-                eth_value: 0,
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::enable_isthmus_source(),
@@ -229,8 +217,6 @@ impl Isthmus {
                 gas_limit: 90_000,
                 is_system_transaction: false,
                 input: Self::ENABLE_ISTHMUS_INPUT.into(),
-                eth_value: 0,
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::block_hash_history_contract_source(),
@@ -241,8 +227,6 @@ impl Isthmus {
                 gas_limit: 250_000,
                 is_system_transaction: false,
                 input: Self::eip2935_creation_data(),
-                eth_value: 0,
-                eth_tx_value: None,
             },
         ])
         .into_iter()

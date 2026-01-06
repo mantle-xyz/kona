@@ -26,34 +26,29 @@ pub struct SingleBatch {
 }
 
 impl SingleBatch {
-    /// If any transactions are empty or deposited transaction types.
-    pub fn has_invalid_transactions(&self) -> bool {
-        self.transactions.iter().any(|tx| tx.0.is_empty() || tx.0[0] == OpTxType::Deposit as u8)
-    }
-
     /// Returns the [`BlockNumHash`] of the batch.
     pub const fn epoch(&self) -> BlockNumHash {
         BlockNumHash { number: self.epoch_num, hash: self.epoch_hash }
     }
 
     /// Validate the batch timestamp.
-    pub const fn check_batch_timestamp(
+    pub fn check_batch_timestamp(
         &self,
         cfg: &RollupConfig,
         l2_safe_head: L2BlockInfo,
-        _inclusion_block: &BlockInfo,
+        inclusion_block: &BlockInfo,
     ) -> BatchValidity {
         let next_timestamp = l2_safe_head.block_info.timestamp + cfg.block_time;
         if self.timestamp > next_timestamp {
-            // if cfg.is_holocene_active(inclusion_block.timestamp) {
-            //     return BatchValidity::Drop;
-            // }
+            if cfg.is_holocene_active(inclusion_block.timestamp) {
+                return BatchValidity::Drop;
+            }
             return BatchValidity::Future;
         }
         if self.timestamp < next_timestamp {
-            // if cfg.is_holocene_active(inclusion_block.timestamp) {
-            //     return BatchValidity::Past;
-            // }
+            if cfg.is_holocene_active(inclusion_block.timestamp) {
+                return BatchValidity::Past;
+            }
             return BatchValidity::Drop;
         }
         BatchValidity::Accept
@@ -570,8 +565,6 @@ mod tests {
             gas_limit: 5,
             is_system_transaction: false,
             input: Default::default(),
-            eth_tx_value: None,
-            eth_value: 0,
         };
         let envelope = OpTxEnvelope::Deposit(Sealed::new(tx));
         let encoded = envelope.encoded_2718();

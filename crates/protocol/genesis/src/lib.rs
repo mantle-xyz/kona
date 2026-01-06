@@ -31,7 +31,8 @@ pub use params::{
 
 mod superchain;
 pub use superchain::{
-    Superchain, SuperchainConfig, SuperchainL1Info, SuperchainLevel, Superchains,
+    Chain, ChainList, FaultProofs, Superchain, SuperchainConfig, SuperchainL1Info, SuperchainLevel,
+    SuperchainParent, Superchains,
 };
 
 mod updates;
@@ -59,4 +60,7 @@ mod genesis;
 pub use genesis::ChainGenesis;
 
 mod rollup;
-pub use rollup::{MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, RollupConfig};
+pub use rollup::{
+    DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW, FJORD_MAX_SEQUENCER_DRIFT, GRANITE_CHANNEL_TIMEOUT,
+    MAX_RLP_BYTES_PER_CHANNEL_BEDROCK, MAX_RLP_BYTES_PER_CHANNEL_FJORD, RollupConfig,
+};
