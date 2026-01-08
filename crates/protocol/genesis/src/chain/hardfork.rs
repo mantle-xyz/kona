@@ -72,6 +72,11 @@ pub struct HardForkConfig {
     /// otherwise.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub interop_time: Option<u64>,
+    /// `mantle_arsia_time` sets the activation time for the Mantle Arsia network upgrade.
+    /// Active if `mantle_arsia_time` != None && L2 block timestamp >= Some(mantle_arsia_time), inactive
+    /// otherwise.
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub mantle_arsia_time: Option<u64>,
 }
 
 impl Display for HardForkConfig {
@@ -104,6 +109,7 @@ impl HardForkConfig {
             ("Isthmus", self.isthmus_time),
             ("Jovian", self.jovian_time),
             ("Interop", self.interop_time),
+            ("Mantle Arsia", self.mantle_arsia_time),
         ]
         .into_iter()
     }
@@ -139,6 +145,7 @@ mod tests {
             isthmus_time: None,
             jovian_time: None,
             interop_time: None,
+            mantle_arsia_time: None,
         };
 
         let deserialized: HardForkConfig = serde_json::from_str(raw).unwrap();
@@ -186,6 +193,7 @@ mod tests {
             isthmus_time: None,
             jovian_time: None,
             interop_time: None,
+            mantle_arsia_time: None,
         };
 
         let deserialized: HardForkConfig = toml::from_str(raw).unwrap();
@@ -220,6 +228,7 @@ mod tests {
             isthmus_time: Some(9),
             jovian_time: Some(10),
             interop_time: Some(11),
+            mantle_arsia_time: Some(12),
         };
 
         let mut iter = hardforks.iter();
@@ -234,6 +243,7 @@ mod tests {
         assert_eq!(iter.next(), Some(("Isthmus", Some(9))));
         assert_eq!(iter.next(), Some(("Jovian", Some(10))));
         assert_eq!(iter.next(), Some(("Interop", Some(11))));
+        assert_eq!(iter.next(), Some(("Mantle Arsia", Some(12))));
         assert_eq!(iter.next(), None);
     }
 }
