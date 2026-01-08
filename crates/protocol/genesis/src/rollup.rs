@@ -322,6 +322,11 @@ impl RollupConfig {
             !self.is_interop_active(timestamp.saturating_sub(self.block_time))
     }
 
+    /// Returns true if Mantle Arsia is active at the given timestamp.
+    pub fn is_mantle_arsia_active(&self, timestamp: u64) -> bool {
+        self.hardforks.mantle_arsia_time.is_some_and(|t| timestamp >= t)
+    }
+
     /// Returns true if a DA Challenge proxy Address is provided in the rollup config and the
     /// address is not zero.
     pub fn is_alt_da_enabled(&self) -> bool {
