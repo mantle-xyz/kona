@@ -81,9 +81,9 @@ where
                 },
                 _ => continue,
             };
-            let Some(to) = tx_kind else { 
+            let Some(to) = tx_kind else {
                 warn!(target: "mantle_blob_source", "Tx {}: No 'to' address", tx_idx);
-                continue; 
+                continue;
             };
 
             if to != self.batcher_address {
@@ -91,14 +91,14 @@ where
                 index += blob_hashes.map_or(0, |h| h.len() as u64);
                 continue;
             }
-            
+
             // Verify signer matches batcher_address (security check)
             if tx.recover_signer().unwrap_or_default() != batcher_address {
                 warn!(target: "mantle_blob_source", "Tx {}: Signer doesn't match batcher_address, skipping", tx_idx);
                 index += blob_hashes.map_or(0, |h| h.len() as u64);
                 continue;
             }
-            
+
             warn!(target: "mantle_blob_source", "Tx {}: Valid batcher transaction", tx_idx);
             if tx.tx_type() != TxType::Eip4844 {
                 let blob_data = BlobData { data: None, calldata: Some(calldata.to_vec().into()) };
@@ -200,10 +200,11 @@ where
             .map_err(|e| BlobProviderError::Backend(format!("RLP decode error: {}", e)))?;
 
         // Convert RLP decoded frames to BlobData
-        let decoded_data = rlp_blob.0.into_iter().map(|bytes| BlobData {
-            data: None,
-            calldata: Some(bytes),
-        }).collect();
+        let decoded_data = rlp_blob
+            .0
+            .into_iter()
+            .map(|bytes| BlobData { data: None, calldata: Some(bytes) })
+            .collect();
 
         self.open = true;
         self.data = decoded_data;
@@ -261,7 +262,7 @@ mod tests {
     };
     use alloc::vec;
     use alloy_eips::eip4844::Blob;
-    use alloy_primitives::{address, hex};
+    use alloy_primitives::{B256, address, b256, hex};
     use alloy_rlp::{Decodable, Encodable};
 
     fn default_test_mantle_blob_source() -> MantleBlobSource<TestChainProvider, TestBlobProvider> {
@@ -269,6 +270,24 @@ mod tests {
         let blob_fetcher = TestBlobProvider::default();
         let batcher_address = Address::default();
         MantleBlobSource::new(chain_provider, blob_fetcher, batcher_address)
+    }
+
+    /// https://sepolia.etherscan.io/tx/0x9a22ccb0029bc8b0ddd073be1a1d923b7ae2b2ea52100bae0db4424f9107e9c0
+    fn valid_mantle_blob_tx() -> (TxEnvelope, Address, Address, [B256; 3]) {
+        let raw_tx_hex = "0x03f8d783aa36a7822aea830f4240830f427082520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00f863a001d402363affae0d61efd3811cfa5d482e2d3700f20ce1a7934add3c6795f2dea0019f084796dbf6a7ba47b2c1a50eff0c1e32baad480bf5e57b89eafeb418dd76a0011f403cfe025351f08e1fb5b31651012a53c247daf632d3ca51bbd10f82cf2601a0ee6af3b8596947879b181f00119f50fc88cdcf935720e200d81f240a61913c32a02098664ffc7b20db92a6b842ecf3dc3ec4efd232f59896d82939fc97bef363c5";
+        let raw_tx_bytes = hex::decode(raw_tx_hex.strip_prefix("0x").unwrap()).unwrap();
+        let tx = TxEnvelope::decode(&mut raw_tx_bytes.as_slice()).unwrap();
+
+        let batcher_address = address!("0xFFEEDDCcBbAA0000000000000000000000000000");
+        let signer = tx.recover_signer().expect("Should recover signer from Mantle tx");
+
+        let blob_hashes = [
+            b256!("01d402363affae0d61efd3811cfa5d482e2d3700f20ce1a7934add3c6795f2de"),
+            b256!("019f084796dbf6a7ba47b2c1a50eff0c1e32baad480bf5e57b89eafeb418dd76"),
+            b256!("011f403cfe025351f08e1fb5b31651012a53c247daf632d3ca51bbd10f82cf26"),
+        ];
+
+        (tx, batcher_address, signer, blob_hashes)
     }
 
     #[tokio::test]
@@ -311,93 +330,29 @@ mod tests {
     async fn test_next_calldata() {
         let mut source = default_test_mantle_blob_source();
         source.open = true;
-        source.data.push(BlobData {
-            data: None,
-            calldata: Some(Bytes::from(vec![0x01, 0x02, 0x03])),
-        });
+        source
+            .data
+            .push(BlobData { data: None, calldata: Some(Bytes::from(vec![0x01, 0x02, 0x03])) });
 
         let data = source.next(&BlockInfo::default(), Address::ZERO).await.unwrap();
         assert_eq!(data, Bytes::from(vec![0x01, 0x02, 0x03]));
     }
 
     #[tokio::test]
-    async fn test_mantle_real_blob_decode() {
-        // Test data from Mantle-Sepolia L2 submitting to Sepolia L1
-        // Transaction: 0x468f0d2b209ad680e147f093f430ffa31f453a14a183d248267b3aaa21a624da
-        // Block: 10001504 on Sepolia
-        // This transaction contains 3 blobs with Mantle's RLP-encoded format
-        
-        // Load the 3 Mantle blobs from testdata
-        let blob_hexes = [
-            include_str!("testdata/mantle_sepolia_block_10001504_blob_0.hex"),
-            include_str!("testdata/mantle_sepolia_block_10001504_blob_1.hex"),
-            include_str!("testdata/mantle_sepolia_block_10001504_blob_2.hex"),
-        ];
-        
-        let mut blobs = Vec::new();
-        for blob_hex in &blob_hexes {
-            let blob_bytes = hex::decode(
-                blob_hex.trim().strip_prefix("0x").unwrap_or(blob_hex.trim())
-            ).unwrap();
-            assert_eq!(blob_bytes.len(), 131072, "Each blob should be 131072 bytes");
-            let blob = Blob::try_from(blob_bytes.as_slice()).unwrap();
-            blobs.push(Box::new(blob));
-        }
-        
-        // Decode all blobs and concatenate (following Mantle's encoding logic)
-        let mut whole_blob_data = Vec::new();
-        for (i, _) in blobs.iter().enumerate() {
-            let mut blob_data = BlobData::default();
-            blob_data.fill(&blobs, i).unwrap();
-            let decoded = blob_data.decode().unwrap();
-            whole_blob_data.extend_from_slice(&decoded);
-        }
-        
-        assert!(!whole_blob_data.is_empty(), "Concatenated blob data should not be empty");
-        
-        // Verify the concatenated data starts with RLP list marker
-        // RLP list: 0xf8 (short list) or 0xf9+ (long list)
-        let first_byte = whole_blob_data[0];
-        assert!(
-            first_byte >= 0xc0, 
-            "First byte should be RLP list marker, got 0x{:02x}", 
-            first_byte
-        );
-        
-        let mut rlp_slice = whole_blob_data.as_slice();
-        let rlp_result: Result<VecOfBytes, _> = Decodable::decode(&mut rlp_slice);
-        
-        match rlp_result {
-            Ok(frames) => {
-                assert!(!frames.0.is_empty(), "Should decode to at least one frame");                
-                for (i, frame) in frames.0.iter().enumerate() {
-                    assert!(!frame.is_empty(), "Frame {} should not be empty", i);
-                }
-            }
-            Err(e) => {
-                // Print debug info to understand the data format
-                panic!("Failed to RLP decode Mantle blob data: {}", e);
-            }
-        }
-    }
-
-    #[tokio::test]
     async fn test_verify_blob_data_rlp_decode() {
         // Verify RLP encoding/decoding of Vec<Bytes> (Mantle's blob format)
         // This test verifies the RLP structure used by Mantle
-        let test_batches = vec![
-            Bytes::from(vec![0x00, 0x01, 0x02]),
-            Bytes::from(vec![0x03, 0x04, 0x05]),
-        ];
-        
+        let test_batches =
+            vec![Bytes::from(vec![0x00, 0x01, 0x02]), Bytes::from(vec![0x03, 0x04, 0x05])];
+
         // RLP encode
         let mut rlp_encoded = Vec::new();
         test_batches.encode(&mut rlp_encoded);
-        
+
         // RLP decode
         let mut rlp_slice = rlp_encoded.as_slice();
         let decoded: Vec<Bytes> = Decodable::decode(&mut rlp_slice).unwrap();
-        
+
         assert_eq!(decoded.len(), 2);
         assert_eq!(decoded[0], Bytes::from(vec![0x00, 0x01, 0x02]));
         assert_eq!(decoded[1], Bytes::from(vec![0x03, 0x04, 0x05]));
@@ -405,37 +360,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_clear() {
-        // Test that clear() properly resets the source
         let mut source = default_test_mantle_blob_source();
         source.open = true;
-        source.data.push(BlobData {
-            data: None,
-            calldata: Some(Bytes::from(vec![0x01, 0x02])),
-        });
+        source.data.push(BlobData { data: None, calldata: Some(Bytes::from(vec![0x01, 0x02])) });
 
         source.clear();
-        
+
         assert!(!source.open, "Source should be closed after clear");
         assert!(source.data.is_empty(), "Data should be empty after clear");
     }
 
     #[tokio::test]
     async fn test_multiple_next_calls() {
-        // Test multiple next() calls return data in order
         let mut source = default_test_mantle_blob_source();
         source.open = true;
-        source.data.push(BlobData {
-            data: None,
-            calldata: Some(Bytes::from(vec![0x01])),
-        });
-        source.data.push(BlobData {
-            data: None,
-            calldata: Some(Bytes::from(vec![0x02])),
-        });
-        source.data.push(BlobData {
-            data: None,
-            calldata: Some(Bytes::from(vec![0x03])),
-        });
+        source.data.push(BlobData { data: None, calldata: Some(Bytes::from(vec![0x01])) });
+        source.data.push(BlobData { data: None, calldata: Some(Bytes::from(vec![0x02])) });
+        source.data.push(BlobData { data: None, calldata: Some(Bytes::from(vec![0x03])) });
 
         let data1 = source.next(&BlockInfo::default(), Address::ZERO).await.unwrap();
         assert_eq!(data1, Bytes::from(vec![0x01]));
@@ -453,52 +394,82 @@ mod tests {
 
     #[tokio::test]
     async fn test_wrong_batcher_address() {
-        // Test that transactions to wrong batcher address are ignored
         let mut source = default_test_mantle_blob_source();
         let correct_batcher = address!("0xFFEEDDCcBbAA0000000000000000000000000000");
         source.batcher_address = correct_batcher;
 
-        // Create a transaction to a different address
         let block_info = BlockInfo::default();
         source.chain_provider.insert_block_with_transactions(0, block_info, Vec::new());
-        
+
         let result = source.load_blobs(&BlockInfo::default(), correct_batcher).await;
         assert!(result.is_ok());
         assert!(source.data.is_empty(), "No data should be extracted from wrong batcher");
     }
 
     #[tokio::test]
-    async fn test_rlp_decode_real_mantle_format() {
+    async fn test_mantle_valid_blob_decode() {
+        let (tx, batcher_address, signer, blob_hashes) = valid_mantle_blob_tx();
+
+        let mut source = default_test_mantle_blob_source();
+        source.batcher_address = batcher_address;
+
+        let blob_hexes = [
+            include_str!("testdata/mantle_sepolia_block_10001504_blob_0.hex"),
+            include_str!("testdata/mantle_sepolia_block_10001504_blob_1.hex"),
+            include_str!("testdata/mantle_sepolia_block_10001504_blob_2.hex"),
+        ];
+
+        for (i, blob_hex) in blob_hexes.iter().enumerate() {
+            let blob_bytes =
+                hex::decode(blob_hex.trim().strip_prefix("0x").unwrap_or(blob_hex.trim())).unwrap();
+            assert_eq!(blob_bytes.len(), 131072, "Each blob should be 131072 bytes");
+            let blob = Blob::try_from(blob_bytes.as_slice()).unwrap();
+            source.blob_fetcher.insert_blob(blob_hashes[i], blob);
+        }
+
+        let block_info = BlockInfo::default();
+        source.chain_provider.insert_block_with_transactions(1, block_info, vec![tx]);
+
+        source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
+
+        assert!(source.open, "Source should be open after load_blobs");
+        assert!(!source.data.is_empty(), "Should have decoded frames from Mantle blobs");
+
+        for (i, blob_data) in source.data.iter().enumerate() {
+            assert!(blob_data.calldata.is_some(), "Frame {} should have calldata", i);
+            let calldata = blob_data.calldata.as_ref().unwrap();
+            assert!(!calldata.is_empty(), "Frame {} calldata should not be empty", i);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_rlp_decode_valid_mantle_format() {
         // Verify the exact RLP format used by Mantle matches our implementation
         // Create sample frames as Mantle does
         let frame1 = Bytes::from(vec![0x00, 0x01, 0x02, 0x03]);
         let frame2 = Bytes::from(vec![0x04, 0x05, 0x06]);
         let frames = vec![frame1.clone(), frame2.clone()];
-        
+
         // RLP encode (this is what Mantle does before splitting into blobs)
         let mut rlp_encoded = Vec::new();
         frames.encode(&mut rlp_encoded);
-        
+
         // Verify we can decode it back
         let mut rlp_slice = rlp_encoded.as_slice();
         let decoded: Vec<Bytes> = Decodable::decode(&mut rlp_slice).unwrap();
-        
+
         assert_eq!(decoded.len(), 2);
         assert_eq!(decoded[0], frame1);
         assert_eq!(decoded[1], frame2);
-        
+
         // Verify the RLP structure
         assert!(rlp_encoded[0] >= 0xc0, "Should start with RLP list marker");
     }
 
     #[tokio::test]
-    async fn test_parse_blob_count_from_transaction() {        
-        let raw_tx_hex = "0x03f8d783aa36a7822aea830f4240830f427082520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00f863a001d402363affae0d61efd3811cfa5d482e2d3700f20ce1a7934add3c6795f2dea0019f084796dbf6a7ba47b2c1a50eff0c1e32baad480bf5e57b89eafeb418dd76a0011f403cfe025351f08e1fb5b31651012a53c247daf632d3ca51bbd10f82cf2601a0ee6af3b8596947879b181f00119f50fc88cdcf935720e200d81f240a61913c32a02098664ffc7b20db92a6b842ecf3dc3ec4efd232f59896d82939fc97bef363c5";
-        let raw_tx_bytes = hex::decode(raw_tx_hex.strip_prefix("0x").unwrap()).unwrap();
-        
-        // Decode the transaction
-        let tx = TxEnvelope::decode(&mut raw_tx_bytes.as_slice()).unwrap();
-        
+    async fn test_parse_blob_count_from_transaction() {
+        let (tx, _, _, expected_hashes) = valid_mantle_blob_tx();
+
         // Extract blob_versioned_hashes from EIP-4844 transaction
         let (blob_hashes, tx_type) = match &tx {
             TxEnvelope::Eip4844(wrapper) => {
@@ -507,53 +478,35 @@ mod tests {
                     TxEip4844Variant::TxEip4844WithSidecar(tx) => &tx.tx().blob_versioned_hashes,
                 };
                 (hashes, "EIP-4844")
-            },
+            }
             TxEnvelope::Eip1559(_) => panic!("Not a blob transaction"),
             _ => panic!("Unexpected transaction type"),
         };
-        
+
         // Verify blob count
         assert_eq!(blob_hashes.len(), 3, "Should have 3 blob hashes");
         assert_eq!(tx_type, "EIP-4844", "Should be EIP-4844 transaction");
-        
+
         // Verify the actual blob hashes
-        let expected_hashes = [
-            "0x01d402363affae0d61efd3811cfa5d482e2d3700f20ce1a7934add3c6795f2de",
-            "0x019f084796dbf6a7ba47b2c1a50eff0c1e32baad480bf5e57b89eafeb418dd76",
-            "0x011f403cfe025351f08e1fb5b31651012a53c247daf632d3ca51bbd10f82cf26",
-        ];
-        
         for (i, hash) in blob_hashes.iter().enumerate() {
             let hash_str = format!("0x{:x}", hash);
-            assert_eq!(hash_str, expected_hashes[i], "Blob hash {} mismatch", i);
+            let expected_str = format!("0x{:x}", expected_hashes[i]);
+            assert_eq!(hash_str, expected_str, "Blob hash {} mismatch", i);
         }
     }
 
     #[tokio::test]
     async fn test_signer_verification() {
-        // Test that signer verification works using real Mantle transaction data
-        // Transaction: 0x468f0d2b209ad680e147f093f430ffa31f453a14a183d248267b3aaa21a624da
-        // Block: 10001504 on Sepolia L1
+        let (tx, batcher_address, actual_signer, _) = valid_mantle_blob_tx();
 
-        let raw_tx_hex = "0x03f8d783aa36a7822aea830f4240830f427082520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00f863a001d402363affae0d61efd3811cfa5d482e2d3700f20ce1a7934add3c6795f2dea0019f084796dbf6a7ba47b2c1a50eff0c1e32baad480bf5e57b89eafeb418dd76a0011f403cfe025351f08e1fb5b31651012a53c247daf632d3ca51bbd10f82cf2601a0ee6af3b8596947879b181f00119f50fc88cdcf935720e200d81f240a61913c32a02098664ffc7b20db92a6b842ecf3dc3ec4efd232f59896d82939fc97bef363c5";
-        let raw_tx_bytes = hex::decode(raw_tx_hex.strip_prefix("0x").unwrap()).unwrap();
-        let tx = TxEnvelope::decode(&mut raw_tx_bytes.as_slice()).unwrap();
-        
-        // Mantle batcher address (the 'to' address of the transaction)
-        let batcher_address = address!("0xFFEEDDCcBbAA0000000000000000000000000000");
-        
-        // Recover the actual signer from the transaction
-        let actual_signer = tx.recover_signer().expect("Should recover signer from Mantle tx");
-        
-        // Create source with Mantle's batcher address
         let mut source = default_test_mantle_blob_source();
         source.batcher_address = batcher_address;
-        
+
         // Test 1: Transaction with correct signer should be accepted
         let (data, hashes) = source.extract_blob_data(vec![tx.clone()], actual_signer);
         assert!(!data.is_empty(), "Should extract data when signer matches (Mantle has 3 blobs)");
         assert_eq!(hashes.len(), 3, "Should extract 3 blob hashes from Mantle transaction");
-        
+
         // Test 2: Transaction with wrong signer should be rejected
         let wrong_signer = Address::ZERO;
         let (data2, hashes2) = source.extract_blob_data(vec![tx], wrong_signer);
