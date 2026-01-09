@@ -12,6 +12,12 @@ pub const BASE_MAINNET_CHAIN_ID: u64 = 8453;
 /// Base Sepolia chain ID.
 pub const BASE_SEPOLIA_CHAIN_ID: u64 = 84532;
 
+/// Mantle Mainnet chain ID.
+pub const MANTLE_MAINNET_CHAIN_ID: u64 = 5000;
+
+/// Mantle Sepolia chain ID.
+pub const MANTLE_SEPOLIA_CHAIN_ID: u64 = 5003;
+
 mod addresses;
 pub use addresses::AddressList;
 
@@ -23,6 +29,9 @@ pub use altda::AltDAConfig;
 
 mod hardfork;
 pub use hardfork::HardForkConfig;
+
+mod mantle_hardfork;
+pub use mantle_hardfork::MantleHardForkConfig;
 
 mod roles;
 pub use roles::Roles;

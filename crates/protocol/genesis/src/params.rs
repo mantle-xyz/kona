@@ -3,7 +3,8 @@
 use alloy_eips::eip1559::BaseFeeParams;
 
 use crate::{
-    BASE_MAINNET_CHAIN_ID, BASE_SEPOLIA_CHAIN_ID, OP_MAINNET_CHAIN_ID, OP_SEPOLIA_CHAIN_ID,
+    BASE_MAINNET_CHAIN_ID, BASE_SEPOLIA_CHAIN_ID, MANTLE_MAINNET_CHAIN_ID,
+    MANTLE_SEPOLIA_CHAIN_ID, OP_MAINNET_CHAIN_ID, OP_SEPOLIA_CHAIN_ID,
 };
 
 /// Base fee max change denominator for Optimism Mainnet as defined in the Optimism
@@ -54,6 +55,12 @@ pub const BASE_MAINNET_EIP1559_DEFAULT_BASE_FEE_MAX_CHANGE_DENOMINATOR: u64 = 50
 /// hardfork.
 pub const BASE_MAINNET_EIP1559_BASE_FEE_MAX_CHANGE_DENOMINATOR_CANYON: u64 = 250;
 
+/// Elasticity multiplier for Mantle as defined in the Mantle configuration.
+pub const MANTLE_EIP1559_ELASTICITY_MULTIPLIER: u64 = 4;
+
+/// Base fee max change denominator for Mantle as defined in the Mantle configuration.
+pub const MANTLE_EIP1559_BASE_FEE_MAX_CHANGE_DENOMINATOR: u64 = 50;
+
 /// Get the base fee parameters for Optimism Sepolia.
 pub const OP_SEPOLIA_BASE_FEE_PARAMS: BaseFeeParams = BaseFeeParams {
     max_change_denominator: OP_SEPOLIA_EIP1559_DEFAULT_BASE_FEE_MAX_CHANGE_DENOMINATOR as u128,
@@ -90,6 +97,12 @@ pub const OP_MAINNET_BASE_FEE_PARAMS_CANYON: BaseFeeParams = BaseFeeParams {
     elasticity_multiplier: OP_MAINNET_EIP1559_DEFAULT_ELASTICITY_MULTIPLIER as u128,
 };
 
+/// Get the base fee parameters for Mantle.
+pub const MANTLE_BASE_FEE_PARAMS: BaseFeeParams = BaseFeeParams {
+    max_change_denominator: MANTLE_EIP1559_BASE_FEE_MAX_CHANGE_DENOMINATOR as u128,
+    elasticity_multiplier: MANTLE_EIP1559_ELASTICITY_MULTIPLIER as u128,
+};
+
 /// Returns the [`BaseFeeParams`] for the given chain id.
 pub const fn base_fee_params(chain_id: u64) -> BaseFeeParams {
     match chain_id {
@@ -97,6 +110,7 @@ pub const fn base_fee_params(chain_id: u64) -> BaseFeeParams {
         OP_SEPOLIA_CHAIN_ID => OP_SEPOLIA_BASE_FEE_PARAMS,
         BASE_MAINNET_CHAIN_ID => OP_MAINNET_BASE_FEE_PARAMS,
         BASE_SEPOLIA_CHAIN_ID => BASE_SEPOLIA_BASE_FEE_PARAMS,
+        MANTLE_MAINNET_CHAIN_ID | MANTLE_SEPOLIA_CHAIN_ID => MANTLE_BASE_FEE_PARAMS,
         _ => OP_MAINNET_BASE_FEE_PARAMS,
     }
 }
@@ -108,6 +122,8 @@ pub const fn base_fee_params_canyon(chain_id: u64) -> BaseFeeParams {
         OP_SEPOLIA_CHAIN_ID => OP_SEPOLIA_BASE_FEE_PARAMS_CANYON,
         BASE_MAINNET_CHAIN_ID => OP_MAINNET_BASE_FEE_PARAMS_CANYON,
         BASE_SEPOLIA_CHAIN_ID => BASE_SEPOLIA_BASE_FEE_PARAMS_CANYON,
+        // Mantle doesn't have a historical change of the denominator, so we use the same as the denominator
+        MANTLE_MAINNET_CHAIN_ID | MANTLE_SEPOLIA_CHAIN_ID => MANTLE_BASE_FEE_PARAMS,
         _ => OP_MAINNET_BASE_FEE_PARAMS_CANYON,
     }
 }
@@ -119,6 +135,7 @@ pub const fn base_fee_config(chain_id: u64) -> BaseFeeConfig {
         OP_SEPOLIA_CHAIN_ID => OP_SEPOLIA_BASE_FEE_CONFIG,
         BASE_MAINNET_CHAIN_ID => BASE_MAINNET_BASE_FEE_CONFIG,
         BASE_SEPOLIA_CHAIN_ID => BASE_SEPOLIA_BASE_FEE_CONFIG,
+        MANTLE_MAINNET_CHAIN_ID | MANTLE_SEPOLIA_CHAIN_ID => MANTLE_BASE_FEE_CONFIG,
         _ => OP_MAINNET_BASE_FEE_CONFIG,
     }
 }
@@ -149,6 +166,14 @@ pub const BASE_MAINNET_BASE_FEE_CONFIG: BaseFeeConfig = BaseFeeConfig {
     eip1559_elasticity: BASE_MAINNET_EIP1559_DEFAULT_ELASTICITY_MULTIPLIER,
     eip1559_denominator: BASE_MAINNET_EIP1559_DEFAULT_BASE_FEE_MAX_CHANGE_DENOMINATOR,
     eip1559_denominator_canyon: BASE_MAINNET_EIP1559_BASE_FEE_MAX_CHANGE_DENOMINATOR_CANYON,
+};
+
+/// Get the base fee parameters for Mantle.
+/// Mantle doesn't have a historical change of the denominator, so we use the same as the denominator.
+pub const MANTLE_BASE_FEE_CONFIG: BaseFeeConfig = BaseFeeConfig {
+    eip1559_elasticity: MANTLE_EIP1559_ELASTICITY_MULTIPLIER,
+    eip1559_denominator: MANTLE_EIP1559_BASE_FEE_MAX_CHANGE_DENOMINATOR,
+    eip1559_denominator_canyon: MANTLE_EIP1559_BASE_FEE_MAX_CHANGE_DENOMINATOR,
 };
 
 /// Optimism Base Fee Config.
@@ -213,6 +238,8 @@ mod tests {
         assert_eq!(base_fee_params(OP_SEPOLIA_CHAIN_ID), OP_SEPOLIA_BASE_FEE_PARAMS);
         assert_eq!(base_fee_params(BASE_MAINNET_CHAIN_ID), OP_MAINNET_BASE_FEE_PARAMS);
         assert_eq!(base_fee_params(BASE_SEPOLIA_CHAIN_ID), BASE_SEPOLIA_BASE_FEE_PARAMS);
+        assert_eq!(base_fee_params(MANTLE_MAINNET_CHAIN_ID), MANTLE_BASE_FEE_PARAMS);
+        assert_eq!(base_fee_params(MANTLE_SEPOLIA_CHAIN_ID), MANTLE_BASE_FEE_PARAMS);
         assert_eq!(base_fee_params(0), OP_MAINNET_BASE_FEE_PARAMS);
     }
 
@@ -228,6 +255,9 @@ mod tests {
             base_fee_params_canyon(BASE_SEPOLIA_CHAIN_ID),
             BASE_SEPOLIA_BASE_FEE_PARAMS_CANYON
         );
+        // Mantle doesn't have a historical change of the denominator
+        assert_eq!(base_fee_params_canyon(MANTLE_MAINNET_CHAIN_ID), MANTLE_BASE_FEE_PARAMS);
+        assert_eq!(base_fee_params_canyon(MANTLE_SEPOLIA_CHAIN_ID), MANTLE_BASE_FEE_PARAMS);
         assert_eq!(base_fee_params_canyon(0), OP_MAINNET_BASE_FEE_PARAMS_CANYON);
     }
 
@@ -249,5 +279,28 @@ mod tests {
             r#"{"eip1559Elasticity":6,"eip1559Denominator":50,"eip1559DenominatorCanyon":250}"#;
         let config: BaseFeeConfig = serde_json::from_str(raw_str).unwrap();
         assert_eq!(config, OP_MAINNET_BASE_FEE_CONFIG);
+    }
+
+    #[test]
+    fn test_mantle_base_fee_config() {
+        // Verify Mantle config values
+        assert_eq!(MANTLE_BASE_FEE_CONFIG.eip1559_elasticity, 4);
+        assert_eq!(MANTLE_BASE_FEE_CONFIG.eip1559_denominator, 50);
+        // Mantle doesn't have a historical change of the denominator
+        assert_eq!(
+            MANTLE_BASE_FEE_CONFIG.eip1559_denominator_canyon,
+            MANTLE_BASE_FEE_CONFIG.eip1559_denominator
+        );
+    }
+
+    #[test]
+    fn test_base_fee_config_from_chain_id() {
+        assert_eq!(base_fee_config(OP_MAINNET_CHAIN_ID), OP_MAINNET_BASE_FEE_CONFIG);
+        assert_eq!(base_fee_config(OP_SEPOLIA_CHAIN_ID), OP_SEPOLIA_BASE_FEE_CONFIG);
+        assert_eq!(base_fee_config(BASE_MAINNET_CHAIN_ID), BASE_MAINNET_BASE_FEE_CONFIG);
+        assert_eq!(base_fee_config(BASE_SEPOLIA_CHAIN_ID), BASE_SEPOLIA_BASE_FEE_CONFIG);
+        assert_eq!(base_fee_config(MANTLE_MAINNET_CHAIN_ID), MANTLE_BASE_FEE_CONFIG);
+        assert_eq!(base_fee_config(MANTLE_SEPOLIA_CHAIN_ID), MANTLE_BASE_FEE_CONFIG);
+        assert_eq!(base_fee_config(0), OP_MAINNET_BASE_FEE_CONFIG);
     }
 }

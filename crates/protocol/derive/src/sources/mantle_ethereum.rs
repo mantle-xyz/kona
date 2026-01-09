@@ -49,7 +49,7 @@ where
     ) -> Self {
         Self {
             ecotone_timestamp: cfg.hardforks.ecotone_time,
-            mantle_arsia_timestamp: cfg.hardforks.mantle_arsia_time,
+            mantle_arsia_timestamp: cfg.mantle_hardforks.mantle_arsia_time,
             mantle_blob_source,
             blob_source,
             calldata_source,
@@ -60,7 +60,7 @@ where
     pub fn new_from_parts(provider: C, blobs: B, cfg: &RollupConfig) -> Self {
         Self {
             ecotone_timestamp: cfg.hardforks.ecotone_time,
-            mantle_arsia_timestamp: cfg.hardforks.mantle_arsia_time,
+            mantle_arsia_timestamp: cfg.mantle_hardforks.mantle_arsia_time,
             mantle_blob_source: MantleBlobSource::new(
                 provider.clone(),
                 blobs.clone(),
@@ -122,7 +122,7 @@ mod tests {
     use alloy_consensus::TxEnvelope;
     use alloy_eips::eip2718::Decodable2718;
     use alloy_primitives::{Address, Bytes, address};
-    use kona_genesis::{HardForkConfig, RollupConfig, SystemConfig};
+    use kona_genesis::{HardForkConfig, MantleHardForkConfig, RollupConfig, SystemConfig};
     use kona_protocol::BlockInfo;
 
     fn default_test_mantle_blob_source() -> MantleBlobSource<TestChainProvider, TestBlobProvider> {
@@ -175,6 +175,9 @@ mod tests {
         let cfg = RollupConfig {
             hardforks: HardForkConfig {
                 ecotone_time: Some(0),
+                ..Default::default()
+            },
+            mantle_hardforks: MantleHardForkConfig {
                 mantle_arsia_time: Some(100),
                 ..Default::default()
             },
@@ -200,6 +203,9 @@ mod tests {
         let cfg = RollupConfig {
             hardforks: HardForkConfig {
                 ecotone_time: Some(0),
+                ..Default::default()
+            },
+            mantle_hardforks: MantleHardForkConfig {
                 mantle_arsia_time: Some(100),
                 ..Default::default()
             },
