@@ -57,6 +57,7 @@ where
         Self { chain_provider, blob_fetcher, batcher_address, data: Vec::new(), open: false }
     }
 
+    // same as BlobSource::extract_blob_data
     fn extract_blob_data(
         &self,
         txs: Vec<TxEnvelope>,
@@ -65,7 +66,7 @@ where
         let mut index: u64 = 0;
         let mut data = Vec::new();
         let mut hashes = Vec::new();
-        for (tx_idx, tx) in txs.iter().enumerate() {
+        for tx in txs {
             let (tx_kind, calldata, blob_hashes) = match &tx {
                 TxEnvelope::Legacy(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
                 TxEnvelope::Eip2930(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
@@ -81,25 +82,16 @@ where
                 },
                 _ => continue,
             };
-            let Some(to) = tx_kind else {
-                warn!(target: "mantle_blob_source", "Tx {}: No 'to' address", tx_idx);
-                continue;
-            };
+            let Some(to) = tx_kind else { continue };
 
             if to != self.batcher_address {
-                warn!(target: "mantle_blob_source", "Tx {}: 'to' address ({:?}) doesn't match batcher_address ({:?}), skipping", tx_idx, to, self.batcher_address);
                 index += blob_hashes.map_or(0, |h| h.len() as u64);
                 continue;
             }
-
-            // Verify signer matches batcher_address (security check)
             if tx.recover_signer().unwrap_or_default() != batcher_address {
-                warn!(target: "mantle_blob_source", "Tx {}: Signer doesn't match batcher_address, skipping", tx_idx);
                 index += blob_hashes.map_or(0, |h| h.len() as u64);
                 continue;
             }
-
-            warn!(target: "mantle_blob_source", "Tx {}: Valid batcher transaction", tx_idx);
             if tx.tx_type() != TxType::Eip4844 {
                 let blob_data = BlobData { data: None, calldata: Some(calldata.to_vec().into()) };
                 data.push(blob_data);
@@ -118,10 +110,8 @@ where
             let blob_hashes = if let Some(b) = blob_hashes {
                 b
             } else {
-                warn!(target: "mantle_blob_source", "Tx {}: No blob hashes", tx_idx);
                 continue;
             };
-            warn!(target: "mantle_blob_source", "Tx {}: Found {} blob hashes", tx_idx, blob_hashes.len());
             for hash in blob_hashes {
                 let indexed = IndexedBlobHash { hash, index };
                 hashes.push(indexed);
@@ -272,7 +262,7 @@ mod tests {
         MantleBlobSource::new(chain_provider, blob_fetcher, batcher_address)
     }
 
-    /// https://sepolia.etherscan.io/tx/0x9a22ccb0029bc8b0ddd073be1a1d923b7ae2b2ea52100bae0db4424f9107e9c0
+    /// https://sepolia.etherscan.io/tx/0x468f0d2b209ad680e147f093f430ffa31f453a14a183d248267b3aaa21a624da
     fn valid_mantle_blob_tx() -> (TxEnvelope, Address, Address, [B256; 3]) {
         let raw_tx_hex = "0x03f8d783aa36a7822aea830f4240830f427082520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00f863a001d402363affae0d61efd3811cfa5d482e2d3700f20ce1a7934add3c6795f2dea0019f084796dbf6a7ba47b2c1a50eff0c1e32baad480bf5e57b89eafeb418dd76a0011f403cfe025351f08e1fb5b31651012a53c247daf632d3ca51bbd10f82cf2601a0ee6af3b8596947879b181f00119f50fc88cdcf935720e200d81f240a61913c32a02098664ffc7b20db92a6b842ecf3dc3ec4efd232f59896d82939fc97bef363c5";
         let raw_tx_bytes = hex::decode(raw_tx_hex.strip_prefix("0x").unwrap()).unwrap();
