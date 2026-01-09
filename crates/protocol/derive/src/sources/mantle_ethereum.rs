@@ -5,11 +5,11 @@
 //! - Before Mantle Arsia: uses MantleBlobSource (Mantle blob decoding)
 //! - After Mantle Arsia: uses BlobSource (standard blob decoding)
 
+use super::MantleBlobSource;
 use crate::{
     BlobProvider, BlobSource, CalldataSource, ChainProvider, DataAvailabilityProvider,
     PipelineResult,
 };
-use super::MantleBlobSource;
 use alloc::{boxed::Box, fmt::Debug};
 use alloy_primitives::{Address, Bytes};
 use async_trait::async_trait;
@@ -41,7 +41,7 @@ where
     B: BlobProvider + Send + Clone + Debug,
 {
     /// Instantiates a new [`MantleEthereumDataSource`].
-    pub fn new(
+    pub const fn new(
         mantle_blob_source: MantleBlobSource<C, B>,
         blob_source: BlobSource<C, B>,
         calldata_source: CalldataSource<C>,
@@ -89,10 +89,8 @@ where
             self.ecotone_timestamp.map(|e| block_ref.timestamp >= e).unwrap_or(false);
         if ecotone_enabled {
             // Check if Mantle Arsia hardfork is active
-            let mantle_arsia_enabled = self
-                .mantle_arsia_timestamp
-                .map(|t| block_ref.timestamp >= t)
-                .unwrap_or(false);
+            let mantle_arsia_enabled =
+                self.mantle_arsia_timestamp.map(|t| block_ref.timestamp >= t).unwrap_or(false);
 
             if mantle_arsia_enabled {
                 // After Mantle Arsia: use standard blob decoding
@@ -113,3 +111,128 @@ where
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        BlobData,
+        test_utils::{TestBlobProvider, TestChainProvider},
+    };
+    use alloc::vec;
+    use alloy_consensus::TxEnvelope;
+    use alloy_eips::eip2718::Decodable2718;
+    use alloy_primitives::{Address, Bytes, address};
+    use kona_genesis::{HardForkConfig, RollupConfig, SystemConfig};
+    use kona_protocol::BlockInfo;
+
+    fn default_test_mantle_blob_source() -> MantleBlobSource<TestChainProvider, TestBlobProvider> {
+        let chain_provider = TestChainProvider::default();
+        let blob_fetcher = TestBlobProvider::default();
+        let batcher_address = Address::default();
+        MantleBlobSource::new(chain_provider, blob_fetcher, batcher_address)
+    }
+
+    fn default_test_blob_source() -> BlobSource<TestChainProvider, TestBlobProvider> {
+        let chain_provider = TestChainProvider::default();
+        let blob_fetcher = TestBlobProvider::default();
+        let batcher_address = Address::default();
+        BlobSource::new(chain_provider, blob_fetcher, batcher_address)
+    }
+
+    #[tokio::test]
+    async fn test_clear_mantle_ethereum_data_source() {
+        let chain = TestChainProvider::default();
+        let blob = TestBlobProvider::default();
+        let cfg = RollupConfig::default();
+        let mut calldata = CalldataSource::new(chain.clone(), Address::ZERO);
+        calldata.calldata.insert(0, Default::default());
+        calldata.open = true;
+        let mut mantle_blob = MantleBlobSource::new(chain.clone(), blob.clone(), Address::ZERO);
+        mantle_blob.data = vec![Default::default()];
+        mantle_blob.open = true;
+        let mut blob = BlobSource::new(chain, blob, Address::ZERO);
+        blob.data = vec![Default::default()];
+        blob.open = true;
+        let mut data_source = MantleEthereumDataSource::new(mantle_blob, blob, calldata, &cfg);
+
+        data_source.clear();
+        assert!(data_source.mantle_blob_source.data.is_empty());
+        assert!(!data_source.mantle_blob_source.open);
+        assert!(data_source.blob_source.data.is_empty());
+        assert!(!data_source.blob_source.open);
+        assert!(data_source.calldata_source.calldata.is_empty());
+        assert!(!data_source.calldata_source.open);
+    }
+
+    #[tokio::test]
+    async fn test_open_mantle_blob_source() {
+        let chain = TestChainProvider::default();
+        let mut mantle_blob = default_test_mantle_blob_source();
+        mantle_blob.open = true;
+        mantle_blob.data.push(BlobData { data: None, calldata: Some(Bytes::default()) });
+        let blob = default_test_blob_source();
+        let calldata = CalldataSource::new(chain.clone(), Address::ZERO);
+        let cfg = RollupConfig {
+            hardforks: HardForkConfig {
+                ecotone_time: Some(0),
+                mantle_arsia_time: Some(100),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        // Should use Mantle blob source (ecotone enabled, but before Mantle Arsia)
+        let mut data_source = MantleEthereumDataSource::new(mantle_blob, blob, calldata, &cfg);
+        let block_ref = BlockInfo { timestamp: 50, ..Default::default() };
+        let data = data_source.next(&block_ref, Address::ZERO).await.unwrap();
+        assert_eq!(data, Bytes::default());
+    }
+
+    #[tokio::test]
+    async fn test_open_blob_source_after_arsia() {
+        let chain = TestChainProvider::default();
+        let mantle_blob = default_test_mantle_blob_source();
+        let mut blob = default_test_blob_source();
+        blob.open = true;
+        blob.data
+            .push(BlobData { data: None, calldata: Some(Bytes::from(vec![0x01, 0x02, 0x03])) });
+        let calldata = CalldataSource::new(chain.clone(), Address::ZERO);
+        let cfg = RollupConfig {
+            hardforks: HardForkConfig {
+                ecotone_time: Some(0),
+                mantle_arsia_time: Some(100),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        // Should use standard blob source (after Mantle Arsia)
+        let mut data_source = MantleEthereumDataSource::new(mantle_blob, blob, calldata, &cfg);
+        let block_ref = BlockInfo { timestamp: 150, ..Default::default() };
+        let data = data_source.next(&block_ref, Address::ZERO).await.unwrap();
+        assert_eq!(data, Bytes::from(vec![0x01, 0x02, 0x03]));
+    }
+
+    #[tokio::test]
+    async fn test_open_calldata_source_pre_ecotone() {
+        let mut chain = TestChainProvider::default();
+        let blob = TestBlobProvider::default();
+        let batcher_address = address!("6887246668a3b87F54DeB3b94Ba47a6f63F32985");
+        let batch_inbox = address!("FF00000000000000000000000000000000000010");
+        let block_ref = BlockInfo { number: 10, ..Default::default() };
+
+        let mut cfg = RollupConfig::default();
+        cfg.genesis.system_config = Some(SystemConfig { batcher_address, ..Default::default() });
+        cfg.batch_inbox_address = batch_inbox;
+
+        // load a test batcher transaction
+        let raw_batcher_tx = include_bytes!("../../testdata/raw_batcher_tx.hex");
+        let tx = TxEnvelope::decode_2718(&mut raw_batcher_tx.as_ref()).unwrap();
+        chain.insert_block_with_transactions(10, block_ref, vec![tx]);
+
+        // Should successfully retrieve a calldata batch from the block (before ecotone)
+        let mut data_source = MantleEthereumDataSource::new_from_parts(chain, blob, &cfg);
+        let calldata_batch = data_source.next(&block_ref, batcher_address).await.unwrap();
+        assert_eq!(calldata_batch.len(), 119823);
+    }
+}
