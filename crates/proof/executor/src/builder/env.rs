@@ -53,7 +53,7 @@ where
     pub(crate) fn evm_cfg_env(&self, timestamp: u64) -> CfgEnv<OpSpecId> {
         CfgEnv::new()
             .with_chain_id(self.config.l2_chain_id.id())
-            .with_spec(self.config.spec_id(timestamp))
+            .with_spec(self.config.revm_spec_id(timestamp))
     }
 
     fn next_block_base_fee(

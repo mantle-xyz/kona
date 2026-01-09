@@ -193,13 +193,33 @@ impl Default for RollupConfig {
 
 #[cfg(feature = "revm")]
 impl RollupConfig {
-    /// Returns the active [`op_revm::OpSpecId`] for the executor.
+    /// Returns true if this is a Mantle chain or a chain that uses Mantle hardforks.
+    ///
+    /// This method checks if any Mantle-specific hardfork is configured, rather than
+    /// checking the chain_id. This approach is more flexible and works for:
+    /// - Mantle Mainnet (chain_id 5000)
+    /// - Mantle Sepolia (chain_id 5003)
+    /// - Custom Mantle testnets with different chain_ids
+    /// - Any chain that adopts Mantle hardforks
+    #[inline]
+    pub const fn is_mantle(&self) -> bool {
+        self.mantle_hardforks.has_any_hardfork()
+    }
+
+    /// Returns the active [`op_revm::OpSpecId`] for kona protocol logic.
+    ///
+    /// This method is used by kona to determine which OP Stack features are enabled.
+    /// This is the primary spec_id method used throughout kona.
+    ///
+    /// ## Note
+    /// For Mantle chains, the behavior is controlled by the `is_xxx_active()` methods,
+    /// which automatically return false before `mantle_arsia` activation.
     ///
     /// ## Takes
     /// - `timestamp`: The timestamp of the executing block.
     ///
     /// ## Returns
-    /// The active [`op_revm::OpSpecId`] for the executor.
+    /// The active [`op_revm::OpSpecId`] for kona protocol feature checks.
     pub fn spec_id(&self, timestamp: u64) -> op_revm::OpSpecId {
         if self.is_interop_active(timestamp) {
             op_revm::OpSpecId::INTEROP
@@ -221,11 +241,73 @@ impl RollupConfig {
             op_revm::OpSpecId::BEDROCK
         }
     }
+
+    /// Returns the active [`op_revm::OpSpecId`] for the revm executor.
+    ///
+    /// This method is specifically for revm EVM execution, determining which
+    /// EVM execution rules to use.
+    ///
+    /// ## Mantle-specific logic:
+    /// - Before `mantle_limb`: returns `ISTHMUS`
+    /// - `mantle_limb` and after: returns `OSAKA`
+    ///
+    /// ## Standard OP Stack logic:
+    /// Uses the latest active hardfork.
+    ///
+    /// ## Takes
+    /// - `timestamp`: The timestamp of the executing block.
+    ///
+    /// ## Returns
+    /// The active [`op_revm::OpSpecId`] for the revm executor.
+    pub fn revm_spec_id(&self, timestamp: u64) -> op_revm::OpSpecId {
+        // Special handling for Mantle chains
+        if self.is_mantle() {
+            return self.mantle_spec_id(timestamp);
+        }
+
+        // Standard OP Stack logic
+        if self.is_interop_active(timestamp) {
+            op_revm::OpSpecId::INTEROP
+        } else if self.is_jovian_active(timestamp) {
+            op_revm::OpSpecId::JOVIAN
+        } else if self.is_isthmus_active(timestamp) {
+            op_revm::OpSpecId::ISTHMUS
+        } else if self.is_holocene_active(timestamp) {
+            op_revm::OpSpecId::HOLOCENE
+        } else if self.is_fjord_active(timestamp) {
+            op_revm::OpSpecId::FJORD
+        } else if self.is_ecotone_active(timestamp) {
+            op_revm::OpSpecId::ECOTONE
+        } else if self.is_canyon_active(timestamp) {
+            op_revm::OpSpecId::CANYON
+        } else if self.is_regolith_active(timestamp) {
+            op_revm::OpSpecId::REGOLITH
+        } else {
+            op_revm::OpSpecId::BEDROCK
+        }
+    }
+
+    /// Returns the active [`op_revm::OpSpecId`] for Mantle chains (revm execution).
+    ///
+    /// ## Mantle revm logic:
+    /// - Before `mantle_limb`: uses `ISTHMUS`
+    /// - `mantle_limb` and after: uses `OSAKA`
+    fn mantle_spec_id(&self, timestamp: u64) -> op_revm::OpSpecId {
+        if self.is_mantle_limb_active(timestamp) {
+            op_revm::OpSpecId::OSAKA
+        } else {
+            op_revm::OpSpecId::ISTHMUS
+        }
+    }
 }
 
 impl RollupConfig {
     /// Returns true if Regolith is active at the given timestamp.
     pub fn is_regolith_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.regolith_time.is_some_and(|t| timestamp >= t) ||
             self.is_canyon_active(timestamp)
     }
@@ -238,6 +320,10 @@ impl RollupConfig {
 
     /// Returns true if Canyon is active at the given timestamp.
     pub fn is_canyon_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.canyon_time.is_some_and(|t| timestamp >= t) ||
             self.is_delta_active(timestamp)
     }
@@ -250,6 +336,10 @@ impl RollupConfig {
 
     /// Returns true if Delta is active at the given timestamp.
     pub fn is_delta_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.delta_time.is_some_and(|t| timestamp >= t) ||
             self.is_ecotone_active(timestamp)
     }
@@ -262,6 +352,10 @@ impl RollupConfig {
 
     /// Returns true if Ecotone is active at the given timestamp.
     pub fn is_ecotone_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.ecotone_time.is_some_and(|t| timestamp >= t) ||
             self.is_fjord_active(timestamp)
     }
@@ -274,6 +368,10 @@ impl RollupConfig {
 
     /// Returns true if Fjord is active at the given timestamp.
     pub fn is_fjord_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.fjord_time.is_some_and(|t| timestamp >= t) ||
             self.is_granite_active(timestamp)
     }
@@ -286,6 +384,10 @@ impl RollupConfig {
 
     /// Returns true if Granite is active at the given timestamp.
     pub fn is_granite_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.granite_time.is_some_and(|t| timestamp >= t) ||
             self.is_holocene_active(timestamp)
     }
@@ -298,6 +400,10 @@ impl RollupConfig {
 
     /// Returns true if Holocene is active at the given timestamp.
     pub fn is_holocene_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.holocene_time.is_some_and(|t| timestamp >= t) ||
             self.is_isthmus_active(timestamp)
     }
@@ -321,6 +427,10 @@ impl RollupConfig {
 
     /// Returns true if Isthmus is active at the given timestamp.
     pub fn is_isthmus_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.isthmus_time.is_some_and(|t| timestamp >= t) ||
             self.is_jovian_active(timestamp)
     }
@@ -333,6 +443,10 @@ impl RollupConfig {
 
     /// Returns true if Jovian is active at the given timestamp.
     pub fn is_jovian_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.jovian_time.is_some_and(|t| timestamp >= t) ||
             self.is_interop_active(timestamp)
     }
@@ -345,6 +459,10 @@ impl RollupConfig {
 
     /// Returns true if Interop is active at the given timestamp.
     pub fn is_interop_active(&self, timestamp: u64) -> bool {
+        // Mantle: before mantle_arsia, no advanced OP Stack features are active
+        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
+            return false;
+        }
         self.hardforks.interop_time.is_some_and(|t| timestamp >= t)
     }
 
@@ -352,6 +470,11 @@ impl RollupConfig {
     pub fn is_first_interop_block(&self, timestamp: u64) -> bool {
         self.is_interop_active(timestamp) &&
             !self.is_interop_active(timestamp.saturating_sub(self.block_time))
+    }
+
+    /// Returns true if Mantle Limb is active at the given timestamp.
+    pub fn is_mantle_limb_active(&self, timestamp: u64) -> bool {
+        self.mantle_hardforks.mantle_limb_time.is_some_and(|t| timestamp >= t)
     }
 
     /// Returns true if Mantle Arsia is active at the given timestamp.
@@ -529,8 +652,8 @@ mod tests {
 
     #[test]
     #[cfg(feature = "revm")]
-    fn test_revm_spec_id() {
-        // By default, the spec ID should be BEDROCK.
+    fn test_spec_id() {
+        // Test standard OP Stack spec_id (used by kona protocol logic)
         let mut config = RollupConfig {
             hardforks: HardForkConfig { regolith_time: Some(10), ..Default::default() },
             ..Default::default()
@@ -547,6 +670,192 @@ mod tests {
         assert_eq!(config.spec_id(50), op_revm::OpSpecId::HOLOCENE);
         config.hardforks.isthmus_time = Some(60);
         assert_eq!(config.spec_id(60), op_revm::OpSpecId::ISTHMUS);
+    }
+
+    #[test]
+    #[cfg(feature = "revm")]
+    fn test_revm_spec_id() {
+        // Test standard OP Stack revm_spec_id (used by revm executor)
+        let mut config = RollupConfig {
+            hardforks: HardForkConfig { regolith_time: Some(10), ..Default::default() },
+            ..Default::default()
+        };
+        assert_eq!(config.revm_spec_id(0), op_revm::OpSpecId::BEDROCK);
+        assert_eq!(config.revm_spec_id(10), op_revm::OpSpecId::REGOLITH);
+        config.hardforks.canyon_time = Some(20);
+        assert_eq!(config.revm_spec_id(20), op_revm::OpSpecId::CANYON);
+        config.hardforks.ecotone_time = Some(30);
+        assert_eq!(config.revm_spec_id(30), op_revm::OpSpecId::ECOTONE);
+        config.hardforks.fjord_time = Some(40);
+        assert_eq!(config.revm_spec_id(40), op_revm::OpSpecId::FJORD);
+        config.hardforks.holocene_time = Some(50);
+        assert_eq!(config.revm_spec_id(50), op_revm::OpSpecId::HOLOCENE);
+        config.hardforks.isthmus_time = Some(60);
+        assert_eq!(config.revm_spec_id(60), op_revm::OpSpecId::ISTHMUS);
+    }
+
+    #[test]
+    #[cfg(feature = "revm")]
+    fn test_mantle_spec_id() {
+        // Test Mantle spec_id (kona protocol logic)
+        let config = RollupConfig {
+            hardforks: HardForkConfig {
+                regolith_time: Some(10),
+                canyon_time: Some(20),
+                ecotone_time: Some(30),
+                fjord_time: Some(40),
+                holocene_time: Some(50),
+                isthmus_time: Some(60),
+                ..Default::default()
+            },
+            mantle_hardforks: MantleHardForkConfig {
+                mantle_limb_time: Some(100),
+                mantle_arsia_time: Some(200),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        // Before mantle_arsia: should use BEDROCK for kona features
+        assert_eq!(config.spec_id(0), op_revm::OpSpecId::BEDROCK);
+        assert_eq!(config.spec_id(50), op_revm::OpSpecId::BEDROCK);
+        assert_eq!(config.spec_id(150), op_revm::OpSpecId::BEDROCK);
+        assert_eq!(config.spec_id(199), op_revm::OpSpecId::BEDROCK);
+
+        // At and after mantle_arsia: should use standard OP Stack logic
+        assert_eq!(config.spec_id(200), op_revm::OpSpecId::ISTHMUS);
+        assert_eq!(config.spec_id(300), op_revm::OpSpecId::ISTHMUS);
+    }
+
+    #[test]
+    #[cfg(feature = "revm")]
+    fn test_mantle_revm_spec_id() {
+        // Test Mantle revm_spec_id (revm executor logic)
+        let config = RollupConfig {
+            mantle_hardforks: MantleHardForkConfig {
+                mantle_limb_time: Some(100),
+                mantle_arsia_time: Some(200),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        // Before mantle_limb: should use ISTHMUS
+        assert_eq!(config.revm_spec_id(0), op_revm::OpSpecId::ISTHMUS);
+        assert_eq!(config.revm_spec_id(50), op_revm::OpSpecId::ISTHMUS);
+        assert_eq!(config.revm_spec_id(99), op_revm::OpSpecId::ISTHMUS);
+
+        // At and after mantle_limb: should use OSAKA
+        assert_eq!(config.revm_spec_id(100), op_revm::OpSpecId::OSAKA);
+        assert_eq!(config.revm_spec_id(150), op_revm::OpSpecId::OSAKA);
+
+        // After mantle_arsia: should still use OSAKA
+        assert_eq!(config.revm_spec_id(200), op_revm::OpSpecId::OSAKA);
+        assert_eq!(config.revm_spec_id(300), op_revm::OpSpecId::OSAKA);
+    }
+
+    #[test]
+    #[cfg(feature = "revm")]
+    fn test_mantle_is_active_methods() {
+        // Test that is_xxx_active() methods return false before mantle_arsia
+        let config = RollupConfig {
+            hardforks: HardForkConfig {
+                regolith_time: Some(10),
+                canyon_time: Some(20),
+                ecotone_time: Some(30),
+                fjord_time: Some(40),
+                holocene_time: Some(50),
+                isthmus_time: Some(60),
+                ..Default::default()
+            },
+            mantle_hardforks: MantleHardForkConfig {
+                mantle_limb_time: Some(100),
+                mantle_arsia_time: Some(200),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        // Before mantle_arsia: all OP Stack features should be inactive
+        assert!(!config.is_regolith_active(150));
+        assert!(!config.is_canyon_active(150));
+        assert!(!config.is_ecotone_active(150));
+        assert!(!config.is_fjord_active(150));
+        assert!(!config.is_holocene_active(150));
+        assert!(!config.is_isthmus_active(150));
+
+        // After mantle_arsia: OP Stack features should be active based on their times
+        assert!(config.is_regolith_active(250));
+        assert!(config.is_canyon_active(250));
+        assert!(config.is_ecotone_active(250));
+        assert!(config.is_fjord_active(250));
+        assert!(config.is_holocene_active(250));
+        assert!(config.is_isthmus_active(250));
+
+        // Non-Mantle chain should work normally
+        let op_config = RollupConfig {
+            hardforks: HardForkConfig {
+                regolith_time: Some(10),
+                canyon_time: Some(20),
+                ecotone_time: Some(30),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(op_config.is_regolith_active(15));
+        assert!(op_config.is_canyon_active(25));
+        assert!(op_config.is_ecotone_active(35));
+    }
+
+    #[test]
+    #[cfg(feature = "revm")]
+    fn test_is_mantle() {
+        // Test with Mantle hardforks configured
+        let config_with_mantle = RollupConfig {
+            mantle_hardforks: MantleHardForkConfig {
+                mantle_limb_time: Some(100),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(config_with_mantle.is_mantle());
+
+        // Test with multiple Mantle hardforks
+        let config_with_multiple = RollupConfig {
+            mantle_hardforks: MantleHardForkConfig {
+                mantle_base_fee_time: Some(50),
+                mantle_limb_time: Some(100),
+                mantle_arsia_time: Some(200),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(config_with_multiple.is_mantle());
+
+        // Test with no Mantle hardforks (standard OP Stack)
+        let config_without_mantle = RollupConfig {
+            hardforks: HardForkConfig {
+                ecotone_time: Some(100),
+                fjord_time: Some(200),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(!config_without_mantle.is_mantle());
+
+        // Test default config (no hardforks)
+        let default_config = RollupConfig::default();
+        assert!(!default_config.is_mantle());
+
+        // Test with only mantle_arsia_time
+        let config_arsia_only = RollupConfig {
+            mantle_hardforks: MantleHardForkConfig {
+                mantle_arsia_time: Some(500),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        assert!(config_arsia_only.is_mantle());
     }
 
     #[test]

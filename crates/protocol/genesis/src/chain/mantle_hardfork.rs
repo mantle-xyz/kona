@@ -51,6 +51,20 @@ impl MantleHardForkConfig {
         ]
         .into_iter()
     }
+
+    /// Returns true if any Mantle hardfork is configured (not None).
+    ///
+    /// This is used to determine if this is a Mantle chain or a chain that uses Mantle hardforks.
+    /// This approach is more flexible than checking chain_id, as it works for testnets and
+    /// custom deployments.
+    pub const fn has_any_hardfork(&self) -> bool {
+        self.mantle_base_fee_time.is_some()
+            || self.mantle_everest_time.is_some()
+            || self.mantle_euboea_time.is_some()
+            || self.mantle_skadi_time.is_some()
+            || self.mantle_limb_time.is_some()
+            || self.mantle_arsia_time.is_some()
+    }
 }
 
 #[cfg(test)]
@@ -99,5 +113,48 @@ mod tests {
         assert_eq!(iter.next(), Some(("Mantle Limb", Some(16))));
         assert_eq!(iter.next(), Some(("Mantle Arsia", Some(17))));
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_has_any_hardfork() {
+        // Test with all hardforks configured
+        let all_hardforks = MantleHardForkConfig {
+            mantle_base_fee_time: Some(12),
+            mantle_everest_time: Some(13),
+            mantle_euboea_time: Some(14),
+            mantle_skadi_time: Some(15),
+            mantle_limb_time: Some(16),
+            mantle_arsia_time: Some(17),
+        };
+        assert!(all_hardforks.has_any_hardfork());
+
+        // Test with only one hardfork configured
+        let one_hardfork = MantleHardForkConfig {
+            mantle_limb_time: Some(100),
+            ..Default::default()
+        };
+        assert!(one_hardfork.has_any_hardfork());
+
+        // Test with only arsia configured
+        let arsia_only = MantleHardForkConfig {
+            mantle_arsia_time: Some(200),
+            ..Default::default()
+        };
+        assert!(arsia_only.has_any_hardfork());
+
+        // Test with no hardforks configured (default)
+        let no_hardforks = MantleHardForkConfig::default();
+        assert!(!no_hardforks.has_any_hardfork());
+
+        // Test with all None
+        let all_none = MantleHardForkConfig {
+            mantle_base_fee_time: None,
+            mantle_everest_time: None,
+            mantle_euboea_time: None,
+            mantle_skadi_time: None,
+            mantle_limb_time: None,
+            mantle_arsia_time: None,
+        };
+        assert!(!all_none.has_any_hardfork());
     }
 }
