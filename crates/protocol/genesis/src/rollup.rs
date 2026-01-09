@@ -1,6 +1,9 @@
 //! Rollup Config Types
 
-use crate::{AltDAConfig, BaseFeeConfig, ChainGenesis, HardForkConfig, OP_MAINNET_BASE_FEE_CONFIG};
+use crate::{
+    AltDAConfig, BaseFeeConfig, ChainGenesis, HardForkConfig, MANTLE_BASE_FEE_CONFIG,
+    MantleHardForkConfig,
+};
 use alloy_chains::Chain;
 use alloy_hardforks::{EthereumHardfork, EthereumHardforks, ForkCondition};
 use alloy_op_hardforks::{OpHardfork, OpHardforks};
@@ -29,6 +32,16 @@ const fn default_granite_channel_timeout() -> u64 {
 #[cfg(feature = "serde")]
 const fn default_interop_message_expiry_window() -> u64 {
     DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW
+}
+
+#[cfg(feature = "serde")]
+fn is_false(b: &bool) -> bool {
+    !b
+}
+
+#[cfg(feature = "serde")]
+const fn default_mantle_base_fee_config() -> BaseFeeConfig {
+    MANTLE_BASE_FEE_CONFIG
 }
 
 /// The Rollup configuration.
@@ -62,6 +75,9 @@ pub struct RollupConfig {
     /// Hardfork timestamps.
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub hardforks: HardForkConfig,
+    /// Mantle-specific hardfork timestamps.
+    #[cfg_attr(feature = "serde", serde(flatten))]
+    pub mantle_hardforks: MantleHardForkConfig,
     /// `batch_inbox_address` is the L1 address that batches are sent to.
     pub batch_inbox_address: Address,
     /// `deposit_contract_address` is the L1 address that deposits are sent to.
@@ -92,20 +108,30 @@ pub struct RollupConfig {
     #[cfg_attr(feature = "serde", serde(rename = "alt_da"))]
     pub alt_da_config: Option<AltDAConfig>,
     /// `chain_op_config` is the chain-specific EIP1559 config for the rollup.
-    #[cfg_attr(feature = "serde", serde(default = "BaseFeeConfig::optimism"))]
+    #[cfg_attr(feature = "serde", serde(default = "default_mantle_base_fee_config"))]
     pub chain_op_config: BaseFeeConfig,
+    /// `mantle_da_switch` indicates whether to use DA from MantleDA (EigenDA).
+    /// This is a legacy field for Mantle features.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "is_false"))]
+    pub mantle_da_switch: bool,
+    /// `datalayr_service_manager_addr` is the MantleDA (EigenDA) DataLayrServiceManager contract address.
+    /// This is a legacy field for Mantle features.
+    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    pub datalayr_service_manager_addr: Option<alloc::string::String>,
 }
 
 #[cfg(feature = "arbitrary")]
 impl<'a> arbitrary::Arbitrary<'a> for RollupConfig {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         use crate::{
-            BASE_SEPOLIA_BASE_FEE_CONFIG, OP_MAINNET_BASE_FEE_CONFIG, OP_SEPOLIA_BASE_FEE_CONFIG,
+            BASE_SEPOLIA_BASE_FEE_CONFIG, MANTLE_BASE_FEE_CONFIG, OP_MAINNET_BASE_FEE_CONFIG,
+            OP_SEPOLIA_BASE_FEE_CONFIG,
         };
-        let chain_op_config = match u32::arbitrary(u)? % 3 {
+        let chain_op_config = match u32::arbitrary(u)? % 4 {
             0 => OP_MAINNET_BASE_FEE_CONFIG,
             1 => OP_SEPOLIA_BASE_FEE_CONFIG,
-            _ => BASE_SEPOLIA_BASE_FEE_CONFIG,
+            2 => BASE_SEPOLIA_BASE_FEE_CONFIG,
+            _ => MANTLE_BASE_FEE_CONFIG,
         };
 
         Ok(Self {
@@ -118,6 +144,7 @@ impl<'a> arbitrary::Arbitrary<'a> for RollupConfig {
             l1_chain_id: u.arbitrary()?,
             l2_chain_id: u.arbitrary()?,
             hardforks: HardForkConfig::arbitrary(u)?,
+            mantle_hardforks: MantleHardForkConfig::arbitrary(u)?,
             batch_inbox_address: Address::arbitrary(u)?,
             deposit_contract_address: Address::arbitrary(u)?,
             l1_system_config_address: Address::arbitrary(u)?,
@@ -128,6 +155,8 @@ impl<'a> arbitrary::Arbitrary<'a> for RollupConfig {
             interop_message_expiry_window: u.arbitrary()?,
             chain_op_config,
             alt_da_config: Option::<AltDAConfig>::arbitrary(u)?,
+            mantle_da_switch: bool::arbitrary(u)?,
+            datalayr_service_manager_addr: Option::<alloc::string::String>::arbitrary(u)?,
         })
     }
 }
@@ -145,6 +174,7 @@ impl Default for RollupConfig {
             l1_chain_id: 0,
             l2_chain_id: Chain::from_id(0),
             hardforks: HardForkConfig::default(),
+            mantle_hardforks: MantleHardForkConfig::default(),
             batch_inbox_address: Address::ZERO,
             deposit_contract_address: Address::ZERO,
             l1_system_config_address: Address::ZERO,
@@ -154,7 +184,9 @@ impl Default for RollupConfig {
             da_challenge_address: None,
             interop_message_expiry_window: DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW,
             alt_da_config: None,
-            chain_op_config: OP_MAINNET_BASE_FEE_CONFIG,
+            chain_op_config: MANTLE_BASE_FEE_CONFIG,
+            mantle_da_switch: false,
+            datalayr_service_manager_addr: None,
         }
     }
 }
@@ -324,7 +356,7 @@ impl RollupConfig {
 
     /// Returns true if Mantle Arsia is active at the given timestamp.
     pub fn is_mantle_arsia_active(&self, timestamp: u64) -> bool {
-        self.hardforks.mantle_arsia_time.is_some_and(|t| timestamp >= t)
+        self.mantle_hardforks.mantle_arsia_time.is_some_and(|t| timestamp >= t)
     }
 
     /// Returns true if a DA Challenge proxy Address is provided in the rollup config and the
@@ -687,6 +719,7 @@ mod tests {
                 jovian_time: Some(100),
                 interop_time: Some(110),
             },
+            mantle_hardforks: MantleHardForkConfig::default(),
             block_time: 2,
             ..Default::default()
         };
@@ -876,6 +909,7 @@ mod tests {
                 fjord_time: Some(0),
                 ..Default::default()
             },
+            mantle_hardforks: MantleHardForkConfig::default(),
             batch_inbox_address: address!("ff00000000000000000000000000000000042069"),
             deposit_contract_address: address!("08073dc48dde578137b8af042bcbc1c2491f1eb2"),
             l1_system_config_address: address!("94ee52a9d8edd72a85dea7fae3ba6d75e4bf1710"),
@@ -886,6 +920,8 @@ mod tests {
             interop_message_expiry_window: DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW,
             chain_op_config: OP_MAINNET_BASE_FEE_CONFIG,
             alt_da_config: None,
+            mantle_da_switch: false,
+            datalayr_service_manager_addr: None,
         };
 
         let deserialized: RollupConfig = serde_json::from_str(raw).unwrap();
@@ -951,5 +987,75 @@ mod tests {
 
         assert_eq!(cfg.block_number_from_timestamp(20), 5);
         assert_eq!(cfg.block_number_from_timestamp(30), 10);
+    }
+
+    #[test]
+    fn test_default_mantle_base_fee_config() {
+        use crate::MANTLE_BASE_FEE_CONFIG;
+        
+        // Test that the default RollupConfig uses Mantle base fee config
+        let config = RollupConfig::default();
+        assert_eq!(config.chain_op_config, MANTLE_BASE_FEE_CONFIG);
+        assert_eq!(config.chain_op_config.eip1559_elasticity, 4);
+        assert_eq!(config.chain_op_config.eip1559_denominator, 50);
+        // Mantle doesn't have a historical change of the denominator
+        assert_eq!(
+            config.chain_op_config.eip1559_denominator_canyon,
+            config.chain_op_config.eip1559_denominator
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "serde")]
+    fn test_deserialize_mantle_rollup_config() {
+        use crate::MANTLE_BASE_FEE_CONFIG;
+
+        let raw: &str = r#"
+        {
+          "genesis": {
+            "l1": {
+              "hash": "0x481724ee99b1f4cb71d826e2ec5a37265f460e9b112315665c977f4050b0af54",
+              "number": 10
+            },
+            "l2": {
+              "hash": "0x88aedfbf7dea6bfa2c4ff315784ad1a7f145d8f650969359c003bbed68c87631",
+              "number": 0
+            },
+            "l2_time": 1725557164,
+            "system_config": {
+              "batcherAddr": "0xc81f87a644b41e49b3221f41251f15c6cb00ce03",
+              "overhead": "0x0000000000000000000000000000000000000000000000000000000000000000",
+              "scalar": "0x00000000000000000000000000000000000000000000000000000000000f4240",
+              "gasLimit": 30000000
+            }
+          },
+          "block_time": 2,
+          "max_sequencer_drift": 600,
+          "seq_window_size": 3600,
+          "channel_timeout": 300,
+          "l1_chain_id": 1,
+          "l2_chain_id": 5000,
+          "ecotone_time": 1000,
+          "mantle_arsia_time": 2000,
+          "batch_inbox_address": "0xff00000000000000000000000000000000042069",
+          "deposit_contract_address": "0x08073dc48dde578137b8af042bcbc1c2491f1eb2",
+          "l1_system_config_address": "0x94ee52a9d8edd72a85dea7fae3ba6d75e4bf1710",
+          "protocol_versions_address": "0x0000000000000000000000000000000000000000"
+        }
+        "#;
+
+        let config: RollupConfig = serde_json::from_str(raw).unwrap();
+        
+        // Verify that the default Mantle base fee config is used when not specified
+        assert_eq!(config.chain_op_config, MANTLE_BASE_FEE_CONFIG);
+        assert_eq!(config.chain_op_config.eip1559_elasticity, 4);
+        assert_eq!(config.chain_op_config.eip1559_denominator, 50);
+        assert_eq!(config.chain_op_config.eip1559_denominator_canyon, 50);
+        
+        // Verify Mantle hardfork
+        assert_eq!(config.mantle_hardforks.mantle_arsia_time, Some(2000));
+        
+        // Verify L2 chain ID is Mantle
+        assert_eq!(config.l2_chain_id, Chain::from_id(5000));
     }
 }
