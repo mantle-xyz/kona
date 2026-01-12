@@ -71,10 +71,6 @@ impl OverrideArgs {
             isthmus_time: self.isthmus_override.map(Some).unwrap_or(config.hardforks.isthmus_time),
             jovian_time: self.jovian_override.map(Some).unwrap_or(config.hardforks.jovian_time),
             interop_time: self.interop_override.map(Some).unwrap_or(config.hardforks.interop_time),
-            mantle_arsia_time: self
-                .mantle_arsia_override
-                .map(Some)
-                .unwrap_or(config.hardforks.mantle_arsia_time),
         };
         RollupConfig { hardforks, ..config }
     }
@@ -134,7 +130,6 @@ mod tests {
                 isthmus_time: Some(1740000000),
                 jovian_time: Some(1745000001),
                 interop_time: Some(1750000000),
-                mantle_arsia_time: None,
             }
         );
     }
@@ -168,7 +163,6 @@ mod tests {
                 isthmus_override: None,
                 jovian_override: None,
                 interop_override: None,
-                mantle_arsia_override: None,
             }
         );
         // Sanity check that the default impl matches the expected default values.

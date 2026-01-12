@@ -191,7 +191,6 @@ impl Default for RollupConfig {
     }
 }
 
-#[cfg(feature = "revm")]
 impl RollupConfig {
     /// Returns true if this is a Mantle chain or a chain that uses Mantle hardforks.
     ///
@@ -205,7 +204,10 @@ impl RollupConfig {
     pub const fn is_mantle(&self) -> bool {
         self.mantle_hardforks.has_any_hardfork()
     }
+}
 
+#[cfg(feature = "revm")]
+impl RollupConfig {
     /// Returns the active [`op_revm::OpSpecId`] for kona protocol logic.
     ///
     /// This method is used by kona to determine which OP Stack features are enabled.
