@@ -47,25 +47,33 @@ where
         )
         .root();
         let receipts_root = compute_receipts_root(&ex_result.receipts, self.config, timestamp);
-        let withdrawals_root = if self.config.is_isthmus_active(timestamp) {
-            Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?)
-        } else if self.config.is_canyon_active(timestamp) {
-            Some(EMPTY_ROOT_HASH)
-        } else {
-            None
-        };
+
+        // let withdrawals_root = if self.config.is_isthmus_active(timestamp) {
+        //     Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?)
+        // } else if self.config.is_canyon_active(timestamp) {
+        //     Some(EMPTY_ROOT_HASH)
+        // } else {
+        //     None
+        // };
+
+        // [TODO]: test in mantle
+        let withdrawals_root =
+            Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?);
 
         // Compute the logs bloom from the receipts generated during block execution.
         let logs_bloom = logs_bloom(ex_result.receipts.iter().flat_map(|r| r.logs()));
 
         // Compute Cancun fields, if active.
-        let (blob_gas_used, excess_blob_gas) = if self.config.is_jovian_active(timestamp) {
-            (Some(ex_result.blob_gas_used), Some(0))
-        } else if self.config.is_ecotone_active(timestamp) {
-            (Some(0), Some(0))
-        } else {
-            Default::default()
-        };
+        // let (blob_gas_used, excess_blob_gas) = if self.config.is_jovian_active(timestamp) {
+        //     (Some(ex_result.blob_gas_used), Some(0))
+        // } else if self.config.is_ecotone_active(timestamp) {
+        //     (Some(0), Some(0))
+        // } else {
+        //     Default::default()
+        // };
+
+        // [TODO]: test in mantle
+        let (blob_gas_used, excess_blob_gas): (Option<u64>, Option<u64>) = (Some(0), Some(0));
 
         // At holocene activation, the base fee parameters from the payload are placed
         // into the Header's `extra_data` field.
@@ -84,7 +92,11 @@ where
         }?;
 
         // The requests hash on the OP Stack, if Isthmus is active, is always the empty SHA256 hash.
-        let requests_hash = self.config.is_isthmus_active(timestamp).then_some(EMPTY_REQUESTS_HASH);
+        // let requests_hash =
+        // self.config.is_isthmus_active(timestamp).then_some(EMPTY_REQUESTS_HASH);
+
+        // [TODO]: test in mantle
+        let requests_hash = Some(EMPTY_REQUESTS_HASH);
 
         // Construct the new header.
         let header = Header {
@@ -175,7 +187,9 @@ pub fn compute_receipts_root(
     // the receipt root calculation does not include the deposit nonce in the
     // receipt encoding. In the Regolith hardfork, we must strip the deposit nonce
     // from the receipt encoding to match the receipt root calculation.
-    if config.is_regolith_active(timestamp) && !config.is_canyon_active(timestamp) {
+    
+    // [TODO]: test in mantle
+    if config.is_mantle_skadi_active(timestamp) {
         let receipts = receipts
             .iter()
             .cloned()

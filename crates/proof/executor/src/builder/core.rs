@@ -15,6 +15,7 @@ use alloy_op_evm::{
     OpBlockExecutionCtx, OpBlockExecutorFactory,
     block::{OpAlloyReceiptBuilder, OpTxEnv},
 };
+use alloy_eips::eip1559::BaseFeeParams;
 use core::fmt::Debug;
 use kona_genesis::RollupConfig;
 use kona_mpt::TrieHinter;
@@ -223,8 +224,8 @@ where
             self.config.revm_spec_id(attrs.payload_attributes.timestamp),
             self.trie_db.parent_block_header(),
             &attrs,
-            &base_fee_params,
-            min_base_fee,
+            &BaseFeeParams::optimism(),
+            0,
         )?;
         let block_env = evm_env.block_env().clone();
         let parent_hash = self.trie_db.parent_block_header().seal();
@@ -243,6 +244,7 @@ where
             block_number = %block_env.number,
             block_timestamp = %block_env.timestamp,
             block_gas_limit = block_env.gas_limit,
+            spec_id = ?self.config.revm_spec_id(attrs.payload_attributes.timestamp),
             transactions = attrs.transactions.as_ref().map_or(0, |txs| txs.len()),
             "Beginning block building."
         );
