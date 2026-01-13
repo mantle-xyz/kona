@@ -474,6 +474,11 @@ impl RollupConfig {
             !self.is_interop_active(timestamp.saturating_sub(self.block_time))
     }
 
+    /// Returns true if Mantle Skadi is active at the given timestamp.
+    pub fn is_mantle_skadi_active(&self, timestamp: u64) -> bool {
+        self.mantle_hardforks.mantle_skadi_time.is_some_and(|t| timestamp >= t)
+    }
+
     /// Returns true if Mantle Limb is active at the given timestamp.
     pub fn is_mantle_limb_active(&self, timestamp: u64) -> bool {
         self.mantle_hardforks.mantle_limb_time.is_some_and(|t| timestamp >= t)
@@ -579,55 +584,34 @@ impl EthereumHardforks for RollupConfig {
     }
 }
 
+// [TODO]: test in mantle
 impl OpHardforks for RollupConfig {
     fn op_fork_activation(&self, fork: OpHardfork) -> ForkCondition {
         match fork {
             OpHardfork::Bedrock => ForkCondition::Block(0),
-            OpHardfork::Regolith => self
-                .hardforks
-                .regolith_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(self.op_fork_activation(OpHardfork::Canyon)),
-            OpHardfork::Canyon => self
-                .hardforks
-                .canyon_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(self.op_fork_activation(OpHardfork::Ecotone)),
-            OpHardfork::Ecotone => self
-                .hardforks
-                .ecotone_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(self.op_fork_activation(OpHardfork::Fjord)),
-            OpHardfork::Fjord => self
-                .hardforks
-                .fjord_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(self.op_fork_activation(OpHardfork::Granite)),
-            OpHardfork::Granite => self
-                .hardforks
-                .granite_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(self.op_fork_activation(OpHardfork::Holocene)),
-            OpHardfork::Holocene => self
-                .hardforks
-                .holocene_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(self.op_fork_activation(OpHardfork::Isthmus)),
-            OpHardfork::Isthmus => self
-                .hardforks
-                .isthmus_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(self.op_fork_activation(OpHardfork::Jovian)),
-            OpHardfork::Jovian => self
-                .hardforks
-                .jovian_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(ForkCondition::Never),
-            OpHardfork::Interop => self
-                .hardforks
-                .interop_time
-                .map(ForkCondition::Timestamp)
-                .unwrap_or(ForkCondition::Never),
+            // For Mantle, if mantle_skadi_time is set, it activates all hardforks up to Isthmus
+            OpHardfork::Regolith => self.mantle_hardforks.mantle_skadi_time.map_or_else(
+                || self.hardforks.regolith_time.map(ForkCondition::Timestamp).unwrap_or(ForkCondition::Never),
+                ForkCondition::Timestamp,
+            ),
+            OpHardfork::Canyon => {
+                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
+            }
+            OpHardfork::Ecotone => {
+                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
+            }
+            OpHardfork::Fjord => {
+                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
+            }
+            OpHardfork::Granite => {
+                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
+            }
+            OpHardfork::Holocene => {
+                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
+            }
+            OpHardfork::Isthmus => {
+                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
+            }
             _ => ForkCondition::Never,
         }
     }
