@@ -15,6 +15,9 @@ pub use traits::Hardfork;
 mod forks;
 pub use forks::Hardforks;
 
+mod mantle_forks;
+pub use mantle_forks::MantleHardforks;
+
 mod fjord;
 pub use fjord::Fjord;
 
@@ -29,6 +32,9 @@ pub use interop::Interop;
 
 mod jovian;
 pub use jovian::Jovian;
+
+mod arsia;
+pub use arsia::Arsia;
 
 mod utils;
 pub(crate) use utils::upgrade_to_calldata;
