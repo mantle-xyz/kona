@@ -114,8 +114,8 @@ pub struct RollupConfig {
     /// This is a legacy field for Mantle features.
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "is_false"))]
     pub mantle_da_switch: bool,
-    /// `datalayr_service_manager_addr` is the MantleDA (EigenDA) DataLayrServiceManager contract address.
-    /// This is a legacy field for Mantle features.
+    /// `datalayr_service_manager_addr` is the MantleDA (EigenDA) DataLayrServiceManager contract
+    /// address. This is a legacy field for Mantle features.
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
     pub datalayr_service_manager_addr: Option<alloc::string::String>,
 }
@@ -295,7 +295,9 @@ impl RollupConfig {
     /// - Before `mantle_limb`: uses `ISTHMUS`
     /// - `mantle_limb` and after: uses `OSAKA`
     fn mantle_spec_id(&self, timestamp: u64) -> op_revm::OpSpecId {
-        if self.is_mantle_limb_active(timestamp) {
+        if self.is_mantle_arsia_active(timestamp) {
+            op_revm::OpSpecId::ARSIA
+        } else if self.is_mantle_limb_active(timestamp) {
             op_revm::OpSpecId::OSAKA
         } else {
             op_revm::OpSpecId::ISTHMUS
@@ -591,27 +593,42 @@ impl OpHardforks for RollupConfig {
             OpHardfork::Bedrock => ForkCondition::Block(0),
             // For Mantle, if mantle_skadi_time is set, it activates all hardforks up to Isthmus
             OpHardfork::Regolith => self.mantle_hardforks.mantle_skadi_time.map_or_else(
-                || self.hardforks.regolith_time.map(ForkCondition::Timestamp).unwrap_or(ForkCondition::Never),
+                || {
+                    self.hardforks
+                        .regolith_time
+                        .map(ForkCondition::Timestamp)
+                        .unwrap_or(ForkCondition::Never)
+                },
                 ForkCondition::Timestamp,
             ),
-            OpHardfork::Canyon => {
-                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
-            }
-            OpHardfork::Ecotone => {
-                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
-            }
-            OpHardfork::Fjord => {
-                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
-            }
-            OpHardfork::Granite => {
-                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
-            }
-            OpHardfork::Holocene => {
-                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
-            }
-            OpHardfork::Isthmus => {
-                self.mantle_hardforks.mantle_skadi_time.map_or(ForkCondition::Never, ForkCondition::Timestamp)
-            }
+            OpHardfork::Canyon => self
+                .mantle_hardforks
+                .mantle_skadi_time
+                .map_or(ForkCondition::Never, ForkCondition::Timestamp),
+            OpHardfork::Ecotone => self
+                .mantle_hardforks
+                .mantle_skadi_time
+                .map_or(ForkCondition::Never, ForkCondition::Timestamp),
+            OpHardfork::Fjord => self
+                .mantle_hardforks
+                .mantle_skadi_time
+                .map_or(ForkCondition::Never, ForkCondition::Timestamp),
+            OpHardfork::Granite => self
+                .mantle_hardforks
+                .mantle_skadi_time
+                .map_or(ForkCondition::Never, ForkCondition::Timestamp),
+            OpHardfork::Holocene => self
+                .mantle_hardforks
+                .mantle_skadi_time
+                .map_or(ForkCondition::Never, ForkCondition::Timestamp),
+            OpHardfork::Isthmus => self
+                .mantle_hardforks
+                .mantle_skadi_time
+                .map_or(ForkCondition::Never, ForkCondition::Timestamp),
+            OpHardfork::Jovian => self
+                .mantle_hardforks
+                .mantle_arsia_time
+                .map_or(ForkCondition::Never, ForkCondition::Timestamp),
             _ => ForkCondition::Never,
         }
     }
@@ -1287,7 +1304,7 @@ mod tests {
     #[test]
     fn test_default_mantle_base_fee_config() {
         use crate::MANTLE_BASE_FEE_CONFIG;
-        
+
         // Test that the default RollupConfig uses Mantle base fee config
         let config = RollupConfig::default();
         assert_eq!(config.chain_op_config, MANTLE_BASE_FEE_CONFIG);
@@ -1340,16 +1357,16 @@ mod tests {
         "#;
 
         let config: RollupConfig = serde_json::from_str(raw).unwrap();
-        
+
         // Verify that the default Mantle base fee config is used when not specified
         assert_eq!(config.chain_op_config, MANTLE_BASE_FEE_CONFIG);
         assert_eq!(config.chain_op_config.eip1559_elasticity, 4);
         assert_eq!(config.chain_op_config.eip1559_denominator, 50);
         assert_eq!(config.chain_op_config.eip1559_denominator_canyon, 50);
-        
+
         // Verify Mantle hardfork
         assert_eq!(config.mantle_hardforks.mantle_arsia_time, Some(2000));
-        
+
         // Verify L2 chain ID is Mantle
         assert_eq!(config.l2_chain_id, Chain::from_id(5000));
     }

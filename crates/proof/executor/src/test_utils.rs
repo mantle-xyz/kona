@@ -100,7 +100,7 @@ impl ExecutorTestFixtureCreator {
     }
 
     /// Creates a new [`ExecutorTestFixtureCreator`] with skip_save option.
-    /// 
+    ///
     /// If `skip_save` is true, data will be stored in a temporary directory
     /// and automatically cleaned up after execution.
     pub fn new_with_options(
@@ -145,8 +145,13 @@ impl ExecutorTestFixtureCreator {
 }
 
 fn mock_rollup_config() -> RollupConfig {
-    let mut rollup_config = RollupConfig { l2_chain_id: Chain::from_id(5000), ..Default::default() };
+    let mut rollup_config =
+        RollupConfig { l2_chain_id: Chain::from_id(1115511103), ..Default::default() };
     rollup_config.mantle_hardforks.mantle_skadi_time = Some(0);
+    // rollup_config.mantle_hardforks.mantle_limb_time = Some(0);
+    rollup_config.hardforks.jovian_time = Some(1768212000);
+    rollup_config.hardforks.holocene_time = Some(1768212000);
+    rollup_config.mantle_hardforks.mantle_arsia_time = Some(1768212000);
     rollup_config
 }
 
@@ -256,8 +261,20 @@ impl ExecutorTestFixtureCreator {
             gas_limit: Some(executing_header.gas_limit),
             transactions: Some(encoded_executing_transactions),
             no_tx_pool: Some(true),
-            eip_1559_params: None,
-            min_base_fee: None,
+            eip_1559_params: rollup_config.is_holocene_active(executing_header.timestamp).then(
+                || {
+                    executing_header.extra_data[1..9]
+                        .try_into()
+                        .expect("Invalid header format for Holocene")
+                },
+            ),
+            min_base_fee: rollup_config.is_jovian_active(executing_header.timestamp).then(|| {
+                // The min base fee is the bytes 9-17 of the extra data.
+                executing_header.extra_data[9..17]
+                    .try_into()
+                    .map(u64::from_be_bytes)
+                    .expect("Invalid header format for Jovian")
+            }),
         };
 
         info!(
