@@ -37,9 +37,9 @@ eyre.workspace = true
 metrics.workspace = true
 
 #reth
-reth-db-api = { workspace = true }
-reth-db = { workspace = true }
-reth-codecs = { workspace = true }
+reth-db-api = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+reth-db = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
+reth-codecs = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
 
 # HTTP client and TLS for remote signer
 tokio = { workspace = true, features = ["full"] }
