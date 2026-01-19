@@ -54,7 +54,7 @@ jsonrpsee-types.workspace = true
 metrics = { workspace = true, optional = true }
 
 # rollup boost
-rollup-boost.workspace = true
+rollup-boost = "0.7.12"
 http.workspace = true
 
 [dev-dependencies]

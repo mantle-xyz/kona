@@ -62,7 +62,7 @@ alloy-rpc-client = { workspace = true, features = ["reqwest"], optional = true }
 metrics = { workspace = true, optional = true }
 
 # `rollup-boost` feature
-rollup-boost.workspace = true
+rollup-boost = "0.7.12"
 
 [dev-dependencies]
 serde_json.workspace = true

@@ -26,7 +26,7 @@ kona-peers.workspace = true
 kona-macros.workspace = true
 
 # rollup-boost
-rollup-boost.workspace = true
+rollup-boost = "0.7.12"
 
 # alloy
 alloy-chains.workspace = true
