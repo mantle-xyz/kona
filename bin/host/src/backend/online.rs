@@ -10,21 +10,7 @@ use kona_preimage::{
 use kona_proof::{Hint, errors::HintParsingError};
 use std::{collections::HashSet, hash::Hash, str::FromStr, sync::Arc, time::Duration};
 use tokio::{sync::RwLock, time::timeout};
-use tracing::{debug, error, trace, warn};
-
-/// Maximum number of retries when fetching preimages
-const MAX_RETRIES: usize = 100;
-
-/// Total timeout for fetching a preimage (30 seconds)
-const PREIMAGE_FETCH_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// Calculates exponential backoff delay for preimage fetching.
-/// Uses millisecond-level backoff suitable for high-frequency operations.
-/// Returns: 100ms, 200ms, 400ms, 800ms, 1.6s, 3.2s (capped at 5s)
-fn preimage_backoff_delay(attempt: usize) -> Duration {
-    let millis = 100u64.saturating_mul(2u64.saturating_pow(attempt.min(5) as u32));
-    Duration::from_millis(millis.min(5000))
-}
+use tracing::{debug, error, trace};
 
 /// The [OnlineHostBackendCfg] trait is used to define the type configuration for the
 /// [OnlineHostBackend].
@@ -141,80 +127,31 @@ where
         // Acquire a read lock on the key-value store.
         let kv_lock = self.kv.read().await;
         let mut preimage = kv_lock.get(key.into());
+
+        // Drop the read lock before beginning the retry loop.
         drop(kv_lock);
 
-        // If preimage already exists, return it immediately
-        if preimage.is_some() {
-            return preimage.ok_or(PreimageOracleError::KeyNotFound);
-        }
-
-        // Retry loop with timeout and exponential backoff protection
-        let result = timeout(PREIMAGE_FETCH_TIMEOUT, async {
-            let mut retry_count = 0;
-
+        // Use a loop to keep retrying the prefetch as long as the key is not found
+        timeout(Duration::from_secs(10), async {
             while preimage.is_none() {
-                // Check retry limit
-                if retry_count >= MAX_RETRIES {
-                    warn!(
-                        target: "host_backend",
-                        "Max retries ({}) exceeded for key {}",
-                        MAX_RETRIES,
-                        key
-                    );
-                    return Err(PreimageOracleError::Other(format!(
-                        "Max retries ({}) exceeded for key {}",
-                        MAX_RETRIES, key
-                    )));
-                }
-
-                // Try to fetch hint if available
                 if let Some(hint) = self.last_hint.read().await.as_ref() {
-                    match H::fetch_hint(hint.clone(), &self.cfg, &self.providers, self.kv.clone())
-                        .await
-                    {
-                        Ok(_) => {
-                            // Check if the key is now available
-                            let kv_lock = self.kv.read().await;
-                            preimage = kv_lock.get(key.into());
-                        }
-                        Err(e) => {
-                            let delay = preimage_backoff_delay(retry_count);
-                            error!(
-                                target: "host_backend",
-                                "Failed to prefetch hint (attempt {}/{}): {e}",
-                                retry_count + 1,
-                                MAX_RETRIES
-                            );
-                            warn!(
-                                target: "host_backend",
-                                ?delay,
-                                "Retrying after delay"
-                            );
+                    let value =
+                        H::fetch_hint(hint.clone(), &self.cfg, &self.providers, self.kv.clone())
+                            .await;
 
-                            tokio::time::sleep(delay).await;
-                        }
+                    if let Err(e) = value {
+                        error!(target: "host_backend", "Failed to prefetch hint: {e}");
+                        continue;
                     }
-                } else {
-                    // No hint available, wait briefly before checking again
-                    tokio::time::sleep(Duration::from_millis(100)).await;
+
+                    let kv_lock = self.kv.read().await;
+                    preimage = kv_lock.get(key.into());
                 }
-
-                retry_count += 1;
             }
-
-            Ok(preimage)
         })
         .await
-        .map_err(|_| {
-            error!(
-                target: "host_backend",
-                "Timeout ({:?}) exceeded while fetching preimage for key {}",
-                PREIMAGE_FETCH_TIMEOUT,
-                key
-            );
-            PreimageOracleError::Timeout
-        })?;
+        .map_err(|_| PreimageOracleError::Timeout)?;
 
-        result?.ok_or(PreimageOracleError::KeyNotFound)
+        preimage.ok_or(PreimageOracleError::KeyNotFound)
     }
 }

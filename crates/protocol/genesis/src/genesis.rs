@@ -39,7 +39,7 @@ impl<'a> arbitrary::Arbitrary<'a> for ChainGenesis {
 #[cfg(feature = "serde")]
 mod tests {
     use super::*;
-    use alloy_primitives::{address, b256, uint, U256};
+    use alloy_primitives::{address, b256, uint};
 
     const fn ref_genesis() -> ChainGenesis {
         ChainGenesis {
@@ -57,7 +57,6 @@ mod tests {
                 overhead: uint!(0xbc_U256),
                 scalar: uint!(0xa6fe0_U256),
                 gas_limit: 30000000,
-                base_fee: U256::ZERO,
                 base_fee_scalar: None,
                 blob_base_fee_scalar: None,
                 eip1559_denominator: None,

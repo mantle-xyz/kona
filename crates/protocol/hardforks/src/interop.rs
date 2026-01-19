@@ -95,8 +95,6 @@ impl Interop {
                 gas_limit: 420_000,
                 is_system_transaction: false,
                 input: Self::cross_l2_inbox_deployment_bytecode(),
-                eth_value: 0,
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::upgrade_cross_l2_inbox_proxy_source(),
@@ -107,8 +105,6 @@ impl Interop {
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::NEW_CROSS_L2_INBOX_IMPL),
-                eth_value: 0,
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::deploy_l2_to_l2_xdm_source(),
@@ -119,8 +115,6 @@ impl Interop {
                 gas_limit: 1_100_000,
                 is_system_transaction: false,
                 input: Self::l2_to_l2_xdm_deployment_bytecode(),
-                eth_value: 0,
-                eth_tx_value: None,
             },
             TxDeposit {
                 source_hash: Self::upgrade_l2_to_l2_xdm_proxy_source(),
@@ -131,8 +125,6 @@ impl Interop {
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::NEW_L2_TO_L2_XDM_IMPL),
-                eth_value: 0,
-                eth_tx_value: None,
             },
         ])
         .into_iter()
