@@ -253,9 +253,7 @@ mod tests {
                 should_fail: StdArc::new(AtomicBool::new(false)),
                 should_store_key: StdArc::new(TokioRwLock::new(None)),
             }
-        })
-        .await
-        .map_err(|_| PreimageOracleError::Timeout)?;
+        }
 
         fn set_should_fail(&self, fail: bool) {
             self.should_fail.store(fail, Ordering::Relaxed);
