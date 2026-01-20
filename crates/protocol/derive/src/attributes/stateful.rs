@@ -79,6 +79,7 @@ where
         // If the L1 origin changed in this block, then we are in the first block of the epoch.
         // In this case we need to fetch all transaction receipts from the L1 origin block so
         // we can scan for user deposits.
+        println!("l2_parent.l1_origin.number:{} and epoch.number:{}", l2_parent.l1_origin.number, epoch.number);
         let sequence_number = if l2_parent.l1_origin.number != epoch.number {
             let header =
                 self.receipts_fetcher.header_by_hash(epoch.hash).await.map_err(Into::into)?;
@@ -122,7 +123,7 @@ where
             deposit_transactions = vec![];
             l2_parent.seq_num + 1
         };
-
+        println!("deposit_transactions: {:?}", deposit_transactions);
         // Sanity check the L1 origin was correctly selected to maintain the time invariant
         // between L1 and L2.
         let next_l2_time = l2_parent.block_info.timestamp + self.rollup_cfg.block_time;
