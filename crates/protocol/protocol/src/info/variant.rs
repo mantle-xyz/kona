@@ -6,7 +6,7 @@ use alloy_eips::{BlockNumHash, eip7840::BlobParams};
 use alloy_primitives::{Address, B256, Bytes, Sealable, Sealed, TxKind, U256, address};
 use kona_genesis::{L1ChainConfig, RollupConfig, SystemConfig};
 use op_alloy_consensus::{DepositSourceDomain, L1InfoDepositSource, TxDeposit};
-
+use tracing::info;
 use crate::{
     BlockInfoError, DecodeError, L1BlockInfoBedrock, L1BlockInfoEcotone, L1BlockInfoIsthmus,
     Predeploys, info::L1BlockInfoJovian,
@@ -195,7 +195,7 @@ impl L1BlockInfoTx {
             l1_header,
             l2_block_time,
         )?;
-
+        info!(target: "l1_block_info_tx", "l1_info: {:?}", l1_info);
         let source = DepositSourceDomain::L1Info(L1InfoDepositSource {
             l1_block_hash: l1_info.block_hash(),
             seq_number: sequence_number,
