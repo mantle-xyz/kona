@@ -1244,6 +1244,7 @@ mod tests {
                     overhead: U256::ZERO,
                     scalar: U256::from(0xf4240),
                     gas_limit: 30_000_000,
+                    base_fee: None,
                     base_fee_scalar: Some(1234),
                     blob_base_fee_scalar: Some(5678),
                     eip1559_denominator: Some(10),
