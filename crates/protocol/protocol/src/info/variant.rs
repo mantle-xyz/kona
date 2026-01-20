@@ -195,7 +195,7 @@ impl L1BlockInfoTx {
             l1_header,
             l2_block_time,
         )?;
-        info!(target: "l1_block_info_tx", "l1_info: {:?}", l1_info);
+
         let source = DepositSourceDomain::L1Info(L1InfoDepositSource {
             l1_block_hash: l1_info.block_hash(),
             seq_number: sequence_number,
@@ -220,7 +220,7 @@ impl L1BlockInfoTx {
             deposit_tx.is_system_transaction = false;
             deposit_tx.gas_limit = REGOLITH_SYSTEM_TX_GAS;
         }
-
+        info!(target: "l1_block_info_tx", "deposit_tx: {:?}", deposit_tx);
         Ok((l1_info, deposit_tx.seal_slow()))
     }
 
