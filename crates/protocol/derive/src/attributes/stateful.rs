@@ -76,6 +76,8 @@ where
             .await
             .map_err(Into::into)?;
 
+        info!(target: "attributes_builder", "sys_config: {:?}", sys_config);
+
         // If the L1 origin changed in this block, then we are in the first block of the epoch.
         // In this case we need to fetch all transaction receipts from the L1 origin block so
         // we can scan for user deposits.
@@ -159,6 +161,9 @@ where
         .map_err(|e| {
             PipelineError::AttributesBuilder(BuilderError::Custom(e.to_string())).crit()
         })?;
+        
+        info!(target: "attributes_builder", "l1_info_tx_envelope: {:?}", l1_info_tx_envelope);
+        
         let mut encoded_l1_info_tx = Vec::with_capacity(l1_info_tx_envelope.length());
         l1_info_tx_envelope.encode_2718(&mut encoded_l1_info_tx);
 
