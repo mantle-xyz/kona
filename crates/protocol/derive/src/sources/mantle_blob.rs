@@ -160,7 +160,8 @@ where
                     BlobProviderError::Backend(e.to_string())
                 },
             )?;
-
+       
+        info!(target: "mantle_blob_source", "len blobs: {:?}", blobs.len());
         // Fill the blob pointers and decode each blob.
         // Mantle-specific: concatenate all decoded blob data for RLP decoding.
         let mut whole_blob_data = Vec::new();
