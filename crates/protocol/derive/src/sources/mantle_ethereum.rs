@@ -85,23 +85,23 @@ where
         block_ref: &BlockInfo,
         batcher_address: Address,
     ) -> PipelineResult<Self::Item> {
-        let ecotone_enabled =
-            self.ecotone_timestamp.map(|e| block_ref.timestamp >= e).unwrap_or(false);
-        if ecotone_enabled {
-            // Check if Mantle Arsia hardfork is active
-            let mantle_arsia_enabled =
-                self.mantle_arsia_timestamp.map(|t| block_ref.timestamp >= t).unwrap_or(false);
-
-            if mantle_arsia_enabled {
-                // After Mantle Arsia: use standard blob decoding
-                self.blob_source.next(block_ref, batcher_address).await
-            } else {
-                // Before Mantle Arsia: use Mantle blob decoding
-                self.mantle_blob_source.next(block_ref, batcher_address).await
-            }
+        // let ecotone_enabled =
+        //     self.ecotone_timestamp.map(|e| block_ref.timestamp >= e).unwrap_or(false);
+        // if ecotone_enabled {
+        // Check if Mantle Arsia hardfork is active
+        let mantle_arsia_enabled =
+            self.mantle_arsia_timestamp.map(|t| block_ref.timestamp >= t).unwrap_or(false);
+        info!(target: "mantle_ethereum_data_source", "mantle_arsia_enabled: {:?}", mantle_arsia_enabled);
+        if mantle_arsia_enabled {
+            // After Mantle Arsia: use standard blob decoding
+            self.blob_source.next(block_ref, batcher_address).await
         } else {
-            self.calldata_source.next(block_ref, batcher_address).await
+            // Before Mantle Arsia: use Mantle blob decoding
+            self.mantle_blob_source.next(block_ref, batcher_address).await
         }
+        // } else {
+        //     self.calldata_source.next(block_ref, batcher_address).await
+        // }
     }
 
     fn clear(&mut self) {
@@ -173,10 +173,7 @@ mod tests {
         let blob = default_test_blob_source();
         let calldata = CalldataSource::new(chain.clone(), Address::ZERO);
         let cfg = RollupConfig {
-            hardforks: HardForkConfig {
-                ecotone_time: Some(0),
-                ..Default::default()
-            },
+            hardforks: HardForkConfig { ecotone_time: Some(0), ..Default::default() },
             mantle_hardforks: MantleHardForkConfig {
                 mantle_arsia_time: Some(100),
                 ..Default::default()
@@ -201,10 +198,7 @@ mod tests {
             .push(BlobData { data: None, calldata: Some(Bytes::from(vec![0x01, 0x02, 0x03])) });
         let calldata = CalldataSource::new(chain.clone(), Address::ZERO);
         let cfg = RollupConfig {
-            hardforks: HardForkConfig {
-                ecotone_time: Some(0),
-                ..Default::default()
-            },
+            hardforks: HardForkConfig { ecotone_time: Some(0), ..Default::default() },
             mantle_hardforks: MantleHardForkConfig {
                 mantle_arsia_time: Some(100),
                 ..Default::default()
