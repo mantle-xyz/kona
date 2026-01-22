@@ -232,6 +232,7 @@ impl L1BlockInfoTx {
         // SAFETY: The length of `r` must be at least 4 bytes.
         let mut selector = [0u8; 4];
         selector.copy_from_slice(&r[0..4]);
+        info!(target: "l1_block_info_tx", "selector: {:?}", selector);
         match selector {
             L1BlockInfoBedrock::L1_INFO_TX_SELECTOR => {
                 L1BlockInfoBedrock::decode_calldata(r).map(Self::Bedrock)
