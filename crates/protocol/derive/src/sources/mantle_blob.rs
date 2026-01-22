@@ -231,9 +231,15 @@ where
             return Ok(c);
         }
 
-        // In Mantle blob decoding, the data is already decoded and stored as calldata
-        // during load_blobs, so this should not happen
-        Err(PipelineError::Eof.temp())
+        // Decode the blob data to raw bytes.
+        // Otherwise, ignore blob and recurse next.
+        match next_data.decode() {
+            Ok(d) => Ok(d),
+            Err(_) => {
+                warn!(target: "mantle_blob_source", "Failed to decode blob data, skipping");
+                self.next(block_ref, batcher_address).await
+            }
+        }
     }
 
     fn clear(&mut self) {
