@@ -193,7 +193,7 @@ where
         let decoded_data = rlp_blob
             .0
             .into_iter()
-            .map(|bytes| BlobData { data: None, calldata: Some(bytes) })
+            .map(|bytes| BlobData { data: Some(bytes), calldata: None })
             .collect();
 
         self.open = true;
@@ -432,9 +432,9 @@ mod tests {
         assert!(!source.data.is_empty(), "Should have decoded frames from Mantle blobs");
 
         for (i, blob_data) in source.data.iter().enumerate() {
-            assert!(blob_data.calldata.is_some(), "Frame {} should have calldata", i);
-            let calldata = blob_data.calldata.as_ref().unwrap();
-            assert!(!calldata.is_empty(), "Frame {} calldata should not be empty", i);
+            assert!(blob_data.data.is_some(), "Frame {} should have data", i);
+            let data = blob_data.data.as_ref().unwrap();
+            assert!(!data.is_empty(), "Frame {} data should not be empty", i);
         }
     }
 
