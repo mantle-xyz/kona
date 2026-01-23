@@ -309,8 +309,8 @@ impl RollupConfig {
     /// Returns true if Regolith is active at the given timestamp.
     pub fn is_regolith_active(&self, timestamp: u64) -> bool {
         // Mantle: before mantle_arsia, no advanced OP Stack features are active
-        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
-            return false;
+        if self.is_mantle() && self.is_mantle_skadi_active(timestamp) {
+            return true;
         }
         self.hardforks.regolith_time.is_some_and(|t| timestamp >= t) ||
             self.is_canyon_active(timestamp)
@@ -724,7 +724,7 @@ mod tests {
         // so we need to use timestamps before their hardfork times
         assert_eq!(config.spec_id(0), op_revm::OpSpecId::BEDROCK);
         assert_eq!(config.spec_id(25), op_revm::OpSpecId::BEDROCK); // Before ecotone_time (30)
-        
+
         // After hardforks times but before mantle_arsia: ecotone and isthmus may be active
         // based on their hardforks times, so spec_id may return ECOTONE or ISTHMUS
         // This is expected behavior when mantle_skadi is not active
@@ -821,7 +821,7 @@ mod tests {
         // Before mantle_skadi and before hardforks times: ecotone and isthmus should be inactive
         assert!(!config_with_skadi.is_ecotone_active(25));
         assert!(!config_with_skadi.is_isthmus_active(25));
-        
+
         // Before mantle_skadi but after hardforks times: ecotone and isthmus should be active
         // (because they check hardforks times when mantle_skadi is not active)
         assert!(config_with_skadi.is_ecotone_active(50));
