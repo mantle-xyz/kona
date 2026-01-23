@@ -1,16 +1,17 @@
 //! Contains the `L1BlockInfoTx` enum, containing different variants of the L1 block info
 //! transaction.
 
+use crate::{
+    BlockInfoError, DecodeError, L1BlockInfoBedrock, L1BlockInfoEcotone, L1BlockInfoIsthmus,
+    Predeploys,
+    info::{self, L1BlockInfoJovian},
+};
 use alloy_consensus::Header;
 use alloy_eips::{BlockNumHash, eip7840::BlobParams};
 use alloy_primitives::{Address, B256, Bytes, Sealable, Sealed, TxKind, U256, address};
 use kona_genesis::{L1ChainConfig, RollupConfig, SystemConfig};
 use op_alloy_consensus::{DepositSourceDomain, L1InfoDepositSource, TxDeposit};
 use tracing::info;
-use crate::{
-    BlockInfoError, DecodeError, L1BlockInfoBedrock, L1BlockInfoEcotone, L1BlockInfoIsthmus,
-    Predeploys, info::{self, L1BlockInfoJovian},
-};
 
 /// The system transaction gas limit post-Regolith
 const REGOLITH_SYSTEM_TX_GAS: u64 = 1_000_000;
@@ -50,9 +51,7 @@ impl L1BlockInfoTx {
         // In the first block of Ecotone, the L1Block contract has not been upgraded yet due to the
         // upgrade transactions being placed after the L1 info transaction. Because of this,
         // for the first block of Ecotone, we send a Bedrock style L1 block info transaction
-        if !rollup_config.is_ecotone_active(l2_block_time) ||
-            rollup_config.is_first_ecotone_block(l2_block_time)
-        {
+        if !rollup_config.is_mantle_arsia_active(l2_block_time) {
             return Ok(Self::Bedrock(L1BlockInfoBedrock {
                 number: l1_header.number,
                 time: l1_header.timestamp,
