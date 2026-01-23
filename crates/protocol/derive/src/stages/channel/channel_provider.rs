@@ -59,16 +59,16 @@ where
             // On the first call to `attempt_update`, we need to determine the active stage to
             // initialize the mux with.
             if self.cfg.is_holocene_active(origin.timestamp) {
-                info!(target: "channel_provider", "is_holocene_active");
+                info!(target: "channel_provider", "is_holocene_active in channel_provider");
                 self.channel_assembler = Some(ChannelAssembler::new(self.cfg.clone(), prev));
             } else {
-                info!(target: "channel_provider", "is_not_holocene_active");
+                info!(target: "channel_provider", "is_not_holocene_active in channel_provider");
                 self.channel_bank = Some(ChannelBank::new(self.cfg.clone(), prev));
             }
         } else if self.channel_bank.is_some() && self.cfg.is_holocene_active(origin.timestamp) {
             // If the channel bank is active and Holocene is also active, transition to the channel
             // assembler.
-            info!(target: "channel_provider", "is_holocene_active and channel_bank is active");
+            info!(target: "channel_provider", "is_holocene_active and channel_bank is active in channel_provider");
             let channel_bank = self.channel_bank.take().expect("Must have channel bank");
             self.channel_assembler =
                 Some(ChannelAssembler::new(self.cfg.clone(), channel_bank.prev));
@@ -77,7 +77,7 @@ where
             // If the channel assembler is active, and Holocene is not active, it indicates an L1
             // reorg around Holocene activation. Transition back to the channel bank
             // until Holocene re-activates.
-            info!(target: "channel_provider", "is_not_holocene_active and channel_assembler is active");
+            info!(target: "channel_provider", "is_not_holocene_active and channel_assembler is active in channel_provider");
             let channel_assembler =
                 self.channel_assembler.take().expect("Must have channel assembler");
             self.channel_bank = Some(ChannelBank::new(self.cfg.clone(), channel_assembler.prev));

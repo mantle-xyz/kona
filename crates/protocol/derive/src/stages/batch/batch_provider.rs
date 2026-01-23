@@ -63,14 +63,17 @@ where
             // On the first call to `attempt_update`, we need to determine the active stage to
             // initialize the mux with.
             if self.cfg.is_holocene_active(origin.timestamp) {
+                info!(target: "batch_provider", "is_holocene_active in batch_provider");
                 self.batch_validator = Some(BatchValidator::new(self.cfg.clone(), prev));
             } else {
+                info!(target: "batch_provider", "is_not_holocene_active in batch_provider");
                 self.batch_queue =
                     Some(BatchQueue::new(self.cfg.clone(), prev, self.provider.clone()));
             }
         } else if self.batch_queue.is_some() && self.cfg.is_holocene_active(origin.timestamp) {
             // If the batch queue is active and Holocene is also active, transition to the batch
             // validator.
+            info!(target: "batch_provider", "is_holocene_active and batch_queue is active in batch_provider");
             let batch_queue = self.batch_queue.take().expect("Must have batch queue");
             let mut bv = BatchValidator::new(self.cfg.clone(), batch_queue.prev);
             bv.l1_blocks = batch_queue.l1_blocks;
@@ -79,6 +82,7 @@ where
             // If the batch validator is active, and Holocene is not active, it indicates an L1
             // reorg around Holocene activation. Transition back to the batch queue
             // until Holocene re-activates.
+            info!(target: "batch_provider", "is_not_holocene_active and batch_validator is active in batch_provider");
             let batch_validator = self.batch_validator.take().expect("Must have batch validator");
             let mut bq =
                 BatchQueue::new(self.cfg.clone(), batch_validator.prev, self.provider.clone());
@@ -152,6 +156,10 @@ where
     F: L2ChainProvider + Clone + Send + Debug,
 {
     fn is_last_in_span(&self) -> bool {
+        info!(target: "batch_provider", "is_last_in_span in batch_provider: {:?}", self.batch_validator.as_ref().map_or_else(
+            || self.batch_queue.as_ref().is_some_and(|batch_queue| batch_queue.is_last_in_span()),
+            |batch_validator| batch_validator.is_last_in_span(),
+        ));
         self.batch_validator.as_ref().map_or_else(
             || self.batch_queue.as_ref().is_some_and(|batch_queue| batch_queue.is_last_in_span()),
             |batch_validator| batch_validator.is_last_in_span(),

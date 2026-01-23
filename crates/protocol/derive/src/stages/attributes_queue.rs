@@ -62,6 +62,7 @@ where
             let batch = self.prev.next_batch(parent).await?;
             self.batch = Some(batch);
             self.is_last_in_span = self.prev.is_last_in_span();
+            info!(target: "attributes_queue", "is_last_in_span in attributes_queue: {:?}", self.is_last_in_span);
         }
         self.batch.as_ref().cloned().ok_or(PipelineError::Eof.temp())
     }
