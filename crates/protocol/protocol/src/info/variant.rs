@@ -51,8 +51,8 @@ impl L1BlockInfoTx {
         // In the first block of Ecotone, the L1Block contract has not been upgraded yet due to the
         // upgrade transactions being placed after the L1 info transaction. Because of this,
         // for the first block of Ecotone, we send a Bedrock style L1 block info transaction
-        if !rollup_config.is_mantle_arsia_active(l2_block_time) &&
-            !rollup_config.is_first_mantle_arsia_block(l2_block_time)
+        if !rollup_config.is_mantle_arsia_active(l2_block_time) ||
+            rollup_config.is_first_mantle_arsia_block(l2_block_time)
         {
             return Ok(Self::Bedrock(L1BlockInfoBedrock {
                 number: l1_header.number,
