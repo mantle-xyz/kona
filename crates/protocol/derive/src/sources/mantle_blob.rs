@@ -237,7 +237,7 @@ where
         match next_data.decode() {
             Ok(d) => Ok(d),
             Err(_) => {
-                warn!(target: "mantle_blob_source", "Failed to decode blob data, skipping");
+                warn!(target: "mantle_blob_source", "Failed to decode mantle blob data, skipping");
                 self.next(block_ref, batcher_address).await
             }
         }
