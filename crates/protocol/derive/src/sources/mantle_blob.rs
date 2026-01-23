@@ -232,15 +232,9 @@ where
             return Ok(c);
         }
 
-        // Decode the blob data to raw bytes.
-        // Otherwise, ignore blob and recurse next.
-        match next_data.decode() {
-            Ok(d) => Ok(d),
-            Err(_) => {
-                warn!(target: "mantle_blob_source", "Failed to decode mantle blob data, skipping");
-                self.next(block_ref, batcher_address).await
-            }
-        }
+        // Return the already decoded frame data directly
+        // (it was RLP decoded in load_blobs)
+        next_data.data.ok_or_else(|| PipelineError::Eof.temp())
     }
 
     fn clear(&mut self) {
