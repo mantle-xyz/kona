@@ -148,9 +148,9 @@ where
         {
             upgrade_transactions.append(&mut MantleHardforks::ARSIA.txs().collect());
         }
-        println!("self.rollup_cfg.is_mantle_arsia_active(next_l2_time): {:?}", self.rollup_cfg.is_mantle_arsia_active(next_l2_time));
-        println!("self.rollup_cfg.is_mantle_arsia_active(l2_parent.block_info.timestamp): {:?}", self.rollup_cfg.is_mantle_arsia_active(l2_parent.block_info.timestamp));
-        println!("upgrade_transactions: {:?}", upgrade_transactions.len());
+        info!(target: "attributes_builder", "self.rollup_cfg.is_mantle_arsia_active(next_l2_time): {:?}", self.rollup_cfg.is_mantle_arsia_active(next_l2_time));
+        info!(target: "attributes_builder", "self.rollup_cfg.is_mantle_arsia_active(l2_parent.block_info.timestamp): {:?}", self.rollup_cfg.is_mantle_arsia_active(l2_parent.block_info.timestamp));
+        info!(target: "attributes_builder", "upgrade_transactions: {:?}", upgrade_transactions.len());
         // Build and encode the L1 info transaction for the current payload.
         let (_, l1_info_tx_envelope) = L1BlockInfoTx::try_new_with_deposit_tx(
             &self.rollup_cfg,
@@ -174,7 +174,7 @@ where
         txs.push(encoded_l1_info_tx.into());
         txs.extend(deposit_transactions);
         txs.extend(upgrade_transactions);
-        println!("txs: {:?}", txs.len());
+        info!(target: "attributes_builder", "txs: {:?}", txs.len());
         let mut withdrawals = None;
         if self.rollup_cfg.is_canyon_active(next_l2_time) {
             withdrawals = Some(Vec::default());
