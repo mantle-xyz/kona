@@ -6,6 +6,7 @@ use crate::{
 use alloy_primitives::bytes;
 use alloy_rlp::{Buf, Decodable, Encodable};
 use kona_genesis::RollupConfig;
+use tracing::info;
 
 /// A Batch.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,7 +45,7 @@ impl Batch {
         // Read the batch type
         let batch_type = BatchType::from(r[0]);
         r.advance(1);
-
+        info!(target: "batch", "batch_type: {:?}", batch_type);
         match batch_type {
             BatchType::Single => {
                 let single_batch =

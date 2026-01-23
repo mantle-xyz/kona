@@ -130,6 +130,7 @@ where
             } else {
                 MAX_RLP_BYTES_PER_CHANNEL_BEDROCK
             };
+            info!(target: "channel_assembler", "max_rlp_bytes_per_channel: {:?}", max_rlp_bytes_per_channel);
             kona_macros::set!(
                 gauge,
                 crate::metrics::Metrics::PIPELINE_MAX_RLP_BYTES,

@@ -67,6 +67,7 @@ where
             } else {
                 MAX_RLP_BYTES_PER_CHANNEL_BEDROCK
             };
+            info!(target: "channel_reader", "max_rlp_bytes_per_channel: {:?}", max_rlp_bytes_per_channel);
 
             self.next_batch =
                 Some(BatchReader::new(&channel[..], max_rlp_bytes_per_channel as usize));
