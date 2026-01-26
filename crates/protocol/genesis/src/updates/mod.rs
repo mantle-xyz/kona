@@ -20,6 +20,9 @@ pub use eip1559::Eip1559Update;
 mod operator_fee;
 pub use operator_fee::OperatorFeeUpdate;
 
+mod base_fee;
+pub use base_fee::BaseFeeUpdate;
+
 mod min_base_fee;
 pub use min_base_fee::MinBaseFeeUpdate;
 

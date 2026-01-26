@@ -65,9 +65,9 @@ impl L1BlockInfoJovian {
     /// The length of an L1 info transaction in Jovian.
     pub const L1_INFO_TX_LEN: usize = 4 + 32 * 5 + 4 + 8 + 2;
 
-    /// The 4 byte selector of "setL1BlockValuesJovian()"
+    /// The 4 byte selector of "setL1BlockValuesArsia()"
     /// Those are the first 4 calldata bytes -> `<https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/jovian/l1-attributes.md#overview>`
-    pub const L1_INFO_TX_SELECTOR: [u8; 4] = [0x3d, 0xb6, 0xbe, 0x2b];
+    pub const L1_INFO_TX_SELECTOR: [u8; 4] = [0x49, 0xe7, 0x23, 0x83];
 
     /// Encodes the [`L1BlockInfoJovian`] object into Ethereum transaction calldata.
     pub fn encode_calldata(&self) -> Bytes {

@@ -177,7 +177,6 @@ pub fn compute_receipts_root(
     // receipt encoding. In the Regolith hardfork, we must strip the deposit nonce
     // from the receipt encoding to match the receipt root calculation.
 
-    // [TODO]: test in mantle
     if config.is_mantle_skadi_active(timestamp) {
         let receipts = receipts
             .iter()

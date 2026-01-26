@@ -37,13 +37,13 @@ pub use superchain::{
 
 mod updates;
 pub use updates::{
-    BatcherUpdate, DaFootprintGasScalarUpdate, Eip1559Update, GasConfigUpdate, GasLimitUpdate,
-    MinBaseFeeUpdate, OperatorFeeUpdate, UnsafeBlockSignerUpdate,
+    BaseFeeUpdate, BatcherUpdate, DaFootprintGasScalarUpdate, Eip1559Update, GasConfigUpdate,
+    GasLimitUpdate, MinBaseFeeUpdate, OperatorFeeUpdate, UnsafeBlockSignerUpdate,
 };
 
 mod system;
 pub use system::{
-    BatcherUpdateError, CONFIG_UPDATE_EVENT_VERSION_0, CONFIG_UPDATE_TOPIC,
+    BaseFeeUpdateError, BatcherUpdateError, CONFIG_UPDATE_EVENT_VERSION_0, CONFIG_UPDATE_TOPIC,
     DaFootprintGasScalarUpdateError, EIP1559UpdateError, GasConfigUpdateError, GasLimitUpdateError,
     LogProcessingError, MinBaseFeeUpdateError, OperatorFeeUpdateError, SystemConfig,
     SystemConfigLog, SystemConfigUpdate, SystemConfigUpdateError, SystemConfigUpdateKind,

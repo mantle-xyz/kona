@@ -3,7 +3,7 @@
 use alloy_primitives::Log;
 
 use crate::{
-    BatcherUpdate, CONFIG_UPDATE_EVENT_VERSION_0, CONFIG_UPDATE_TOPIC, Eip1559Update,
+    BaseFeeUpdate, BatcherUpdate, CONFIG_UPDATE_EVENT_VERSION_0, CONFIG_UPDATE_TOPIC, Eip1559Update,
     GasConfigUpdate, GasLimitUpdate, LogProcessingError, OperatorFeeUpdate, SystemConfigUpdate,
     SystemConfigUpdateError, SystemConfigUpdateKind, UnsafeBlockSignerUpdate,
     updates::{DaFootprintGasScalarUpdate, MinBaseFeeUpdate},
@@ -87,6 +87,10 @@ impl SystemConfigLog {
             SystemConfigUpdateKind::GasLimit => {
                 let update = GasLimitUpdate::try_from(self)?;
                 Ok(SystemConfigUpdate::GasLimit(update))
+            }
+            SystemConfigUpdateKind::BaseFee => {
+                let update = BaseFeeUpdate::try_from(self)?;
+                Ok(SystemConfigUpdate::BaseFee(update))
             }
             SystemConfigUpdateKind::Eip1559 => {
                 let update = Eip1559Update::try_from(self)?;

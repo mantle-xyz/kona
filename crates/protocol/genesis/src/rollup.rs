@@ -307,10 +307,13 @@ impl RollupConfig {
 
 impl RollupConfig {
     /// Returns true if Regolith is active at the given timestamp.
+    ///
+    /// Note: Unlike other hardfork checks, this method does not check mantle_arsia.
+    /// For Mantle chains, it returns true if mantle_skadi is active, or if regolith_time
+    /// is satisfied (even before mantle_arsia).
     pub fn is_regolith_active(&self, timestamp: u64) -> bool {
-        // Mantle: before mantle_arsia, no advanced OP Stack features are active
-        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
-            return false;
+        if self.is_mantle() && self.is_mantle_skadi_active(timestamp) {
+            return true;
         }
         self.hardforks.regolith_time.is_some_and(|t| timestamp >= t) ||
             self.is_canyon_active(timestamp)
@@ -491,6 +494,12 @@ impl RollupConfig {
         self.mantle_hardforks.mantle_arsia_time.is_some_and(|t| timestamp >= t)
     }
 
+    /// Returns true if the timestamp marks the first Mantle Arsia block.
+    pub fn is_first_mantle_arsia_block(&self, timestamp: u64) -> bool {
+        self.is_mantle_arsia_active(timestamp) &&
+            !self.is_mantle_arsia_active(timestamp.saturating_sub(self.block_time))
+    }
+
     /// Returns true if a DA Challenge proxy Address is provided in the rollup config and the
     /// address is not zero.
     pub fn is_alt_da_enabled(&self) -> bool {
@@ -586,7 +595,6 @@ impl EthereumHardforks for RollupConfig {
     }
 }
 
-// [TODO]: test in mantle
 impl OpHardforks for RollupConfig {
     fn op_fork_activation(&self, fork: OpHardfork) -> ForkCondition {
         match fork {
@@ -720,11 +728,12 @@ mod tests {
         };
 
         // Before mantle_arsia: should use BEDROCK for kona features
-        // Note: ecotone and isthmus check hardforks times when mantle_skadi is not active,
-        // so we need to use timestamps before their hardfork times
+        // Note: is_regolith_active checks regolith_time even before mantle_arsia,
+        // and ecotone/isthmus check hardforks times when mantle_skadi is not active,
+        // so we need to use timestamps before regolith_time and their hardfork times
         assert_eq!(config.spec_id(0), op_revm::OpSpecId::BEDROCK);
-        assert_eq!(config.spec_id(25), op_revm::OpSpecId::BEDROCK); // Before ecotone_time (30)
-        
+        assert_eq!(config.spec_id(5), op_revm::OpSpecId::BEDROCK); // Before regolith_time (10)
+
         // After hardforks times but before mantle_arsia: ecotone and isthmus may be active
         // based on their hardforks times, so spec_id may return ECOTONE or ISTHMUS
         // This is expected behavior when mantle_skadi is not active
@@ -787,9 +796,11 @@ mod tests {
         };
 
         // Before mantle_arsia and without mantle_skadi: most OP Stack features should be inactive
-        // Note: ecotone and isthmus check hardforks.ecotone_time and hardforks.isthmus_time
-        // when mantle_skadi is not active, so they may be active based on their times
-        assert!(!config.is_regolith_active(150));
+        // Note: is_regolith_active checks regolith_time even before mantle_arsia (no mantle_arsia check),
+        // so it will be active if regolith_time is satisfied. ecotone and isthmus check
+        // hardforks.ecotone_time and hardforks.isthmus_time when mantle_skadi is not active,
+        // so they may be active based on their times
+        assert!(config.is_regolith_active(150)); // regolith_time is 10, so active at 150
         assert!(!config.is_canyon_active(150));
         // ecotone_time is 30, so at timestamp 150 it should be active
         assert!(config.is_ecotone_active(150));
@@ -821,14 +832,15 @@ mod tests {
         // Before mantle_skadi and before hardforks times: ecotone and isthmus should be inactive
         assert!(!config_with_skadi.is_ecotone_active(25));
         assert!(!config_with_skadi.is_isthmus_active(25));
-        
+
         // Before mantle_skadi but after hardforks times: ecotone and isthmus should be active
         // (because they check hardforks times when mantle_skadi is not active)
         assert!(config_with_skadi.is_ecotone_active(50));
         assert!(!config_with_skadi.is_isthmus_active(50)); // isthmus_time is 60, so still inactive
 
-        // After mantle_skadi but before mantle_arsia: ecotone and isthmus should be active
-        assert!(!config_with_skadi.is_regolith_active(150));
+        // After mantle_skadi but before mantle_arsia: regolith should be active (mantle_skadi makes it active),
+        // ecotone and isthmus should be active
+        assert!(config_with_skadi.is_regolith_active(150)); // mantle_skadi is active at 150
         assert!(!config_with_skadi.is_canyon_active(150));
         assert!(config_with_skadi.is_ecotone_active(150));
         assert!(!config_with_skadi.is_fjord_active(150));
@@ -1244,6 +1256,7 @@ mod tests {
                     overhead: U256::ZERO,
                     scalar: U256::from(0xf4240),
                     gas_limit: 30_000_000,
+                    base_fee: None,
                     base_fee_scalar: Some(1234),
                     blob_base_fee_scalar: Some(5678),
                     eip1559_denominator: Some(10),
