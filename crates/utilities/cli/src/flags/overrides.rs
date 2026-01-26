@@ -37,9 +37,6 @@ pub struct OverrideArgs {
     /// Manually specify the timestamp for the Interop fork, overriding the bundled setting.
     #[arg(long, env = "KONA_OVERRIDE_INTEROP")]
     pub interop_override: Option<u64>,
-    /// Manually specify the timestamp for the Mantle Arsia fork, overriding the bundled setting.
-    #[arg(long, env = "KONA_OVERRIDE_MANTLE_ARSIA")]
-    pub mantle_arsia_override: Option<u64>,
 }
 
 impl Default for OverrideArgs {
@@ -163,7 +160,6 @@ mod tests {
                 isthmus_override: None,
                 jovian_override: None,
                 interop_override: None,
-                mantle_arsia_override: None,
             }
         );
         // Sanity check that the default impl matches the expected default values.
