@@ -178,8 +178,6 @@ impl ChainConfig {
             granite_channel_timeout: GRANITE_CHANNEL_TIMEOUT,
             interop_message_expiry_window: DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW,
             mantle_hardforks: MantleHardForkConfig::default(),
-            mantle_da_switch: false,
-            datalayr_service_manager_addr: None,
             chain_op_config: self.base_fee_config(),
             alt_da_config: self.alt_da.clone(),
         }

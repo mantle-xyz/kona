@@ -35,11 +35,6 @@ const fn default_interop_message_expiry_window() -> u64 {
 }
 
 #[cfg(feature = "serde")]
-fn is_false(b: &bool) -> bool {
-    !b
-}
-
-#[cfg(feature = "serde")]
 const fn default_mantle_base_fee_config() -> BaseFeeConfig {
     MANTLE_BASE_FEE_CONFIG
 }
@@ -110,14 +105,6 @@ pub struct RollupConfig {
     /// `chain_op_config` is the chain-specific EIP1559 config for the rollup.
     #[cfg_attr(feature = "serde", serde(default = "default_mantle_base_fee_config"))]
     pub chain_op_config: BaseFeeConfig,
-    /// `mantle_da_switch` indicates whether to use DA from MantleDA (EigenDA).
-    /// This is a legacy field for Mantle features.
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "is_false"))]
-    pub mantle_da_switch: bool,
-    /// `datalayr_service_manager_addr` is the MantleDA (EigenDA) DataLayrServiceManager contract
-    /// address. This is a legacy field for Mantle features.
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
-    pub datalayr_service_manager_addr: Option<alloc::string::String>,
 }
 
 #[cfg(feature = "arbitrary")]
@@ -155,8 +142,6 @@ impl<'a> arbitrary::Arbitrary<'a> for RollupConfig {
             interop_message_expiry_window: u.arbitrary()?,
             chain_op_config,
             alt_da_config: Option::<AltDAConfig>::arbitrary(u)?,
-            mantle_da_switch: bool::arbitrary(u)?,
-            datalayr_service_manager_addr: Option::<alloc::string::String>::arbitrary(u)?,
         })
     }
 }
@@ -185,8 +170,6 @@ impl Default for RollupConfig {
             interop_message_expiry_window: DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW,
             alt_da_config: None,
             chain_op_config: MANTLE_BASE_FEE_CONFIG,
-            mantle_da_switch: false,
-            datalayr_service_manager_addr: None,
         }
     }
 }
@@ -1293,8 +1276,6 @@ mod tests {
             interop_message_expiry_window: DEFAULT_INTEROP_MESSAGE_EXPIRY_WINDOW,
             chain_op_config: OP_MAINNET_BASE_FEE_CONFIG,
             alt_da_config: None,
-            mantle_da_switch: false,
-            datalayr_service_manager_addr: None,
         };
 
         let deserialized: RollupConfig = serde_json::from_str(raw).unwrap();
