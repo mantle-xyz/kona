@@ -45,6 +45,8 @@ where
     pub data: Vec<BlobData>,
     /// Whether the source is open.
     pub open: bool,
+    /// Whether to attempt Mantle RLP decoding. Set to false after first RLP decode failure.
+    pub use_mantle_format: bool,
 }
 
 impl<F, B> MantleBlobSource<F, B>
@@ -54,18 +56,30 @@ where
 {
     /// Creates a new Mantle blob source.
     pub const fn new(chain_provider: F, blob_fetcher: B, batcher_address: Address) -> Self {
-        Self { chain_provider, blob_fetcher, batcher_address, data: Vec::new(), open: false }
+        Self {
+            chain_provider,
+            blob_fetcher,
+            batcher_address,
+            data: Vec::new(),
+            open: false,
+            use_mantle_format: true,
+        }
     }
 
-    // same as BlobSource::extract_blob_data
+    /// Extracts blob data and tracks which blobs belong to which transaction.
+    /// Returns: (all_blob_data, all_blob_hashes, tx_blob_counts)
+    /// - all_blob_data: all BlobData in order (calldata or blob placeholders)
+    /// - all_blob_hashes: all IndexedBlobHash
+    /// - tx_blob_counts: number of blobs per transaction (0 for calldata tx, N for blob tx with N blobs)
     fn extract_blob_data(
         &self,
         txs: Vec<TxEnvelope>,
         batcher_address: Address,
-    ) -> (Vec<BlobData>, Vec<IndexedBlobHash>) {
+    ) -> (Vec<BlobData>, Vec<IndexedBlobHash>, Vec<usize>) {
         let mut index: u64 = 0;
         let mut data = Vec::new();
         let mut hashes = Vec::new();
+        let mut tx_blob_counts = Vec::new();
         for tx in txs {
             let (tx_kind, calldata, blob_hashes) = match &tx {
                 TxEnvelope::Legacy(tx) => (tx.tx().to(), tx.tx().input.clone(), None),
@@ -95,6 +109,7 @@ where
             if tx.tx_type() != TxType::Eip4844 {
                 let blob_data = BlobData { data: None, calldata: Some(calldata.to_vec().into()) };
                 data.push(blob_data);
+                tx_blob_counts.push(0); // Calldata tx has 0 blobs
                 continue;
             }
             if !calldata.is_empty() {
@@ -112,12 +127,14 @@ where
             } else {
                 continue;
             };
+            let tx_blob_count = blob_hashes.len();
             for hash in blob_hashes {
                 let indexed = IndexedBlobHash { hash, index };
                 hashes.push(indexed);
                 data.push(BlobData::default());
                 index += 1;
             }
+            tx_blob_counts.push(tx_blob_count);
         }
         #[cfg(feature = "metrics")]
         metrics::gauge!(
@@ -125,7 +142,7 @@ where
             "source" => "mantle_blobs",
         )
         .increment(data.len() as f64);
-        (data, hashes)
+        (data, hashes, tx_blob_counts)
     }
 
     /// Loads blob data into the source if it is not open.
@@ -144,7 +161,7 @@ where
             .await
             .map_err(|e| BlobProviderError::Backend(e.to_string()))?;
 
-        let (mut data, blob_hashes) = self.extract_blob_data(info.1, batcher_address);
+        let (mut data, blob_hashes, tx_blob_counts) = self.extract_blob_data(info.1, batcher_address);
 
         // If there are no hashes, set the calldata and return.
         if blob_hashes.is_empty() {
@@ -161,43 +178,85 @@ where
                 },
             )?;
 
-        // Fill the blob pointers and decode each blob.
-        // Mantle-specific: concatenate all decoded blob data for RLP decoding.
-        let mut whole_blob_data = Vec::new();
+        // Process each transaction's blobs separately
+        let mut result_data = Vec::new();
         let mut blob_index = 0;
-        for blob_data in data.iter_mut() {
-            match blob_data.fill(&blobs, blob_index) {
-                Ok(should_increment) => {
-                    if should_increment {
-                        blob_index += 1;
+        let mut data_index = 0;
+
+        for tx_blob_count in tx_blob_counts {
+            if tx_blob_count == 0 {
+                // Calldata tx: keep as-is
+                result_data.push(data[data_index].clone());
+                data_index += 1;
+                continue;
+            }
+
+            // EIP4844 tx: try Mantle format (RLP list) then fallback to standard format
+            let tx_data_range = data_index..data_index + tx_blob_count;
+            let tx_blobs = &mut data[tx_data_range.clone()];
+            let mut tx_decoded_blobs = Vec::new();
+            let mut tx_whole_blob_data = Vec::new();
+
+            // Fill and decode each blob for this transaction
+            for blob_data in tx_blobs.iter_mut() {
+                match blob_data.fill(&blobs, blob_index) {
+                    Ok(should_increment) => {
+                        if should_increment {
+                            blob_index += 1;
+                        }
+                    }
+                    Err(e) => {
+                        return Err(e.into());
                     }
                 }
-                Err(e) => {
-                    return Err(e.into());
+                // Decode and store
+                match blob_data.decode() {
+                    Ok(d) => {
+                        tx_whole_blob_data.extend_from_slice(&d);
+                        tx_decoded_blobs.push(d);
+                    }
+                    Err(_) => {
+                        warn!(target: "mantle_blob_source", "Failed to decode blob, skipping");
+                        tx_decoded_blobs.push(Bytes::new());
+                    }
                 }
             }
-            // Decode and append to whole_blob_data
-            match blob_data.decode() {
-                Ok(d) => whole_blob_data.extend_from_slice(&d),
-                Err(_) => {
-                    warn!(target: "mantle_blob_source", "Failed to decode blob, skipping");
+
+            // Try Mantle format (RLP decode) if enabled
+            if self.use_mantle_format {
+                let mut rlp_slice = tx_whole_blob_data.as_slice();
+                match VecOfBytes::decode(&mut rlp_slice) {
+                    Ok(rlp_blob) => {
+                        // Mantle format: RLP decoded frames from this transaction
+                        for bytes in rlp_blob.0 {
+                            result_data.push(BlobData { data: Some(bytes), calldata: None });
+                        }
+                    }
+                    Err(_) => {
+                        // RLP decode failed, disable Mantle format for future transactions
+                        self.use_mantle_format = false;
+                        // Use standard OP format: each blob is one frame
+                        for bytes in tx_decoded_blobs {
+                            if !bytes.is_empty() {
+                                result_data.push(BlobData { data: Some(bytes), calldata: None });
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Mantle format disabled, use standard OP format directly
+                for bytes in tx_decoded_blobs {
+                    if !bytes.is_empty() {
+                        result_data.push(BlobData { data: Some(bytes), calldata: None });
+                    }
                 }
             }
+
+            data_index += tx_blob_count;
         }
 
-        // RLP decode the concatenated blob data to Vec<Bytes>
-        let rlp_blob: VecOfBytes = Decodable::decode(&mut whole_blob_data.as_slice())
-            .map_err(|e| BlobProviderError::Backend(format!("RLP decode error: {}", e)))?;
-
-        // Convert RLP decoded frames to BlobData
-        let decoded_data = rlp_blob
-            .0
-            .into_iter()
-            .map(|bytes| BlobData { data: Some(bytes), calldata: None })
-            .collect();
-
         self.open = true;
-        self.data = decoded_data;
+        self.data = result_data;
         Ok(())
     }
 
@@ -493,14 +552,158 @@ mod tests {
         source.batcher_address = batcher_address;
 
         // Test 1: Transaction with correct signer should be accepted
-        let (data, hashes) = source.extract_blob_data(vec![tx.clone()], actual_signer);
+        let (data, hashes, tx_counts) = source.extract_blob_data(vec![tx.clone()], actual_signer);
         assert!(!data.is_empty(), "Should extract data when signer matches (Mantle has 3 blobs)");
         assert_eq!(hashes.len(), 3, "Should extract 3 blob hashes from Mantle transaction");
+        assert_eq!(tx_counts, vec![3], "Should have 1 transaction with 3 blobs");
 
         // Test 2: Transaction with wrong signer should be rejected
         let wrong_signer = Address::ZERO;
-        let (data2, hashes2) = source.extract_blob_data(vec![tx], wrong_signer);
+        let (data2, hashes2, tx_counts2) = source.extract_blob_data(vec![tx], wrong_signer);
         assert!(data2.is_empty(), "Should not extract data when signer doesn't match");
         assert!(hashes2.is_empty(), "Should not extract blob hashes when signer doesn't match");
+        assert!(tx_counts2.is_empty(), "Should have no transactions extracted");
     }
+
+    /// Helper function: decode blob data and check if it's RLP encoded
+    fn decode_blob_and_check_rlp(blob_bytes: &[u8]) -> (Bytes, bool, usize) {
+        use crate::sources::blob_data::BlobData as BD;
+        
+        let mut blob_data = BD::default();
+        let blob = Box::new(Blob::try_from(blob_bytes).unwrap());
+        blob_data.fill(&[blob], 0).unwrap();
+        let decoded = blob_data.decode().unwrap();
+        
+        let mut rlp_slice = &decoded[..];
+        match VecOfBytes::decode(&mut rlp_slice) {
+            Ok(vec) => (decoded, true, vec.0.len()),
+            Err(_) => (decoded, false, 0),
+        }
+    }
+
+    /// Helper function: parse transaction from hex string
+    fn parse_tx_from_hex(hex_str: &str) -> TxEnvelope {
+        let bytes = hex::decode(hex_str.strip_prefix("0x").unwrap()).unwrap();
+        TxEnvelope::decode(&mut bytes.as_slice()).unwrap()
+    }
+
+    /// Helper function: load blob from hex file and insert into provider
+    fn load_blob_from_hex(
+        hex_content: &str,
+        blob_hash: B256,
+        provider: &mut TestBlobProvider,
+    ) -> Vec<u8> {
+        let blob_bytes = hex::decode(hex_content.trim().strip_prefix("0x").unwrap_or(hex_content.trim())).unwrap();
+        assert_eq!(blob_bytes.len(), 131072, "Blob should be 131072 bytes");
+        let blob = Blob::try_from(blob_bytes.as_slice()).unwrap();
+        provider.insert_blob(blob_hash, blob);
+        blob_bytes
+    }
+
+    #[tokio::test]
+    async fn test_load_blobs_with_mantle_and_op_blob() {
+        // Parse transactions (Mantle blob tx and OP blob tx)
+        // https://sepolia.etherscan.io/tx/0x59f091996b73b63989bb0fb8e1e9bf099e4197f3aee91fb7d3f4e183e49ab983
+        let mantle_tx = parse_tx_from_hex(
+            "0x03f89483aa36a70b8407b5fd4b8509020d9db982520894ffeeddccbbaa00000000000000000000000000008080c0848ac83386e1a001a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb580a04c7450151bca6b9731fed99fe2ef526fbee62d03cbf153ad4f8fe12ee42c5d719f6a4273bda34e0236f13ce0d516bee9003fdc2ede2642aebe26c9a6b2c1a2f9"
+        );
+        // https://sepolia.etherscan.io/tx/0x1d9574cc7efa12cf7d3d5a8e0ee1078902158e1aa25d079def7fe65413f51d1b
+        let op_tx = parse_tx_from_hex(
+            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac"
+        );
+
+        let batcher_address = address!("0xFFEEDDCcBbAA0000000000000000000000000000");
+        let signer = address!("0x008424f79C72a81fE32bf09b0D8A10F2617A5B57");
+
+        let mut source = default_test_mantle_blob_source();
+        source.batcher_address = batcher_address;
+
+        // Load blobs and verify their encoding format
+        let mantle_blob_hash = b256!("0x01a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb5");
+        let mantle_blob_bytes = load_blob_from_hex(
+            include_str!("testdata/mantle_sepolia_mantle_blob.hex"),
+            mantle_blob_hash,
+            &mut source.blob_fetcher,
+        );
+
+        let op_blob_hash = b256!("0x01a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc1");
+        load_blob_from_hex(
+            include_str!("testdata/mantle_sepolia_blob.hex"),
+            op_blob_hash,
+            &mut source.blob_fetcher,
+        );
+
+        // Verify encoding formats: Mantle should be RLP encoded, OP should be standard format
+        let (_, mantle_is_rlp, mantle_frame_count) = decode_blob_and_check_rlp(&mantle_blob_bytes);
+        assert!(mantle_is_rlp, "Mantle blob should be RLP encoded");
+        assert!(mantle_frame_count >= 1, "Mantle blob should contain at least 1 frame");
+
+        // Create block with both transactions and load blobs
+        let block_info = BlockInfo::default();
+        source.chain_provider.insert_block_with_transactions(1, block_info, vec![mantle_tx, op_tx]);
+        source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
+
+        // Verify extraction results
+        assert!(source.open, "Source should be open after load_blobs");
+        assert!(!source.data.is_empty(), "Should have extracted data from both transactions");
+
+        let extracted_frames = source.data.len();
+        let expected_min_frames = mantle_frame_count + 1;
+
+        assert!(
+            source.data.iter().all(|bd| bd.data.is_some() && !bd.data.as_ref().unwrap().is_empty()),
+            "All frames should have non-empty data"
+        );
+
+        assert!(
+            extracted_frames >= expected_min_frames,
+            "Expected at least {} frames, got {}",
+            expected_min_frames,
+            extracted_frames
+        );
+    }
+
+    #[tokio::test]
+    async fn test_mantle_format_flag_disables_after_rlp_failure() {
+        // Test that use_mantle_format flag is set to false after first RLP decode failure
+        
+        let batcher_address = address!("0xFFEEDDCcBbAA0000000000000000000000000000");
+        let signer = address!("0x008424f79C72a81fE32bf09b0D8A10F2617A5B57");
+
+        let mut source = default_test_mantle_blob_source();
+        source.batcher_address = batcher_address;
+
+        // Initially, Mantle format should be enabled
+        assert!(source.use_mantle_format, "Mantle format should be enabled initially");
+
+        // Create two standard OP blob transactions (non-RLP format)
+        let op_tx1 = parse_tx_from_hex(
+            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac"
+        );
+        let op_tx2 = parse_tx_from_hex(
+            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac"
+        );
+
+        let op_blob_hash1 = b256!("0x01a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc1");
+        load_blob_from_hex(
+            include_str!("testdata/mantle_sepolia_blob.hex"),
+            op_blob_hash1,
+            &mut source.blob_fetcher,
+        );
+
+        // Create a block with both OP blob transactions
+        let block_info = BlockInfo::default();
+        source.chain_provider.insert_block_with_transactions(1, block_info, vec![op_tx1, op_tx2]);
+
+        // Load blobs - this should attempt RLP decode on first tx, fail, and set flag to false
+        source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
+
+        // After processing, Mantle format should be disabled due to RLP decode failure
+        assert!(!source.use_mantle_format, "Mantle format should be disabled after RLP decode failure");
+
+        // Verify data was still extracted using standard format
+        assert!(source.open, "Source should be open");
+        assert!(!source.data.is_empty(), "Should have extracted data using standard format");
+    }
+    
 }

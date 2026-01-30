@@ -417,7 +417,6 @@ impl RollupConfig {
 
     /// Returns true if Isthmus is active at the given timestamp.
     pub fn is_isthmus_active(&self, timestamp: u64) -> bool {
-        // Mantle: before mantle_arsia, no advanced OP Stack features are active
         if self.is_mantle() && self.is_mantle_skadi_active(timestamp) {
             return true;
         }
@@ -449,10 +448,6 @@ impl RollupConfig {
 
     /// Returns true if Interop is active at the given timestamp.
     pub fn is_interop_active(&self, timestamp: u64) -> bool {
-        // Mantle: before mantle_arsia, no advanced OP Stack features are active
-        if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
-            return false;
-        }
         self.hardforks.interop_time.is_some_and(|t| timestamp >= t)
     }
 
@@ -779,10 +774,10 @@ mod tests {
         };
 
         // Before mantle_arsia and without mantle_skadi: most OP Stack features should be inactive
-        // Note: is_regolith_active checks regolith_time even before mantle_arsia (no mantle_arsia check),
-        // so it will be active if regolith_time is satisfied. ecotone and isthmus check
-        // hardforks.ecotone_time and hardforks.isthmus_time when mantle_skadi is not active,
-        // so they may be active based on their times
+        // Note: is_regolith_active checks regolith_time even before mantle_arsia (no mantle_arsia
+        // check), so it will be active if regolith_time is satisfied. ecotone and isthmus
+        // check hardforks.ecotone_time and hardforks.isthmus_time when mantle_skadi is not
+        // active, so they may be active based on their times
         assert!(config.is_regolith_active(150)); // regolith_time is 10, so active at 150
         assert!(!config.is_canyon_active(150));
         // ecotone_time is 30, so at timestamp 150 it should be active
@@ -821,8 +816,8 @@ mod tests {
         assert!(config_with_skadi.is_ecotone_active(50));
         assert!(!config_with_skadi.is_isthmus_active(50)); // isthmus_time is 60, so still inactive
 
-        // After mantle_skadi but before mantle_arsia: regolith should be active (mantle_skadi makes it active),
-        // ecotone and isthmus should be active
+        // After mantle_skadi but before mantle_arsia: regolith should be active (mantle_skadi makes
+        // it active), ecotone and isthmus should be active
         assert!(config_with_skadi.is_regolith_active(150)); // mantle_skadi is active at 150
         assert!(!config_with_skadi.is_canyon_active(150));
         assert!(config_with_skadi.is_ecotone_active(150));
