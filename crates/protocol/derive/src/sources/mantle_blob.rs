@@ -45,8 +45,6 @@ where
     pub data: Vec<BlobData>,
     /// Whether the source is open.
     pub open: bool,
-    /// Whether to attempt Mantle RLP decoding. Set to false after first RLP decode failure.
-    pub use_mantle_format: bool,
 }
 
 impl<F, B> MantleBlobSource<F, B>
@@ -56,14 +54,7 @@ where
 {
     /// Creates a new Mantle blob source.
     pub const fn new(chain_provider: F, blob_fetcher: B, batcher_address: Address) -> Self {
-        Self {
-            chain_provider,
-            blob_fetcher,
-            batcher_address,
-            data: Vec::new(),
-            open: false,
-            use_mantle_format: true,
-        }
+        Self { chain_provider, blob_fetcher, batcher_address, data: Vec::new(), open: false }
     }
 
     /// Extracts blob data and tracks which blobs belong to which transaction.
@@ -222,32 +213,21 @@ where
                 }
             }
 
-            // Try Mantle format (RLP decode) if enabled
-            if self.use_mantle_format {
-                let mut rlp_slice = tx_whole_blob_data.as_slice();
-                match VecOfBytes::decode(&mut rlp_slice) {
-                    Ok(rlp_blob) => {
-                        // Mantle format: RLP decoded frames from this transaction
-                        for bytes in rlp_blob.0 {
-                            result_data.push(BlobData { data: Some(bytes), calldata: None });
-                        }
-                    }
-                    Err(_) => {
-                        // RLP decode failed, disable Mantle format for future transactions
-                        self.use_mantle_format = false;
-                        // Use standard OP format: each blob is one frame
-                        for bytes in tx_decoded_blobs {
-                            if !bytes.is_empty() {
-                                result_data.push(BlobData { data: Some(bytes), calldata: None });
-                            }
-                        }
+            // Try Mantle format (RLP decode) for this transaction's blobs
+            let mut rlp_slice = tx_whole_blob_data.as_slice();
+            match VecOfBytes::decode(&mut rlp_slice) {
+                Ok(rlp_blob) => {
+                    // Mantle format: RLP decoded frames from this transaction
+                    for bytes in rlp_blob.0 {
+                        result_data.push(BlobData { data: Some(bytes), calldata: None });
                     }
                 }
-            } else {
-                // Mantle format disabled, use standard OP format directly
-                for bytes in tx_decoded_blobs {
-                    if !bytes.is_empty() {
-                        result_data.push(BlobData { data: Some(bytes), calldata: None });
+                Err(_) => {
+                    // RLP decode failed, use standard OP format: each blob is one frame
+                    for bytes in tx_decoded_blobs {
+                        if !bytes.is_empty() {
+                            result_data.push(BlobData { data: Some(bytes), calldata: None });
+                        }
                     }
                 }
             }
@@ -661,49 +641,6 @@ mod tests {
             expected_min_frames,
             extracted_frames
         );
-    }
-
-    #[tokio::test]
-    async fn test_mantle_format_flag_disables_after_rlp_failure() {
-        // Test that use_mantle_format flag is set to false after first RLP decode failure
-        
-        let batcher_address = address!("0xFFEEDDCcBbAA0000000000000000000000000000");
-        let signer = address!("0x008424f79C72a81fE32bf09b0D8A10F2617A5B57");
-
-        let mut source = default_test_mantle_blob_source();
-        source.batcher_address = batcher_address;
-
-        // Initially, Mantle format should be enabled
-        assert!(source.use_mantle_format, "Mantle format should be enabled initially");
-
-        // Create two standard OP blob transactions (non-RLP format)
-        let op_tx1 = parse_tx_from_hex(
-            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac"
-        );
-        let op_tx2 = parse_tx_from_hex(
-            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac"
-        );
-
-        let op_blob_hash1 = b256!("0x01a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc1");
-        load_blob_from_hex(
-            include_str!("testdata/mantle_sepolia_blob.hex"),
-            op_blob_hash1,
-            &mut source.blob_fetcher,
-        );
-
-        // Create a block with both OP blob transactions
-        let block_info = BlockInfo::default();
-        source.chain_provider.insert_block_with_transactions(1, block_info, vec![op_tx1, op_tx2]);
-
-        // Load blobs - this should attempt RLP decode on first tx, fail, and set flag to false
-        source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
-
-        // After processing, Mantle format should be disabled due to RLP decode failure
-        assert!(!source.use_mantle_format, "Mantle format should be disabled after RLP decode failure");
-
-        // Verify data was still extracted using standard format
-        assert!(source.open, "Source should be open");
-        assert!(!source.data.is_empty(), "Should have extracted data using standard format");
     }
     
 }
