@@ -200,30 +200,32 @@ where
                         return Err(e.into());
                     }
                 }
-                // Decode and store
-                match blob_data.decode() {
-                    Ok(d) => {
-                        tx_whole_blob_data.extend_from_slice(&d);
-                        tx_decoded_blobs.push(d);
-                    }
-                    Err(_) => {
-                        warn!(target: "mantle_blob_source", "Failed to decode blob, skipping");
-                        tx_decoded_blobs.push(Bytes::new());
-                    }
-                }
+                // Decode blob data (EIP-4844 standard decoding)
+                // This should always succeed for valid blobs, failure indicates corrupted data
+                let decoded = blob_data.decode().map_err(|e| {
+                    BlobProviderError::Backend(format!(
+                        "Blob decode failed at index {}: {:?}",
+                        blob_index, e
+                    ))
+                })?;
+                tx_whole_blob_data.extend_from_slice(&decoded);
+                tx_decoded_blobs.push(decoded);
             }
 
-            // Try Mantle format (RLP decode) for this transaction's blobs
+            // Try Mantle-specific RLP format for this transaction's blobs
+            // Note: This is a different layer from blob decoding above
+            // - Blob decode (above): EIP-4844 blob → raw bytes (must succeed)
+            // - RLP decode (here): raw bytes → Mantle frames (may fail, fallback to standard)
             let mut rlp_slice = tx_whole_blob_data.as_slice();
             match VecOfBytes::decode(&mut rlp_slice) {
                 Ok(rlp_blob) => {
-                    // Mantle format: RLP decoded frames from this transaction
+                    // Mantle format: concatenated blobs contain RLP-encoded frames
                     for bytes in rlp_blob.0 {
                         result_data.push(BlobData { data: Some(bytes), calldata: None });
                     }
                 }
                 Err(_) => {
-                    // RLP decode failed, use standard OP format: each blob is one frame
+                    // Not Mantle RLP format, use standard OP format: each blob is one frame
                     for bytes in tx_decoded_blobs {
                         if !bytes.is_empty() {
                             result_data.push(BlobData { data: Some(bytes), calldata: None });

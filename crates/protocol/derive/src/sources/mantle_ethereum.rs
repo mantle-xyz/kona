@@ -7,8 +7,7 @@
 
 use super::MantleBlobSource;
 use crate::{
-    BlobProvider, BlobSource, CalldataSource, ChainProvider, DataAvailabilityProvider,
-    PipelineResult,
+    BlobProvider, CalldataSource, ChainProvider, DataAvailabilityProvider, PipelineResult,
 };
 use alloc::{boxed::Box, fmt::Debug};
 use alloy_primitives::{Address, Bytes};
@@ -27,10 +26,8 @@ where
     pub ecotone_timestamp: Option<u64>,
     /// The Mantle Arsia timestamp.
     pub mantle_arsia_timestamp: Option<u64>,
-    /// The Mantle blob source (used before Mantle Arsia).
+    /// The Mantle blob source
     pub mantle_blob_source: MantleBlobSource<C, B>,
-    /// The standard blob source (used after Mantle Arsia).
-    pub blob_source: BlobSource<C, B>,
     /// The calldata source.
     pub calldata_source: CalldataSource<C>,
 }
@@ -43,7 +40,6 @@ where
     /// Instantiates a new [`MantleEthereumDataSource`].
     pub const fn new(
         mantle_blob_source: MantleBlobSource<C, B>,
-        blob_source: BlobSource<C, B>,
         calldata_source: CalldataSource<C>,
         cfg: &RollupConfig,
     ) -> Self {
@@ -51,7 +47,6 @@ where
             ecotone_timestamp: cfg.hardforks.ecotone_time,
             mantle_arsia_timestamp: cfg.mantle_hardforks.mantle_arsia_time,
             mantle_blob_source,
-            blob_source,
             calldata_source,
         }
     }
@@ -66,7 +61,6 @@ where
                 blobs.clone(),
                 cfg.batch_inbox_address,
             ),
-            blob_source: BlobSource::new(provider.clone(), blobs, cfg.batch_inbox_address),
             calldata_source: CalldataSource::new(provider, cfg.batch_inbox_address),
         }
     }
@@ -90,7 +84,6 @@ where
 
     fn clear(&mut self) {
         self.mantle_blob_source.clear();
-        self.blob_source.clear();
         self.calldata_source.clear();
     }
 }
@@ -129,19 +122,14 @@ mod tests {
         let mut calldata = CalldataSource::new(chain.clone(), Address::ZERO);
         calldata.calldata.insert(0, Default::default());
         calldata.open = true;
-        let mut mantle_blob = MantleBlobSource::new(chain.clone(), blob.clone(), Address::ZERO);
+        let mut mantle_blob = MantleBlobSource::new(chain.clone(), blob, Address::ZERO);
         mantle_blob.data = vec![Default::default()];
         mantle_blob.open = true;
-        let mut blob = BlobSource::new(chain, blob, Address::ZERO);
-        blob.data = vec![Default::default()];
-        blob.open = true;
-        let mut data_source = MantleEthereumDataSource::new(mantle_blob, blob, calldata, &cfg);
+        let mut data_source = MantleEthereumDataSource::new(mantle_blob, calldata, &cfg);
 
         data_source.clear();
         assert!(data_source.mantle_blob_source.data.is_empty());
         assert!(!data_source.mantle_blob_source.open);
-        assert!(data_source.blob_source.data.is_empty());
-        assert!(!data_source.blob_source.open);
         assert!(data_source.calldata_source.calldata.is_empty());
         assert!(!data_source.calldata_source.open);
     }
