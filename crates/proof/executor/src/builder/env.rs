@@ -53,7 +53,7 @@ where
     pub(crate) fn evm_cfg_env(&self, timestamp: u64) -> CfgEnv<OpSpecId> {
         CfgEnv::new()
             .with_chain_id(self.config.l2_chain_id.id())
-            .with_spec(self.config.spec_id(timestamp))
+            .with_spec(self.config.revm_spec_id(timestamp))
     }
 
     fn next_block_base_fee(
@@ -113,10 +113,13 @@ where
             .or_else(|| spec_id.is_enabled_in(OpSpecId::ECOTONE).then_some(0))
             .map(|excess| BlobExcessGasAndPrice::new(excess, fraction));
 
-        let next_block_base_fee = self
-            .next_block_base_fee(*base_fee_params, parent_header, min_base_fee)
-            .unwrap_or_default();
-
+        let next_block_base_fee = if !self.config.is_mantle_arsia_active(parent_header.timestamp()) {
+            parent_header.base_fee_per_gas.unwrap_or_default()
+        } else {
+            self.next_block_base_fee(*base_fee_params, parent_header, min_base_fee)
+                .unwrap_or_default()
+        };
+        
         Ok(BlockEnv {
             number: U256::from(parent_header.number + 1),
             beneficiary: payload_attrs.payload_attributes.suggested_fee_recipient,

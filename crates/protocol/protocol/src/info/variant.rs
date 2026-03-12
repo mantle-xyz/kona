@@ -50,8 +50,8 @@ impl L1BlockInfoTx {
         // In the first block of Ecotone, the L1Block contract has not been upgraded yet due to the
         // upgrade transactions being placed after the L1 info transaction. Because of this,
         // for the first block of Ecotone, we send a Bedrock style L1 block info transaction
-        if !rollup_config.is_ecotone_active(l2_block_time) ||
-            rollup_config.is_first_ecotone_block(l2_block_time)
+        if !rollup_config.is_mantle_arsia_active(l2_block_time) ||
+            rollup_config.is_first_mantle_arsia_block(l2_block_time)
         {
             return Ok(Self::Bedrock(L1BlockInfoBedrock {
                 number: l1_header.number,
@@ -210,6 +210,8 @@ impl L1BlockInfoTx {
             gas_limit: 150_000_000,
             is_system_transaction: true,
             input: l1_info.encode_calldata(),
+            eth_tx_value: None,
+            eth_value: 0,
         };
 
         // With the regolith hardfork, system transactions were deprecated, and we allocate

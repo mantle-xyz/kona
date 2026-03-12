@@ -47,6 +47,7 @@ where
         )
         .root();
         let receipts_root = compute_receipts_root(&ex_result.receipts, self.config, timestamp);
+
         let withdrawals_root = if self.config.is_isthmus_active(timestamp) {
             Some(self.message_passer_account(block_env.number.saturating_to::<u64>())?)
         } else if self.config.is_canyon_active(timestamp) {
@@ -175,7 +176,8 @@ pub fn compute_receipts_root(
     // the receipt root calculation does not include the deposit nonce in the
     // receipt encoding. In the Regolith hardfork, we must strip the deposit nonce
     // from the receipt encoding to match the receipt root calculation.
-    if config.is_regolith_active(timestamp) && !config.is_canyon_active(timestamp) {
+
+    if config.is_mantle_skadi_active(timestamp) {
         let receipts = receipts
             .iter()
             .cloned()
