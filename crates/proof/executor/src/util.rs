@@ -19,7 +19,6 @@ use op_alloy_rpc_types_engine::OpPayloadAttributes;
 /// ## Returns
 /// - `Ok(BaseFeeParams)`: The EIP-1559 parameters.
 /// - `Err(ExecutorError::InvalidExtraData)`: If the extra data is invalid.
-#[allow(dead_code)]
 pub(crate) fn decode_holocene_eip_1559_params_block_header(
     header: &Header,
 ) -> ExecutorResult<BaseFeeParams> {
@@ -38,7 +37,6 @@ pub(crate) fn decode_holocene_eip_1559_params_block_header(
     })
 }
 
-#[allow(dead_code)]
 pub(crate) fn decode_jovian_eip_1559_params_block_header(
     header: &Header,
 ) -> ExecutorResult<(BaseFeeParams, u64)> {
@@ -69,14 +67,13 @@ pub(crate) fn decode_jovian_eip_1559_params_block_header(
 /// ## Returns
 /// - `Ok(data)`: The encoded extra data.
 /// - `Err(ExecutorError::MissingEIP1559Params)`: If the EIP-1559 parameters are missing.
-#[allow(dead_code)]
 pub(crate) fn encode_holocene_eip_1559_params(
-    _config: &RollupConfig,
+    config: &RollupConfig,
     attributes: &OpPayloadAttributes,
 ) -> ExecutorResult<Bytes> {
     Ok(encode_holocene_extra_data(
         attributes.eip_1559_params.ok_or(ExecutorError::MissingEIP1559Params)?,
-        BaseFeeParams::optimism()
+        config.chain_op_config.as_base_fee_params(),
     )?)
 }
 
@@ -89,14 +86,13 @@ pub(crate) fn encode_holocene_eip_1559_params(
 /// ## Returns
 /// - `Ok(data)`: The encoded extra data.
 /// - `Err(ExecutorError::MissingEIP1559Params)`: If the EIP-1559 parameters are missing.
-#[allow(dead_code)]
 pub(crate) fn encode_jovian_eip_1559_params(
-    _config: &RollupConfig,
+    config: &RollupConfig,
     attributes: &OpPayloadAttributes,
 ) -> ExecutorResult<Bytes> {
     Ok(encode_jovian_extra_data(
         attributes.eip_1559_params.ok_or(ExecutorError::MissingEIP1559Params)?,
-        BaseFeeParams::optimism(),
+        config.chain_op_config.as_base_fee_params(),
         attributes
             .min_base_fee
             .ok_or(ExecutorError::InvalidExtraData(EIP1559ParamError::MinBaseFeeNotSet))?,

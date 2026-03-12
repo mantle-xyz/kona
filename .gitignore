@@ -45,5 +45,5 @@ rustc-ice-*
 # logfiles
 *.log
 
-# testdata
-crates/proof/executor/testdata/*
+# executor fixture RocksDB artifacts
+crates/proof/executor/testdata/**/kv/

@@ -50,7 +50,7 @@ where
     /// Constructs a new oracle-backed derivation pipeline.
     pub async fn new(
         cfg: Arc<RollupConfig>,
-        _l1_cfg: Arc<L1ChainConfig>,
+        l1_cfg: Arc<L1ChainConfig>,
         sync_start: Arc<RwLock<PipelineCursor>>,
         caching_oracle: Arc<O>,
         da_provider: DA,
@@ -59,7 +59,7 @@ where
     ) -> PipelineResult<Self> {
         let attributes = StatefulAttributesBuilder::new(
             cfg.clone(),
-            Arc::new(Default::default()),
+            l1_cfg.clone(),
             l2_chain_provider.clone(),
             chain_provider.clone(),
         );

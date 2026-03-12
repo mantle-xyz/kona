@@ -43,6 +43,9 @@ pub struct ExecutionFixtureCommand {
     /// Number of blocks to process (default: 1)
     #[arg(long, default_value = "1")]
     pub block_count: u64,
+    /// Skip saving data to disk (use temporary directory)
+    #[arg(long, default_value = "false")]
+    pub skip_save: bool,
 }
 
 /// Execution statistics tracker
@@ -145,8 +148,12 @@ async fn main() -> Result<()> {
 
     for i in 0..cli.block_count {
         let current_block = cli.block_number + i;
-        let fixture_creator =
-            ExecutorTestFixtureCreator::new(cli.l2_rpc.as_str(), current_block, output_dir.clone());
+        let fixture_creator = ExecutorTestFixtureCreator::new_with_options(
+            cli.l2_rpc.as_str(),
+            current_block,
+            output_dir.clone(),
+            cli.skip_save,
+        );
 
         info!(block_number = current_block, "Processing block");
 

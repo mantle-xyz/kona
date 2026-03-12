@@ -1,6 +1,7 @@
 //! Test utilities for the executor.
 
 use crate::{StatelessL2Builder, TrieDBProvider};
+use alloy_chains::Chain;
 use alloy_consensus::Header;
 use alloy_op_evm::OpEvmFactory;
 use alloy_primitives::{B256, Bytes, Sealable};
@@ -86,13 +87,28 @@ pub struct ExecutorTestFixtureCreator {
     pub kv_store: Arc<Mutex<rocksdb::DB>>,
     /// The data directory for the test fixture.
     pub data_dir: PathBuf,
+    /// Whether to skip saving data (use temporary directory)
+    pub skip_save: bool,
+    /// Temporary directory (if skip_save is true)
+    pub _temp_dir: Option<tempfile::TempDir>,
 }
 
 impl ExecutorTestFixtureCreator {
     /// Creates a new [`ExecutorTestFixtureCreator`] with the given parameters.
     pub fn new(provider_url: &str, block_number: u64, base_fixture_directory: PathBuf) -> Self {
-        let base = base_fixture_directory.join(format!("block-{block_number}"));
+        Self::new_with_options(provider_url, block_number, base_fixture_directory, false)
+    }
 
+    /// Creates a new [`ExecutorTestFixtureCreator`] with skip_save option.
+    ///
+    /// If `skip_save` is true, data will be stored in a temporary directory
+    /// and automatically cleaned up after execution.
+    pub fn new_with_options(
+        provider_url: &str,
+        block_number: u64,
+        base_fixture_directory: PathBuf,
+        skip_save: bool,
+    ) -> Self {
         let url: Url = provider_url.parse().expect("Invalid provider URL");
         // Use reqwest::Client for HTTPS support
         let http = Http::<Client>::new(url);
@@ -101,16 +117,41 @@ impl ExecutorTestFixtureCreator {
         let mut options = Options::default();
         options.set_compression_type(rocksdb::DBCompressionType::Snappy);
         options.create_if_missing(true);
-        let db = DB::open(&options, base.join("kv").as_path())
-            .unwrap_or_else(|e| panic!("Failed to open database at {base:?}: {e}"));
 
-        Self { provider, block_number, kv_store: Arc::new(Mutex::new(db)), data_dir: base }
+        let (data_dir, temp_dir, db) = if skip_save {
+            // Use temporary directory
+            let temp = tempfile::tempdir().expect("Failed to create temporary directory");
+            let temp_path = temp.path().to_path_buf();
+            let db = DB::open(&options, temp_path.join("kv").as_path())
+                .unwrap_or_else(|e| panic!("Failed to open temporary database: {e}"));
+            (temp_path, Some(temp), db)
+        } else {
+            // Use provided directory
+            let base = base_fixture_directory.join(format!("block-{block_number}"));
+            let db = DB::open(&options, base.join("kv").as_path())
+                .unwrap_or_else(|e| panic!("Failed to open database at {base:?}: {e}"));
+            (base, None, db)
+        };
+
+        Self {
+            provider,
+            block_number,
+            kv_store: Arc::new(Mutex::new(db)),
+            data_dir,
+            skip_save,
+            _temp_dir: temp_dir,
+        }
     }
 }
 
 fn mock_rollup_config() -> RollupConfig {
-    let mut rollup_config = RollupConfig { l2_chain_id: 5000, ..Default::default() };
-    rollup_config.mantle_skadi_time = Some(0);
+    let mut rollup_config =
+        RollupConfig { l2_chain_id: Chain::from_id(1115511103), ..Default::default() };
+    rollup_config.mantle_hardforks.mantle_skadi_time = Some(0);
+    // rollup_config.mantle_hardforks.mantle_limb_time = Some(0);
+    rollup_config.hardforks.jovian_time = Some(1768212000);
+    rollup_config.hardforks.holocene_time = Some(1768212000);
+    rollup_config.mantle_hardforks.mantle_arsia_time = Some(1768212000);
     rollup_config
 }
 
@@ -220,8 +261,20 @@ impl ExecutorTestFixtureCreator {
             gas_limit: Some(executing_header.gas_limit),
             transactions: Some(encoded_executing_transactions),
             no_tx_pool: Some(true),
-            eip_1559_params: None,
-            min_base_fee: None,
+            eip_1559_params: rollup_config.is_holocene_active(executing_header.timestamp).then(
+                || {
+                    executing_header.extra_data[1..9]
+                        .try_into()
+                        .expect("Invalid header format for Holocene")
+                },
+            ),
+            min_base_fee: rollup_config.is_jovian_active(executing_header.timestamp).then(|| {
+                // The min base fee is the bytes 9-17 of the extra data.
+                executing_header.extra_data[9..17]
+                    .try_into()
+                    .map(u64::from_be_bytes)
+                    .expect("Invalid header format for Jovian")
+            }),
         };
 
         info!(

@@ -18,3 +18,9 @@ pub use blobs::BlobSource;
 
 mod calldata;
 pub use calldata::CalldataSource;
+
+mod mantle_blob;
+pub use mantle_blob::MantleBlobSource;
+
+mod mantle_ethereum;
+pub use mantle_ethereum::MantleEthereumDataSource;

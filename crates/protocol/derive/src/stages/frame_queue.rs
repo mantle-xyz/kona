@@ -37,7 +37,7 @@ where
     /// The current frame queue.
     pub queue: VecDeque<Frame>,
     /// The rollup config.
-    _rollup_config: Arc<RollupConfig>,
+    pub rollup_config: Arc<RollupConfig>,
 }
 
 impl<P> FrameQueue<P>
@@ -48,12 +48,12 @@ where
     ///
     /// [`L1Retrieval`]: crate::stages::L1Retrieval
     pub const fn new(prev: P, cfg: Arc<RollupConfig>) -> Self {
-        Self { prev, queue: VecDeque::new(), _rollup_config: cfg }
+        Self { prev, queue: VecDeque::new(), rollup_config: cfg }
     }
 
     /// Returns if holocene is active.
-    pub const fn is_holocene_active(&self, _origin: BlockInfo) -> bool {
-        false
+    pub fn is_holocene_active(&self, origin: BlockInfo) -> bool {
+        self.rollup_config.is_holocene_active(origin.timestamp)
     }
 
     /// Prunes frames if Holocene is active.
@@ -137,7 +137,7 @@ where
             crate::metrics::Metrics::PIPELINE_FRAME_QUEUE_BUFFER,
             self.queue.len() as f64
         );
-        let _queue_size = self.queue.iter().map(|f| f.size()).sum::<usize>() as f64;
+        let queue_size = self.queue.iter().map(|f| f.size()).sum::<usize>() as f64;
         kona_macros::set!(gauge, crate::metrics::Metrics::PIPELINE_FRAME_QUEUE_MEM, queue_size);
 
         // Prune frames if Holocene is active.

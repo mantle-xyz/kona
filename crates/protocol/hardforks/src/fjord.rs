@@ -77,8 +77,8 @@ impl Fjord {
                 gas_limit: 1_450_000,
                 is_system_transaction: false,
                 input: Self::gas_price_oracle_deployment_bytecode(),
-                eth_value: 0,
                 eth_tx_value: None,
+                eth_value: 0,
             },
             // Updates the gas price Oracle proxy to point to the Fjord Gas Price Oracle.
             // See: <https://specs.optimism.io/protocol/fjord/derivation.html#gaspriceoracle-proxy-update>
@@ -91,8 +91,8 @@ impl Fjord {
                 gas_limit: 50_000,
                 is_system_transaction: false,
                 input: super::upgrade_to_calldata(Self::FJORD_GAS_PRICE_ORACLE),
-                eth_value: 0,
                 eth_tx_value: None,
+                eth_value: 0,
             },
             // Enables the Fjord Gas Price Oracle.
             // See: <https://specs.optimism.io/protocol/fjord/derivation.html#gaspriceoracle-enable-fjord>
@@ -105,8 +105,8 @@ impl Fjord {
                 gas_limit: 90_000,
                 is_system_transaction: false,
                 input: Self::SET_FJORD_METHOD_SIGNATURE.into(),
-                eth_value: 0,
                 eth_tx_value: None,
+                eth_value: 0,
             },
         ])
         .into_iter()

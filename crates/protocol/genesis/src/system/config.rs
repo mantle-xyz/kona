@@ -26,7 +26,7 @@ pub struct SystemConfig {
     /// Gas limit value
     pub gas_limit: u64,
     /// Base fee value
-    pub base_fee: U256,
+    pub base_fee: Option<U256>,
     /// Base fee scalar value
     pub base_fee_scalar: Option<u64>,
     /// Blob base fee scalar value
@@ -72,7 +72,7 @@ impl<'a> serde::Deserialize<'a> for SystemConfig {
             overhead: U256,
             scalar: U256,
             gas_limit: u64,
-            base_fee: U256,
+            base_fee: Option<U256>,
             base_fee_scalar: Option<u64>,
             blob_base_fee_scalar: Option<u64>,
             eip1559_params: Option<B64>,
@@ -223,7 +223,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::CONFIG_UPDATE_EVENT_VERSION_0;
+    use crate::{CONFIG_UPDATE_EVENT_VERSION_0, HardForkConfig};
     use alloc::vec;
     use alloy_primitives::{B256, LogData, address, b256, hex};
 
@@ -309,50 +309,50 @@ mod test {
         assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 0), None);
     }
 
-    // #[test]
-    // fn test_eip_1559_params_from_system_config_some() {
-    //     let rollup_config = RollupConfig {
-    //         hardforks: HardForkConfig { holocene_time: Some(0), ..Default::default() },
-    //         ..Default::default()
-    //     };
-    //     let sys_config = SystemConfig {
-    //         eip1559_denominator: Some(1),
-    //         eip1559_elasticity: None,
-    //         ..Default::default()
-    //     };
-    //     let expected = Some(B64::from_slice(&[1u32.to_be_bytes(), 0u32.to_be_bytes()].concat()));
-    //     assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 0), expected);
-    // }
+    #[test]
+    fn test_eip_1559_params_from_system_config_some() {
+        let rollup_config = RollupConfig {
+            hardforks: HardForkConfig { holocene_time: Some(0), ..Default::default() },
+            ..Default::default()
+        };
+        let sys_config = SystemConfig {
+            eip1559_denominator: Some(1),
+            eip1559_elasticity: None,
+            ..Default::default()
+        };
+        let expected = Some(B64::from_slice(&[1u32.to_be_bytes(), 0u32.to_be_bytes()].concat()));
+        assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 0), expected);
+    }
 
-    // #[test]
-    // fn test_eip_1559_params_from_system_config() {
-    //     let rollup_config = RollupConfig {
-    //         hardforks: HardForkConfig { holocene_time: Some(0), ..Default::default() },
-    //         ..Default::default()
-    //     };
-    //     let sys_config = SystemConfig {
-    //         eip1559_denominator: Some(1),
-    //         eip1559_elasticity: Some(2),
-    //         ..Default::default()
-    //     };
-    //     let expected = Some(B64::from_slice(&[1u32.to_be_bytes(), 2u32.to_be_bytes()].concat()));
-    //     assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 0), expected);
-    // }
+    #[test]
+    fn test_eip_1559_params_from_system_config() {
+        let rollup_config = RollupConfig {
+            hardforks: HardForkConfig { holocene_time: Some(0), ..Default::default() },
+            ..Default::default()
+        };
+        let sys_config = SystemConfig {
+            eip1559_denominator: Some(1),
+            eip1559_elasticity: Some(2),
+            ..Default::default()
+        };
+        let expected = Some(B64::from_slice(&[1u32.to_be_bytes(), 2u32.to_be_bytes()].concat()));
+        assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 0), expected);
+    }
 
-    // #[test]
-    // fn test_default_eip_1559_params_from_system_config() {
-    //     let rollup_config = RollupConfig {
-    //         hardforks: HardForkConfig { holocene_time: Some(0), ..Default::default() },
-    //         ..Default::default()
-    //     };
-    //     let sys_config = SystemConfig {
-    //         eip1559_denominator: None,
-    //         eip1559_elasticity: None,
-    //         ..Default::default()
-    //     };
-    //     let expected = Some(B64::ZERO);
-    //     assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 0), expected);
-    // }
+    #[test]
+    fn test_default_eip_1559_params_from_system_config() {
+        let rollup_config = RollupConfig {
+            hardforks: HardForkConfig { holocene_time: Some(0), ..Default::default() },
+            ..Default::default()
+        };
+        let sys_config = SystemConfig {
+            eip1559_denominator: None,
+            eip1559_elasticity: None,
+            ..Default::default()
+        };
+        let expected = Some(B64::ZERO);
+        assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 0), expected);
+    }
 
     #[test]
     fn test_default_eip_1559_params_from_system_config_pre_holocene() {
@@ -365,19 +365,19 @@ mod test {
         assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 0), None);
     }
 
-    // #[test]
-    // fn test_default_eip_1559_params_first_block_holocene() {
-    //     let rollup_config = RollupConfig {
-    //         hardforks: HardForkConfig { holocene_time: Some(2), ..Default::default() },
-    //         ..Default::default()
-    //     };
-    //     let sys_config = SystemConfig {
-    //         eip1559_denominator: Some(1),
-    //         eip1559_elasticity: Some(2),
-    //         ..Default::default()
-    //     };
-    //     assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 2), Some(B64::ZERO));
-    // }
+    #[test]
+    fn test_default_eip_1559_params_first_block_holocene() {
+        let rollup_config = RollupConfig {
+            hardforks: HardForkConfig { holocene_time: Some(2), ..Default::default() },
+            ..Default::default()
+        };
+        let sys_config = SystemConfig {
+            eip1559_denominator: Some(1),
+            eip1559_elasticity: Some(2),
+            ..Default::default()
+        };
+        assert_eq!(sys_config.eip_1559_params(&rollup_config, 0, 2), Some(B64::ZERO));
+    }
 
     #[test]
     fn test_system_config_update_with_receipts_unchanged() {
