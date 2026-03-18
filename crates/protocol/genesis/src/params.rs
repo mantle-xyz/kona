@@ -3,8 +3,8 @@
 use alloy_eips::eip1559::BaseFeeParams;
 
 use crate::{
-    BASE_MAINNET_CHAIN_ID, BASE_SEPOLIA_CHAIN_ID, MANTLE_MAINNET_CHAIN_ID,
-    MANTLE_SEPOLIA_CHAIN_ID, OP_MAINNET_CHAIN_ID, OP_SEPOLIA_CHAIN_ID,
+    BASE_MAINNET_CHAIN_ID, BASE_SEPOLIA_CHAIN_ID, MANTLE_MAINNET_CHAIN_ID, MANTLE_SEPOLIA_CHAIN_ID,
+    OP_MAINNET_CHAIN_ID, OP_SEPOLIA_CHAIN_ID,
 };
 
 /// Base fee max change denominator for Optimism Mainnet as defined in the Optimism
@@ -122,7 +122,8 @@ pub const fn base_fee_params_canyon(chain_id: u64) -> BaseFeeParams {
         OP_SEPOLIA_CHAIN_ID => OP_SEPOLIA_BASE_FEE_PARAMS_CANYON,
         BASE_MAINNET_CHAIN_ID => OP_MAINNET_BASE_FEE_PARAMS_CANYON,
         BASE_SEPOLIA_CHAIN_ID => BASE_SEPOLIA_BASE_FEE_PARAMS_CANYON,
-        // Mantle doesn't have a historical change of the denominator, so we use the same as the denominator
+        // Mantle doesn't have a historical change of the denominator, so we use the same as the
+        // denominator
         MANTLE_MAINNET_CHAIN_ID | MANTLE_SEPOLIA_CHAIN_ID => MANTLE_BASE_FEE_PARAMS,
         _ => OP_MAINNET_BASE_FEE_PARAMS_CANYON,
     }
@@ -169,7 +170,8 @@ pub const BASE_MAINNET_BASE_FEE_CONFIG: BaseFeeConfig = BaseFeeConfig {
 };
 
 /// Get the base fee parameters for Mantle.
-/// Mantle doesn't have a historical change of the denominator, so we use the same as the denominator.
+/// Mantle doesn't have a historical change of the denominator, so we use the same as the
+/// denominator.
 pub const MANTLE_BASE_FEE_CONFIG: BaseFeeConfig = BaseFeeConfig {
     eip1559_elasticity: MANTLE_EIP1559_ELASTICITY_MULTIPLIER,
     eip1559_denominator: MANTLE_EIP1559_BASE_FEE_MAX_CHANGE_DENOMINATOR,

@@ -7,7 +7,8 @@
 
 use super::MantleBlobSource;
 use crate::{
-    BlobProvider, CalldataSource, ChainProvider, DataAvailabilityProvider, PipelineResult,
+    BlobProvider, BlobSource, CalldataSource, ChainProvider, DataAvailabilityProvider,
+    PipelineResult,
 };
 use alloc::{boxed::Box, fmt::Debug};
 use alloy_primitives::{Address, Bytes};
@@ -28,6 +29,8 @@ where
     pub mantle_arsia_timestamp: Option<u64>,
     /// The Mantle blob source
     pub mantle_blob_source: MantleBlobSource<C, B>,
+    /// The standard blob source.
+    pub blob_source: BlobSource<C, B>,
     /// The calldata source.
     pub calldata_source: CalldataSource<C>,
 }
@@ -38,15 +41,18 @@ where
     B: BlobProvider + Send + Clone + Debug,
 {
     /// Instantiates a new [`MantleEthereumDataSource`].
-    pub const fn new(
+    pub fn new(
         mantle_blob_source: MantleBlobSource<C, B>,
         calldata_source: CalldataSource<C>,
         cfg: &RollupConfig,
     ) -> Self {
+        let chain_provider = mantle_blob_source.chain_provider.clone();
+        let blob_fetcher = mantle_blob_source.blob_fetcher.clone();
         Self {
             ecotone_timestamp: cfg.hardforks.ecotone_time,
             mantle_arsia_timestamp: cfg.mantle_hardforks.mantle_arsia_time,
             mantle_blob_source,
+            blob_source: BlobSource::new(chain_provider, blob_fetcher, cfg.batch_inbox_address),
             calldata_source,
         }
     }
@@ -61,6 +67,7 @@ where
                 blobs.clone(),
                 cfg.batch_inbox_address,
             ),
+            blob_source: BlobSource::new(provider.clone(), blobs, cfg.batch_inbox_address),
             calldata_source: CalldataSource::new(provider, cfg.batch_inbox_address),
         }
     }
@@ -79,11 +86,18 @@ where
         block_ref: &BlockInfo,
         batcher_address: Address,
     ) -> PipelineResult<Self::Item> {
-        self.mantle_blob_source.next(block_ref, batcher_address).await
+        let mantle_arsia_enabled =
+            self.mantle_arsia_timestamp.map(|a| block_ref.timestamp >= a).unwrap_or(false);
+        if mantle_arsia_enabled {
+            self.blob_source.next(block_ref, batcher_address).await
+        } else {
+            self.mantle_blob_source.next(block_ref, batcher_address).await
+        }
     }
 
     fn clear(&mut self) {
         self.mantle_blob_source.clear();
+        self.blob_source.clear();
         self.calldata_source.clear();
     }
 }
@@ -125,11 +139,18 @@ mod tests {
         let mut mantle_blob = MantleBlobSource::new(chain.clone(), blob, Address::ZERO);
         mantle_blob.data = vec![Default::default()];
         mantle_blob.open = true;
+        let mut blob_source =
+            BlobSource::new(chain.clone(), TestBlobProvider::default(), Address::ZERO);
+        blob_source.data = vec![Default::default()];
+        blob_source.open = true;
         let mut data_source = MantleEthereumDataSource::new(mantle_blob, calldata, &cfg);
+        data_source.blob_source = blob_source;
 
         data_source.clear();
         assert!(data_source.mantle_blob_source.data.is_empty());
         assert!(!data_source.mantle_blob_source.open);
+        assert!(data_source.blob_source.data.is_empty());
+        assert!(!data_source.blob_source.open);
         assert!(data_source.calldata_source.calldata.is_empty());
         assert!(!data_source.calldata_source.open);
     }
@@ -172,12 +193,14 @@ mod tests {
         (block_ref, batcher_address, chain, blob_provider)
     }
 
-    /// Integration test: block with standard OP-format blob tx.
-    /// mantle_blob_source fails (decoded frame bytes are not RLP list), blob_source decodes and
-    /// returns the first frame (one byte 0x00 from minimal_standard_blob_bytes).
-    /// MantleEthereumDataSource returns that frame via fallback.
+    /// Pre-Arsia integration test: block with standard OP-format blob tx, no Arsia configured.
+    /// MantleBlobSource is used (pre-Arsia path). Decoded blob bytes are not a valid Mantle RLP
+    /// list, so MantleBlobSource falls back to per-blob standard format within its own decode
+    /// path, returning the first frame (one byte 0x00 from minimal_standard_blob_bytes).
+    /// Note: This tests the internal fallback inside MantleBlobSource, NOT a fallback from
+    /// MantleBlobSource to BlobSource (which is a hard routing switch, not a fallback chain).
     #[tokio::test]
-    async fn test_op_style_blob_mantle_fails_blob_source_succeeds() {
+    async fn test_pre_arsia_op_blob_falls_back_to_standard_format_within_mantle_blob_source() {
         let (block_ref, batcher_address, chain, blob_provider) = op_style_blob_test_setup();
         let cfg = RollupConfig {
             batch_inbox_address: address!("11E9CA82A3a762b4B5bd264d4173a242e7a77064"),
@@ -188,6 +211,24 @@ mod tests {
         // mantle_blob_source tries RLP decode on concatenated decoded frames (5 bytes 0x00) ->
         // fails blob_source decodes first blob -> returns 1 byte 0x00
         // (minimal_standard_blob_bytes decodes to 0x00)
+        let data = data_source.next(&block_ref, batcher_address).await.unwrap();
+        assert_eq!(data, Bytes::from([0]));
+    }
+
+    #[tokio::test]
+    async fn test_open_standard_blob_source_post_arsia() {
+        let (block_ref, batcher_address, chain, blob_provider) = op_style_blob_test_setup();
+        let cfg = RollupConfig {
+            batch_inbox_address: address!("11E9CA82A3a762b4B5bd264d4173a242e7a77064"),
+            hardforks: kona_genesis::HardForkConfig { ecotone_time: Some(0), ..Default::default() },
+            mantle_hardforks: kona_genesis::MantleHardForkConfig {
+                mantle_arsia_time: Some(0),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let mut data_source = MantleEthereumDataSource::new_from_parts(chain, blob_provider, &cfg);
         let data = data_source.next(&block_ref, batcher_address).await.unwrap();
         assert_eq!(data, Bytes::from([0]));
     }

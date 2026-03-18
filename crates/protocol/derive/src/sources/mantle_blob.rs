@@ -57,11 +57,18 @@ where
         Self { chain_provider, blob_fetcher, batcher_address, data: Vec::new(), open: false }
     }
 
+    fn decode_mantle_rlp_frames(bytes: &[u8]) -> Option<Vec<Bytes>> {
+        let mut rlp_slice = bytes;
+        let decoded = VecOfBytes::decode(&mut rlp_slice).ok()?;
+        if rlp_slice.is_empty() { Some(decoded.0) } else { None }
+    }
+
     /// Extracts blob data and tracks which blobs belong to which transaction.
     /// Returns: (all_blob_data, all_blob_hashes, tx_blob_counts)
     /// - all_blob_data: all BlobData in order (calldata or blob placeholders)
     /// - all_blob_hashes: all IndexedBlobHash
-    /// - tx_blob_counts: number of blobs per transaction (0 for calldata tx, N for blob tx with N blobs)
+    /// - tx_blob_counts: number of blobs per transaction (0 for calldata tx, N for blob tx with N
+    ///   blobs)
     fn extract_blob_data(
         &self,
         txs: Vec<TxEnvelope>,
@@ -152,7 +159,8 @@ where
             .await
             .map_err(|e| BlobProviderError::Backend(e.to_string()))?;
 
-        let (mut data, blob_hashes, tx_blob_counts) = self.extract_blob_data(info.1, batcher_address);
+        let (mut data, blob_hashes, tx_blob_counts) =
+            self.extract_blob_data(info.1, batcher_address);
 
         // If there are no hashes, set the calldata and return.
         if blob_hashes.is_empty() {
@@ -188,8 +196,11 @@ where
             let mut tx_decoded_blobs = Vec::new();
             let mut tx_whole_blob_data = Vec::new();
 
-            // Fill and decode each blob for this transaction
+            // Fill and decode each blob for this transaction.
+            // Decode failures are treated as non-fatal and will fall back to standard per-blob
+            // behavior, matching the BlobSource policy of skipping malformed blob payloads.
             for blob_data in tx_blobs.iter_mut() {
+                let current_blob_index = blob_index;
                 match blob_data.fill(&blobs, blob_index) {
                     Ok(should_increment) => {
                         if should_increment {
@@ -200,14 +211,20 @@ where
                         return Err(e.into());
                     }
                 }
-                // Decode blob data (EIP-4844 standard decoding)
-                // This should always succeed for valid blobs, failure indicates corrupted data
-                let decoded = blob_data.decode().map_err(|e| {
-                    BlobProviderError::Backend(format!(
-                        "Blob decode failed at index {}: {:?}",
-                        blob_index, e
-                    ))
-                })?;
+                // Decode blob data (EIP-4844 standard decoding).
+                // If this fails, skip this blob and continue with the transaction fallback path.
+                let decoded = match blob_data.decode() {
+                    Ok(decoded) => decoded,
+                    Err(e) => {
+                        warn!(
+                            target: "mantle_blob_source",
+                            "Blob decode failed at index {}: {:?}, skipping blob",
+                            current_blob_index,
+                            e
+                        );
+                        continue;
+                    }
+                };
                 tx_whole_blob_data.extend_from_slice(&decoded);
                 tx_decoded_blobs.push(decoded);
             }
@@ -216,20 +233,22 @@ where
             // Note: This is a different layer from blob decoding above
             // - Blob decode (above): EIP-4844 blob → raw bytes (must succeed)
             // - RLP decode (here): raw bytes → Mantle frames (may fail, fallback to standard)
-            let mut rlp_slice = tx_whole_blob_data.as_slice();
-            match VecOfBytes::decode(&mut rlp_slice) {
-                Ok(rlp_blob) => {
-                    // Mantle format: concatenated blobs contain RLP-encoded frames
-                    for bytes in rlp_blob.0 {
-                        result_data.push(BlobData { data: Some(bytes), calldata: None });
-                    }
+            if let Some(rlp_frames) = Self::decode_mantle_rlp_frames(&tx_whole_blob_data) {
+                // Mantle format: concatenated blobs contain a canonical RLP-encoded frame list.
+                for bytes in rlp_frames {
+                    result_data.push(BlobData { data: Some(bytes), calldata: None });
                 }
-                Err(_) => {
-                    // Not Mantle RLP format, use standard OP format: each blob is one frame
-                    for bytes in tx_decoded_blobs {
-                        if !bytes.is_empty() {
-                            result_data.push(BlobData { data: Some(bytes), calldata: None });
-                        }
+            } else {
+                if !tx_whole_blob_data.is_empty() {
+                    warn!(
+                        target: "mantle_blob_source",
+                        "Mantle RLP decode failed or left trailing bytes, using standard blob format fallback"
+                    );
+                }
+                // Not Mantle RLP format, use standard OP format: each blob is one frame.
+                for bytes in tx_decoded_blobs {
+                    if !bytes.is_empty() {
+                        result_data.push(BlobData { data: Some(bytes), calldata: None });
                     }
                 }
             }
@@ -497,6 +516,31 @@ mod tests {
         assert!(rlp_encoded[0] >= 0xc0, "Should start with RLP list marker");
     }
 
+    #[test]
+    fn test_decode_mantle_rlp_frames_requires_full_consumption() {
+        let frames = vec![Bytes::from(vec![0x01]), Bytes::from(vec![0x02])];
+        let mut encoded = Vec::new();
+        frames.encode(&mut encoded);
+
+        let decoded =
+            MantleBlobSource::<TestChainProvider, TestBlobProvider>::decode_mantle_rlp_frames(
+                &encoded,
+            )
+            .unwrap();
+        assert_eq!(decoded, frames);
+
+        let mut with_trailing = encoded;
+        with_trailing.extend_from_slice(&[0xff, 0xee]);
+        let decoded_with_trailing =
+            MantleBlobSource::<TestChainProvider, TestBlobProvider>::decode_mantle_rlp_frames(
+                &with_trailing,
+            );
+        assert!(
+            decoded_with_trailing.is_none(),
+            "RLP payload with trailing bytes must be rejected"
+        );
+    }
+
     #[tokio::test]
     async fn test_parse_blob_count_from_transaction() {
         let (tx, _, _, expected_hashes) = valid_mantle_blob_tx();
@@ -550,12 +594,12 @@ mod tests {
     /// Helper function: decode blob data and check if it's RLP encoded
     fn decode_blob_and_check_rlp(blob_bytes: &[u8]) -> (Bytes, bool, usize) {
         use crate::sources::blob_data::BlobData as BD;
-        
+
         let mut blob_data = BD::default();
         let blob = Box::new(Blob::try_from(blob_bytes).unwrap());
         blob_data.fill(&[blob], 0).unwrap();
         let decoded = blob_data.decode().unwrap();
-        
+
         let mut rlp_slice = &decoded[..];
         match VecOfBytes::decode(&mut rlp_slice) {
             Ok(vec) => (decoded, true, vec.0.len()),
@@ -575,7 +619,9 @@ mod tests {
         blob_hash: B256,
         provider: &mut TestBlobProvider,
     ) -> Vec<u8> {
-        let blob_bytes = hex::decode(hex_content.trim().strip_prefix("0x").unwrap_or(hex_content.trim())).unwrap();
+        let blob_bytes =
+            hex::decode(hex_content.trim().strip_prefix("0x").unwrap_or(hex_content.trim()))
+                .unwrap();
         assert_eq!(blob_bytes.len(), 131072, "Blob should be 131072 bytes");
         let blob = Blob::try_from(blob_bytes.as_slice()).unwrap();
         provider.insert_blob(blob_hash, blob);
@@ -587,11 +633,11 @@ mod tests {
         // Parse transactions (Mantle blob tx and OP blob tx)
         // https://sepolia.etherscan.io/tx/0x59f091996b73b63989bb0fb8e1e9bf099e4197f3aee91fb7d3f4e183e49ab983
         let mantle_tx = parse_tx_from_hex(
-            "0x03f89483aa36a70b8407b5fd4b8509020d9db982520894ffeeddccbbaa00000000000000000000000000008080c0848ac83386e1a001a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb580a04c7450151bca6b9731fed99fe2ef526fbee62d03cbf153ad4f8fe12ee42c5d719f6a4273bda34e0236f13ce0d516bee9003fdc2ede2642aebe26c9a6b2c1a2f9"
+            "0x03f89483aa36a70b8407b5fd4b8509020d9db982520894ffeeddccbbaa00000000000000000000000000008080c0848ac83386e1a001a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb580a04c7450151bca6b9731fed99fe2ef526fbee62d03cbf153ad4f8fe12ee42c5d719f6a4273bda34e0236f13ce0d516bee9003fdc2ede2642aebe26c9a6b2c1a2f9",
         );
         // https://sepolia.etherscan.io/tx/0x1d9574cc7efa12cf7d3d5a8e0ee1078902158e1aa25d079def7fe65413f51d1b
         let op_tx = parse_tx_from_hex(
-            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac"
+            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac",
         );
 
         let batcher_address = address!("0xFFEEDDCcBbAA0000000000000000000000000000");
@@ -601,14 +647,16 @@ mod tests {
         source.batcher_address = batcher_address;
 
         // Load blobs and verify their encoding format
-        let mantle_blob_hash = b256!("0x01a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb5");
+        let mantle_blob_hash =
+            b256!("0x01a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb5");
         let mantle_blob_bytes = load_blob_from_hex(
             include_str!("testdata/mantle_sepolia_mantle_blob.hex"),
             mantle_blob_hash,
             &mut source.blob_fetcher,
         );
 
-        let op_blob_hash = b256!("0x01a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc1");
+        let op_blob_hash =
+            b256!("0x01a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc1");
         load_blob_from_hex(
             include_str!("testdata/mantle_sepolia_blob.hex"),
             op_blob_hash,
@@ -644,5 +692,36 @@ mod tests {
             extracted_frames
         );
     }
-    
+
+    #[tokio::test]
+    async fn test_load_blobs_skips_malformed_blob_decode() {
+        use crate::sources::blobs::tests::valid_blob_txs;
+        use alloy_consensus::{Blob, transaction::SignerRecoverable};
+
+        let txs = valid_blob_txs();
+        let signer = txs[0].recover_signer().unwrap_or_default();
+
+        let mut source = default_test_mantle_blob_source();
+        source.batcher_address = address!("11E9CA82A3a762b4B5bd264d4173a242e7a77064");
+
+        let block_info = BlockInfo::default();
+        source.chain_provider.insert_block_with_transactions(1, block_info, txs);
+
+        // These blobs are intentionally malformed for OP blob decoding and should be skipped
+        // without failing the full transaction/block processing path.
+        let hashes = [
+            b256!("012ec3d6f66766bedb002a190126b3549fce0047de0d4c25cffce0dc1c57921a"),
+            b256!("0152d8e24762ff22b1cfd9f8c0683786a7ca63ba49973818b3d1e9512cd2cec4"),
+            b256!("013b98c6c83e066d5b14af2b85199e3d4fc7d1e778dd53130d180f5077e2d1c7"),
+            b256!("01148b495d6e859114e670ca54fb6e2657f0cbae5b08063605093a4b3dc9f8f1"),
+            b256!("011ac212f13c5dff2b2c6b600a79635103d6f580a4221079951181b25c7e6549"),
+        ];
+        for hash in hashes {
+            source.blob_fetcher.insert_blob(hash, Blob::with_last_byte(1u8));
+        }
+
+        source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
+        assert!(source.open);
+        assert!(source.data.is_empty(), "Malformed blobs should be skipped, not hard-fail");
+    }
 }

@@ -3,9 +3,9 @@
 use alloy_primitives::Log;
 
 use crate::{
-    BaseFeeUpdate, BatcherUpdate, CONFIG_UPDATE_EVENT_VERSION_0, CONFIG_UPDATE_TOPIC, Eip1559Update,
-    GasConfigUpdate, GasLimitUpdate, LogProcessingError, OperatorFeeUpdate, SystemConfigUpdate,
-    SystemConfigUpdateError, SystemConfigUpdateKind, UnsafeBlockSignerUpdate,
+    BaseFeeUpdate, BatcherUpdate, CONFIG_UPDATE_EVENT_VERSION_0, CONFIG_UPDATE_TOPIC,
+    Eip1559Update, GasConfigUpdate, GasLimitUpdate, LogProcessingError, OperatorFeeUpdate,
+    SystemConfigUpdate, SystemConfigUpdateError, SystemConfigUpdateKind, UnsafeBlockSignerUpdate,
     updates::{DaFootprintGasScalarUpdate, MinBaseFeeUpdate},
 };
 

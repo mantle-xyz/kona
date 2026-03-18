@@ -158,7 +158,7 @@ op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", branc
 op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "main", default-features = false }
 
 # Execution
-revm = { git = "https://github.com/mantle-xyz/revm", branch = "main", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", branch = "audit-fix", default-features = false }
 op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "main", default-features = false }
 alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "main", default-features = false }
 alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "main", default-features = false }
