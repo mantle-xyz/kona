@@ -8,8 +8,11 @@ use alloy_evm::{EvmEnv, EvmFactory};
 use kona_mpt::TrieHinter;
 use op_alloy_rpc_types_engine::OpPayloadAttributes;
 use op_revm::OpSpecId;
-use revm::context::{BlockEnv, CfgEnv};
 use alloy_primitives::U256;
+use revm::{
+    context::{BlockEnv, CfgEnv},
+    context_interface::block::BlobExcessGasAndPrice,
+};
 
 impl<P, H, Evm> StatelessL2Builder<'_, P, H, Evm>
 where
@@ -105,9 +108,14 @@ where
         //     .next_block_base_fee(*base_fee_params, parent_header, min_base_fee)
         //     .unwrap_or_default();
 
-         // [Mantle]: blob_excess_gas_and_price is not used in Mantle.
-         let blob_excess_gas_and_price = None;
-         let next_block_base_fee = parent_header.base_fee_per_gas.unwrap_or_default();
+        // [Mantle]: We do not enable blob fee-market mechanics. However, to remain
+        // opcode-compatible with op-geth on OP/Mantle chains, `BLOBBASEFEE` must return
+        // the minimum blob gas price (1) instead of 0.
+        let blob_excess_gas_and_price = Some(BlobExcessGasAndPrice {
+            excess_blob_gas: 0,
+            blob_gasprice: 1,
+        });
+        let next_block_base_fee = parent_header.base_fee_per_gas.unwrap_or_default();
 
         Ok(BlockEnv {
             number: U256::from(parent_header.number + 1),
