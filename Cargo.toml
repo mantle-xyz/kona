@@ -159,7 +159,7 @@ op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", br
 
 # Execution
 revm = { git = "https://github.com/mantle-xyz/revm", branch = "audit-fix", default-features = false }
-op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "main", default-features = false }
+op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "audit-fix", default-features = false }
 alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "main", default-features = false }
 alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "main", default-features = false }
 
@@ -268,3 +268,16 @@ c-kzg = { version = "2.1.1", default-features = false }
 ark-ff = { version = "0.5.0", default-features = false }
 secp256k1 = { version = "0.31.0", default-features = false }
 ark-bls12-381 = { version = "0.5.0", default-features = false }
+
+  [patch."https://github.com/mantle-xyz/revm"]
+  revm = { path = "../revm/crates/revm" }
+  op-revm = { path = "../revm/crates/op-revm" }
+  revm-bytecode = { path = "../revm/crates/bytecode" }
+  revm-context = { path = "../revm/crates/context" }
+  revm-context-interface = { path = "../revm/crates/context/interface" }
+  revm-database = { path = "../revm/crates/database" }
+  revm-database-interface = { path = "../revm/crates/database/interface" }
+  revm-handler = { path = "../revm/crates/handler" }
+  revm-interpreter = { path = "../revm/crates/interpreter" }
+  revm-primitives = { path = "../revm/crates/primitives" }
+  revm-state = { path = "../revm/crates/state" }
