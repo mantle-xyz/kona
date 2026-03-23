@@ -525,6 +525,7 @@ impl HintHandler for InteropHintHandler {
                         let cursor = new_oracle_pipeline_cursor(
                             rollup_config.as_ref(),
                             safe_head,
+                            B256::ZERO, 
                             &mut l1_provider,
                             &mut l2_provider,
                         )
