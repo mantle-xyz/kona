@@ -45,6 +45,9 @@ where
     pub data: Vec<BlobData>,
     /// Whether the source is open.
     pub open: bool,
+    /// Whether Mantle RLP format decode has failed, signaling transition to standard blob format.
+    /// Matches Go's `blobSourceChanged` toggle in `DataSourceFactory`.
+    pub mantle_format_failed: bool,
 }
 
 impl<F, B> MantleBlobSource<F, B>
@@ -54,7 +57,14 @@ where
 {
     /// Creates a new Mantle blob source.
     pub const fn new(chain_provider: F, blob_fetcher: B, batcher_address: Address) -> Self {
-        Self { chain_provider, blob_fetcher, batcher_address, data: Vec::new(), open: false }
+        Self {
+            chain_provider,
+            blob_fetcher,
+            batcher_address,
+            data: Vec::new(),
+            open: false,
+            mantle_format_failed: false,
+        }
     }
 
     fn decode_mantle_rlp_frames(bytes: &[u8]) -> Option<Vec<Bytes>> {
@@ -229,27 +239,38 @@ where
                 tx_decoded_blobs.push(decoded);
             }
 
-            // Try Mantle-specific RLP format for this transaction's blobs
-            // Note: This is a different layer from blob decoding above
+            // Try Mantle-specific RLP format for this transaction's blobs.
+            //
+            // Once Mantle format fails, we cache that result (`mantle_format_failed`)
+            // and skip the RLP attempt for all subsequent blocks, matching Go's
+            // DataSourceFactory which switches to BlobDataSource after the toggle fires.
+            //
+            // Layers:
             // - Blob decode (above): EIP-4844 blob → raw bytes (must succeed)
             // - RLP decode (here): raw bytes → Mantle frames (may fail, fallback to standard)
-            if let Some(rlp_frames) = Self::decode_mantle_rlp_frames(&tx_whole_blob_data) {
-                // Mantle format: concatenated blobs contain a canonical RLP-encoded frame list.
-                for bytes in rlp_frames {
-                    result_data.push(BlobData { data: Some(bytes), calldata: None });
-                }
-            } else {
-                if !tx_whole_blob_data.is_empty() {
-                    warn!(
-                        target: "mantle_blob_source",
-                        "Mantle RLP decode failed or left trailing bytes, using standard blob format fallback"
-                    );
-                }
-                // Not Mantle RLP format, use standard OP format: each blob is one frame.
-                for bytes in tx_decoded_blobs {
-                    if !bytes.is_empty() {
+            if !self.mantle_format_failed {
+                if let Some(rlp_frames) = Self::decode_mantle_rlp_frames(&tx_whole_blob_data) {
+                    // Mantle format: concatenated blobs contain a canonical RLP-encoded frame list.
+                    for bytes in rlp_frames {
                         result_data.push(BlobData { data: Some(bytes), calldata: None });
                     }
+                    data_index += tx_blob_count;
+                    continue;
+                }
+                // Mantle RLP decode failed — set the toggle so subsequent blocks
+                // skip this attempt entirely (matches Go's blobToggle() callback).
+                if !tx_whole_blob_data.is_empty() {
+                    self.mantle_format_failed = true;
+                    warn!(
+                        target: "mantle_blob_source",
+                        "Mantle RLP decode failed or left trailing bytes, switching to standard blob format"
+                    );
+                }
+            }
+            // Standard OP format: each blob is one frame.
+            for bytes in tx_decoded_blobs {
+                if !bytes.is_empty() {
+                    result_data.push(BlobData { data: Some(bytes), calldata: None });
                 }
             }
 
@@ -723,5 +744,63 @@ mod tests {
         source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
         assert!(source.open);
         assert!(source.data.is_empty(), "Malformed blobs should be skipped, not hard-fail");
+    }
+
+    /// Test that once Mantle RLP decode fails, the result is cached and subsequent blocks
+    /// skip the Mantle RLP attempt entirely, matching Go's `blobSourceChanged` toggle behavior.
+    #[tokio::test]
+    async fn test_mantle_format_failed_cached_across_blocks() {
+        use crate::sources::blobs::tests::valid_blob_txs;
+        use alloy_consensus::{Blob, transaction::SignerRecoverable};
+
+        let txs = valid_blob_txs();
+        let signer = txs[0].recover_signer().unwrap_or_default();
+
+        let mut source = default_test_mantle_blob_source();
+        source.batcher_address = address!("11E9CA82A3a762b4B5bd264d4173a242e7a77064");
+
+        let block_info = BlockInfo::default();
+        source.chain_provider.insert_block_with_transactions(1, block_info, txs.clone());
+
+        let blob_hashes = [
+            b256!("012ec3d6f66766bedb002a190126b3549fce0047de0d4c25cffce0dc1c57921a"),
+            b256!("0152d8e24762ff22b1cfd9f8c0683786a7ca63ba49973818b3d1e9512cd2cec4"),
+            b256!("013b98c6c83e066d5b14af2b85199e3d4fc7d1e778dd53130d180f5077e2d1c7"),
+            b256!("01148b495d6e859114e670ca54fb6e2657f0cbae5b08063605093a4b3dc9f8f1"),
+            b256!("011ac212f13c5dff2b2c6b600a79635103d6f580a4221079951181b25c7e6549"),
+        ];
+
+        // Use standard OP-format blobs (not Mantle RLP format)
+        let minimal_blob = {
+            let mut data = vec![0u8; 131072];
+            data[0] = crate::sources::blob_data::BLOB_ENCODING_VERSION;
+            data[2] = 0;
+            data[3] = 0;
+            data[4] = 1;
+            Blob::try_from(data.as_slice()).unwrap()
+        };
+        for hash in blob_hashes {
+            source.blob_fetcher.insert_blob(hash, minimal_blob);
+        }
+
+        // Block 1: mantle_format_failed starts false, RLP decode fails, toggle fires
+        assert!(!source.mantle_format_failed);
+        source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
+        assert!(source.mantle_format_failed, "Toggle should fire after Mantle RLP decode failure");
+
+        // Simulate next block: clear data but mantle_format_failed persists
+        source.clear();
+        assert!(source.mantle_format_failed, "Toggle must persist across clear()");
+
+        // Block 2: re-insert same block data
+        source.chain_provider.insert_block_with_transactions(2, block_info, txs);
+        for hash in blob_hashes {
+            source.blob_fetcher.insert_blob(hash, minimal_blob);
+        }
+
+        // Should succeed and skip Mantle RLP decode attempt entirely
+        source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
+        assert!(source.open);
+        assert!(source.mantle_format_failed, "Toggle should remain true");
     }
 }
