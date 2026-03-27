@@ -225,10 +225,8 @@ mod tests {
     use crate::kv::MemoryKeyValueStore;
     use alloy_primitives::B256;
     use kona_proof::HintType;
-    use std::sync::{
-        Arc as StdArc,
-        atomic::{AtomicBool, AtomicU32, Ordering},
-    };
+    use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+    use std::sync::Arc as StdArc;
     use tokio::sync::RwLock as TokioRwLock;
 
     // Mock configuration for testing
@@ -303,8 +301,11 @@ mod tests {
         }
     }
 
-    fn create_test_backend()
-    -> (OnlineHostBackend<TestCfg, TestHintHandler>, SharedKeyValueStore, TestProviders) {
+    fn create_test_backend() -> (
+        OnlineHostBackend<TestCfg, TestHintHandler>,
+        SharedKeyValueStore,
+        TestProviders,
+    ) {
         let kv = Arc::new(RwLock::new(MemoryKeyValueStore::new()));
         let providers = TestProviders::new();
         let cfg = TestCfg;
@@ -315,8 +316,7 @@ mod tests {
     #[tokio::test]
     async fn test_route_hint_normal() {
         let (backend, _, _) = create_test_backend();
-        let hint_str =
-            "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        let hint_str = "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
 
         let result = backend.route_hint(hint_str.to_string()).await;
         assert!(result.is_ok());
@@ -335,8 +335,7 @@ mod tests {
         let key = B256::from([1u8; 32]);
         providers.set_store_key(key).await;
 
-        let hint_str =
-            "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        let hint_str = "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
 
         let result = backend.route_hint(hint_str.to_string()).await;
         assert!(result.is_ok());
@@ -356,7 +355,10 @@ mod tests {
 
         let result = backend.route_hint(invalid_hint.to_string()).await;
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), PreimageOracleError::HintParseFailed(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            PreimageOracleError::HintParseFailed(_)
+        ));
     }
 
     #[tokio::test]
@@ -384,8 +386,7 @@ mod tests {
         providers.set_store_key(key_b256).await;
 
         // Route a hint first
-        let hint_str =
-            "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        let hint_str = "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
         backend.route_hint(hint_str.to_string()).await.unwrap();
 
         // Now get the preimage - it should trigger hint fetching
@@ -401,15 +402,18 @@ mod tests {
         let key = PreimageKey::new_keccak256([99u8; 32]);
 
         // Use a shorter timeout for testing
-        let result =
-            tokio::time::timeout(Duration::from_millis(500), backend.get_preimage(key)).await;
+        let result = tokio::time::timeout(Duration::from_millis(500), backend.get_preimage(key))
+            .await;
 
         // Should timeout or return KeyNotFound
         assert!(result.is_ok() || result.is_err());
         if let Ok(Ok(_)) = result {
             // If it succeeded, that's also fine (hint might have been processed)
         } else if let Ok(Err(e)) = result {
-            assert!(matches!(e, PreimageOracleError::KeyNotFound | PreimageOracleError::Timeout));
+            assert!(matches!(
+                e,
+                PreimageOracleError::KeyNotFound | PreimageOracleError::Timeout
+            ));
         }
     }
 
@@ -419,16 +423,15 @@ mod tests {
         let key = PreimageKey::new_keccak256([2u8; 32]);
 
         // Route a hint first
-        let hint_str =
-            "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        let hint_str = "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
         backend.route_hint(hint_str.to_string()).await.unwrap();
 
         // Make fetch_hint fail
         providers.set_should_fail(true);
 
         // Try to get preimage - should retry and eventually fail or timeout
-        let result =
-            tokio::time::timeout(Duration::from_millis(200), backend.get_preimage(key)).await;
+        let result = tokio::time::timeout(Duration::from_millis(200), backend.get_preimage(key))
+            .await;
 
         // Should timeout due to retries
         assert!(result.is_err() || result.is_ok());
@@ -440,8 +443,7 @@ mod tests {
         let backend = backend.with_proactive_hint(HintType::L1BlockHeader);
 
         // Verify proactive hint was added (indirectly by testing behavior)
-        let hint_str =
-            "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        let hint_str = "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
         let result = backend.route_hint(hint_str.to_string()).await;
         assert!(result.is_ok());
     }
@@ -454,10 +456,8 @@ mod tests {
             .with_proactive_hint(HintType::L2BlockHeader);
 
         // Both should be proactive
-        let hint1 =
-            "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-        let hint2 =
-            "l2-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        let hint1 = "l1-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+        let hint2 = "l2-block-header 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
 
         assert!(backend.route_hint(hint1.to_string()).await.is_ok());
         assert!(backend.route_hint(hint2.to_string()).await.is_ok());

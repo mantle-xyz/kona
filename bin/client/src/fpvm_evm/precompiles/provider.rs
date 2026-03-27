@@ -48,11 +48,7 @@ where
             OpSpecId::ECOTONE) => Precompiles::new(spec.into_eth_spec().into()),
             OpSpecId::FJORD => fjord(),
             OpSpecId::GRANITE | OpSpecId::HOLOCENE => granite(),
-            OpSpecId::ISTHMUS |
-            OpSpecId::INTEROP |
-            OpSpecId::OSAKA |
-            OpSpecId::JOVIAN |
-            OpSpecId::ARSIA => isthmus(),
+            OpSpecId::ISTHMUS | OpSpecId::INTEROP | OpSpecId::OSAKA | OpSpecId::JOVIAN | OpSpecId::ARSIA => isthmus(),
         };
 
         let accelerated_precompiles = match spec {

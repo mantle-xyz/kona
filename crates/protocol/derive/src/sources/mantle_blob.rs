@@ -47,7 +47,9 @@ where
     pub open: bool,
     /// Whether Mantle RLP format decode has failed, signaling transition to standard blob format.
     /// Matches Go's `blobSourceChanged` toggle in `DataSourceFactory`.
-    pub mantle_format_failed: bool,
+    /// This field persists across `clear()` calls — once set, it remains true for all subsequent
+    /// blocks, ensuring that failed Mantle RLP decoding is not retried.
+    pub(crate) mantle_format_failed: bool,
 }
 
 impl<F, B> MantleBlobSource<F, B>

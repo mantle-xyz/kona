@@ -149,19 +149,19 @@ alloy-rpc-types-beacon = { version = "1.0.42", default-features = false }
 alloy-network-primitives = { version = "1.0.42", default-features = false }
 
 # OP Alloy
-op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", branch = "main", default-features = false }
-op-alloy-provider = { git = "https://github.com/mantle-xyz/op-alloy", branch = "main", default-features = false }
+op-alloy-network = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v2.2.0", default-features = false }
+op-alloy-provider = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v2.2.0", default-features = false }
 alloy-op-hardforks = { version = "0.4.5", default-features = false }
-op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", branch = "main", default-features = false }
-op-alloy-rpc-types = { git = "https://github.com/mantle-xyz/op-alloy", branch = "main", default-features = false }
-op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", branch = "main", default-features = false }
-op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", branch = "main", default-features = false }
+op-alloy-consensus = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v2.2.0", default-features = false }
+op-alloy-rpc-types = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v2.2.0", default-features = false }
+op-alloy-rpc-jsonrpsee = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v2.2.0", default-features = false }
+op-alloy-rpc-types-engine = { git = "https://github.com/mantle-xyz/op-alloy", tag = "v2.2.0", default-features = false }
 
 # Execution
-revm = { git = "https://github.com/mantle-xyz/revm", branch = "audit-fix", default-features = false }
-op-revm = { git = "https://github.com/mantle-xyz/revm", branch = "audit-fix", default-features = false }
-alloy-evm = { git = "https://github.com/mantle-xyz/evm", branch = "main", default-features = false }
-alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", branch = "main", default-features = false }
+revm = { git = "https://github.com/mantle-xyz/revm", tag = "v2.2.1-beta", default-features = false }
+op-revm = { git = "https://github.com/mantle-xyz/revm", tag = "v2.2.1-beta", default-features = false }
+alloy-evm = { git = "https://github.com/mantle-xyz/evm", tag = "v2.2.0-beta.5", default-features = false }
+alloy-op-evm = { git = "https://github.com/mantle-xyz/evm", tag = "v2.2.0-beta.5", default-features = false }
 
 # Reth (pinned to v1.6.0 for kona-supervisor-storage)
 reth-db-api = { git = "https://github.com/paradigmxyz/reth", tag = "v1.6.0" }
@@ -268,16 +268,3 @@ c-kzg = { version = "2.1.1", default-features = false }
 ark-ff = { version = "0.5.0", default-features = false }
 secp256k1 = { version = "0.31.0", default-features = false }
 ark-bls12-381 = { version = "0.5.0", default-features = false }
-
-  [patch."https://github.com/mantle-xyz/revm"]
-  revm = { path = "../revm/crates/revm" }
-  op-revm = { path = "../revm/crates/op-revm" }
-  revm-bytecode = { path = "../revm/crates/bytecode" }
-  revm-context = { path = "../revm/crates/context" }
-  revm-context-interface = { path = "../revm/crates/context/interface" }
-  revm-database = { path = "../revm/crates/database" }
-  revm-database-interface = { path = "../revm/crates/database/interface" }
-  revm-handler = { path = "../revm/crates/handler" }
-  revm-interpreter = { path = "../revm/crates/interpreter" }
-  revm-primitives = { path = "../revm/crates/primitives" }
-  revm-state = { path = "../revm/crates/state" }

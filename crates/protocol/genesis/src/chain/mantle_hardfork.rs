@@ -7,33 +7,33 @@
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct MantleHardForkConfig {
     /// `mantle_base_fee_time` sets the activation time for the Mantle BaseFee network upgrade.
-    /// Active if `mantle_base_fee_time` != None && L2 block timestamp >=
-    /// Some(mantle_base_fee_time), inactive otherwise.
+    /// Active if `mantle_base_fee_time` != None && L2 block timestamp >= Some(mantle_base_fee_time), inactive
+    /// otherwise.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub mantle_base_fee_time: Option<u64>,
     /// `mantle_everest_time` sets the activation time for the Mantle Everest network upgrade.
-    /// Active if `mantle_everest_time` != None && L2 block timestamp >= Some(mantle_everest_time),
-    /// inactive otherwise.
+    /// Active if `mantle_everest_time` != None && L2 block timestamp >= Some(mantle_everest_time), inactive
+    /// otherwise.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub mantle_everest_time: Option<u64>,
     /// `mantle_euboea_time` sets the activation time for the Mantle Euboea network upgrade.
-    /// Active if `mantle_euboea_time` != None && L2 block timestamp >= Some(mantle_euboea_time),
-    /// inactive otherwise.
+    /// Active if `mantle_euboea_time` != None && L2 block timestamp >= Some(mantle_euboea_time), inactive
+    /// otherwise.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub mantle_euboea_time: Option<u64>,
     /// `mantle_skadi_time` sets the activation time for the Mantle Skadi network upgrade.
-    /// Active if `mantle_skadi_time` != None && L2 block timestamp >= Some(mantle_skadi_time),
-    /// inactive otherwise.
+    /// Active if `mantle_skadi_time` != None && L2 block timestamp >= Some(mantle_skadi_time), inactive
+    /// otherwise.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub mantle_skadi_time: Option<u64>,
     /// `mantle_limb_time` sets the activation time for the Mantle Limb network upgrade.
-    /// Active if `mantle_limb_time` != None && L2 block timestamp >= Some(mantle_limb_time),
-    /// inactive otherwise.
+    /// Active if `mantle_limb_time` != None && L2 block timestamp >= Some(mantle_limb_time), inactive
+    /// otherwise.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub mantle_limb_time: Option<u64>,
     /// `mantle_arsia_time` sets the activation time for the Mantle Arsia network upgrade.
-    /// Active if `mantle_arsia_time` != None && L2 block timestamp >= Some(mantle_arsia_time),
-    /// inactive otherwise.
+    /// Active if `mantle_arsia_time` != None && L2 block timestamp >= Some(mantle_arsia_time), inactive
+    /// otherwise.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub mantle_arsia_time: Option<u64>,
 }
@@ -58,12 +58,12 @@ impl MantleHardForkConfig {
     /// This approach is more flexible than checking chain_id, as it works for testnets and
     /// custom deployments.
     pub const fn has_any_hardfork(&self) -> bool {
-        self.mantle_base_fee_time.is_some() ||
-            self.mantle_everest_time.is_some() ||
-            self.mantle_euboea_time.is_some() ||
-            self.mantle_skadi_time.is_some() ||
-            self.mantle_limb_time.is_some() ||
-            self.mantle_arsia_time.is_some()
+        self.mantle_base_fee_time.is_some()
+            || self.mantle_everest_time.is_some()
+            || self.mantle_euboea_time.is_some()
+            || self.mantle_skadi_time.is_some()
+            || self.mantle_limb_time.is_some()
+            || self.mantle_arsia_time.is_some()
     }
 }
 
@@ -129,13 +129,17 @@ mod tests {
         assert!(all_hardforks.has_any_hardfork());
 
         // Test with only one hardfork configured
-        let one_hardfork =
-            MantleHardForkConfig { mantle_limb_time: Some(100), ..Default::default() };
+        let one_hardfork = MantleHardForkConfig {
+            mantle_limb_time: Some(100),
+            ..Default::default()
+        };
         assert!(one_hardfork.has_any_hardfork());
 
         // Test with only arsia configured
-        let arsia_only =
-            MantleHardForkConfig { mantle_arsia_time: Some(200), ..Default::default() };
+        let arsia_only = MantleHardForkConfig {
+            mantle_arsia_time: Some(200),
+            ..Default::default()
+        };
         assert!(arsia_only.has_any_hardfork());
 
         // Test with no hardforks configured (default)
