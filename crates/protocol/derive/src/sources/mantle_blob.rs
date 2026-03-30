@@ -203,12 +203,13 @@ where
             // EIP4844 tx: try Mantle format (RLP list) then fallback to standard format
             let tx_data_range = data_index..data_index + tx_blob_count;
             let tx_blobs = &mut data[tx_data_range.clone()];
-            let mut tx_decoded_blobs = Vec::new();
+            let mut fallback_result = Vec::new();
             let mut tx_whole_blob_data = Vec::new();
+            let mut all_blobs_valid = true;
 
             // Fill and decode each blob for this transaction.
-            // Decode failures are treated as non-fatal and will fall back to standard per-blob
-            // behavior, matching the BlobSource policy of skipping malformed blob payloads.
+            // Matches Go's processTxBlobs: track allBlobsValid to only attempt
+            // Mantle RLP when every blob decoded successfully.
             for blob_data in tx_blobs.iter_mut() {
                 let current_blob_index = blob_index;
                 match blob_data.fill(&blobs, blob_index) {
@@ -222,7 +223,8 @@ where
                     }
                 }
                 // Decode blob data (EIP-4844 standard decoding).
-                // If this fails, skip this blob and continue with the transaction fallback path.
+                // If this fails, mark all_blobs_valid = false and skip,
+                // matching Go's `allBlobsValid = false; continue` pattern.
                 let decoded = match blob_data.decode() {
                     Ok(decoded) => decoded,
                     Err(e) => {
@@ -232,47 +234,34 @@ where
                             current_blob_index,
                             e
                         );
+                        all_blobs_valid = false;
                         continue;
                     }
                 };
+                fallback_result.push(BlobData { data: Some(decoded.clone()), calldata: None });
                 tx_whole_blob_data.extend_from_slice(&decoded);
-                tx_decoded_blobs.push(decoded);
             }
 
-            // Try Mantle-specific RLP format for this transaction's blobs.
-            //
-            // Once Mantle format fails, we cache that result (`mantle_format_failed`)
-            // and skip the RLP attempt for all subsequent blocks, matching Go's
-            // DataSourceFactory which switches to BlobDataSource after the toggle fires.
-            //
-            // Layers:
-            // - Blob decode (above): EIP-4844 blob → raw bytes (must succeed)
-            // - RLP decode (here): raw bytes → Mantle frames (may fail, fallback to standard)
-            if !self.mantle_format_failed {
+            // Try Mantle format if all blobs are valid, matching Go's:
+            //   if allBlobsValid && len(txBlobData) > 0 { ... }
+            if !self.mantle_format_failed && all_blobs_valid && !tx_whole_blob_data.is_empty() {
                 if let Some(rlp_frames) = Self::decode_mantle_rlp_frames(&tx_whole_blob_data) {
-                    // Mantle format: concatenated blobs contain a canonical RLP-encoded frame list.
                     for bytes in rlp_frames {
                         result_data.push(BlobData { data: Some(bytes), calldata: None });
                     }
                     data_index += tx_blob_count;
                     continue;
                 }
-                // Mantle RLP decode failed — set the toggle so subsequent blocks
-                // skip this attempt entirely (matches Go's blobToggle() callback).
-                if !tx_whole_blob_data.is_empty() {
-                    self.mantle_format_failed = true;
-                    warn!(
-                        target: "mantle_blob_source",
-                        "Mantle RLP decode failed or left trailing bytes, switching to standard blob format"
-                    );
-                }
+                // Mantle RLP decode failed — fire the toggle unconditionally,
+                // matching Go's `ds.blobToggle()` call.
+                self.mantle_format_failed = true;
+                warn!(
+                    target: "mantle_blob_source",
+                    "Mantle format decode failed, falling back to standard blob format"
+                );
             }
-            // Standard OP format: each blob is one frame.
-            for bytes in tx_decoded_blobs {
-                if !bytes.is_empty() {
-                    result_data.push(BlobData { data: Some(bytes), calldata: None });
-                }
-            }
+            // Fallback: return each valid blob's data individually (standard format).
+            result_data.extend(fallback_result);
 
             data_index += tx_blob_count;
         }
