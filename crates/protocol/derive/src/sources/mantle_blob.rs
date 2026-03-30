@@ -310,6 +310,11 @@ where
         self.data.clear();
         self.open = false;
     }
+
+    fn reset(&mut self) {
+        self.clear();
+        self.mantle_format_failed = false;
+    }
 }
 
 #[cfg(test)]
@@ -787,5 +792,26 @@ mod tests {
         source.load_blobs(&BlockInfo::default(), signer).await.unwrap();
         assert!(source.open);
         assert!(source.mantle_format_failed, "Toggle should remain true");
+    }
+
+    #[tokio::test]
+    async fn test_mantle_format_failed_reset_on_pipeline_reset() {
+        let chain_provider = TestChainProvider::default();
+        let blob_fetcher = TestBlobProvider::default();
+        let signer = Address::default();
+
+        let mut source = MantleBlobSource::new(chain_provider, blob_fetcher, signer);
+
+        // Simulate toggle being fired
+        source.mantle_format_failed = true;
+        assert!(source.mantle_format_failed);
+
+        // clear() should NOT reset the toggle
+        source.clear();
+        assert!(source.mantle_format_failed, "clear() must not reset toggle");
+
+        // reset() SHOULD reset the toggle (pipeline reset / L1 reorg)
+        source.reset();
+        assert!(!source.mantle_format_failed, "reset() must clear toggle for pipeline reset");
     }
 }
