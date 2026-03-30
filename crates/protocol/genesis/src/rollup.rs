@@ -342,10 +342,6 @@ impl RollupConfig {
 
     /// Returns true if Ecotone is active at the given timestamp.
     pub fn is_ecotone_active(&self, timestamp: u64) -> bool {
-        // Mantle: Skadi (op-geth upgrade) activates Ecotone features
-        if self.is_mantle() && self.is_mantle_skadi_active(timestamp) {
-            return true;
-        }
         // Mantle: before mantle_arsia, no advanced OP Stack features are active
         if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
             return false;
@@ -421,10 +417,6 @@ impl RollupConfig {
 
     /// Returns true if Isthmus is active at the given timestamp.
     pub fn is_isthmus_active(&self, timestamp: u64) -> bool {
-        // Mantle: Skadi (op-geth upgrade) activates Isthmus features
-        if self.is_mantle() && self.is_mantle_skadi_active(timestamp) {
-            return true;
-        }
         // Mantle: before mantle_arsia, no advanced OP Stack features are active
         if self.is_mantle() && !self.is_mantle_arsia_active(timestamp) {
             return false;
@@ -815,17 +807,17 @@ mod tests {
         assert!(!config_with_skadi.is_ecotone_active(25));
         assert!(!config_with_skadi.is_isthmus_active(25));
 
-        // Before mantle_skadi: ecotone follows ecotone_time but arsia gate blocks it
+        // Before mantle_arsia: ecotone and isthmus remain inactive on Mantle
         assert!(!config_with_skadi.is_ecotone_active(50));
         assert!(!config_with_skadi.is_isthmus_active(50)); // isthmus_time is 60, so still inactive
 
-        // After mantle_skadi but before mantle_arsia: skadi activates ecotone and isthmus
+        // After mantle_skadi but before mantle_arsia: ecotone and isthmus still inactive (arsia gated)
         assert!(config_with_skadi.is_regolith_active(150));
         assert!(!config_with_skadi.is_canyon_active(150));
-        assert!(config_with_skadi.is_ecotone_active(150)); // skadi activates ecotone
+        assert!(!config_with_skadi.is_ecotone_active(150));
         assert!(!config_with_skadi.is_fjord_active(150));
         assert!(!config_with_skadi.is_holocene_active(150));
-        assert!(config_with_skadi.is_isthmus_active(150)); // skadi activates isthmus
+        assert!(!config_with_skadi.is_isthmus_active(150));
 
         // After mantle_arsia: OP Stack features should be active based on their times
         assert!(config.is_regolith_active(250));
