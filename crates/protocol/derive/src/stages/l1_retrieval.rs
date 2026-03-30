@@ -123,7 +123,12 @@ where
     async fn signal(&mut self, signal: Signal) -> PipelineResult<()> {
         self.prev.signal(signal).await?;
         match signal {
-            Signal::Reset(ResetSignal { l1_origin, .. }) |
+            Signal::Reset(ResetSignal { l1_origin, .. }) => {
+                // Reset data source toggle (e.g. mantle_format_failed) on pipeline reset,
+                // matching Go's L1Retrieval.Reset() → dataSrc.Reset().
+                self.provider.reset();
+                self.next = Some(l1_origin);
+            }
             Signal::Activation(ActivationSignal { l1_origin, .. }) => {
                 self.next = Some(l1_origin);
             }

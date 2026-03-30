@@ -86,6 +86,11 @@ where
         self.mantle_blob_source.clear();
         self.calldata_source.clear();
     }
+
+    fn reset(&mut self) {
+        self.mantle_blob_source.reset();
+        self.calldata_source.clear();
+    }
 }
 
 #[cfg(test)]

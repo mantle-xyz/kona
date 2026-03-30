@@ -119,7 +119,7 @@ where
             self.next_block_base_fee(*base_fee_params, parent_header, min_base_fee)
                 .unwrap_or_default()
         };
-        
+
         Ok(BlockEnv {
             number: U256::from(parent_header.number + 1),
             beneficiary: payload_attrs.payload_attributes.suggested_fee_recipient,

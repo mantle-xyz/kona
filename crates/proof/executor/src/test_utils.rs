@@ -146,7 +146,7 @@ impl ExecutorTestFixtureCreator {
 
 fn mock_rollup_config() -> RollupConfig {
     let mut rollup_config =
-        RollupConfig { l2_chain_id: Chain::from_id(1115511103), ..Default::default() };
+        RollupConfig { l2_chain_id: Chain::from_id(1115511107), ..Default::default() };
     rollup_config.mantle_hardforks.mantle_skadi_time = Some(0);
     // rollup_config.mantle_hardforks.mantle_limb_time = Some(0);
     rollup_config.hardforks.jovian_time = Some(1768212000);
