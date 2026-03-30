@@ -79,8 +79,7 @@ where
     /// Returns: (all_blob_data, all_blob_hashes, tx_blob_counts)
     /// - all_blob_data: all BlobData in order (calldata or blob placeholders)
     /// - all_blob_hashes: all IndexedBlobHash
-    /// - tx_blob_counts: number of blobs per transaction (0 for calldata tx, N for blob tx with N
-    ///   blobs)
+    /// - tx_blob_counts: number of blobs per transaction (0 for calldata tx, N for blob tx with N blobs)
     fn extract_blob_data(
         &self,
         txs: Vec<TxEnvelope>,
@@ -171,8 +170,7 @@ where
             .await
             .map_err(|e| BlobProviderError::Backend(e.to_string()))?;
 
-        let (mut data, blob_hashes, tx_blob_counts) =
-            self.extract_blob_data(info.1, batcher_address);
+        let (mut data, blob_hashes, tx_blob_counts) = self.extract_blob_data(info.1, batcher_address);
 
         // If there are no hashes, set the calldata and return.
         if blob_hashes.is_empty() {
@@ -642,9 +640,7 @@ mod tests {
         blob_hash: B256,
         provider: &mut TestBlobProvider,
     ) -> Vec<u8> {
-        let blob_bytes =
-            hex::decode(hex_content.trim().strip_prefix("0x").unwrap_or(hex_content.trim()))
-                .unwrap();
+        let blob_bytes = hex::decode(hex_content.trim().strip_prefix("0x").unwrap_or(hex_content.trim())).unwrap();
         assert_eq!(blob_bytes.len(), 131072, "Blob should be 131072 bytes");
         let blob = Blob::try_from(blob_bytes.as_slice()).unwrap();
         provider.insert_blob(blob_hash, blob);
@@ -656,11 +652,11 @@ mod tests {
         // Parse transactions (Mantle blob tx and OP blob tx)
         // https://sepolia.etherscan.io/tx/0x59f091996b73b63989bb0fb8e1e9bf099e4197f3aee91fb7d3f4e183e49ab983
         let mantle_tx = parse_tx_from_hex(
-            "0x03f89483aa36a70b8407b5fd4b8509020d9db982520894ffeeddccbbaa00000000000000000000000000008080c0848ac83386e1a001a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb580a04c7450151bca6b9731fed99fe2ef526fbee62d03cbf153ad4f8fe12ee42c5d719f6a4273bda34e0236f13ce0d516bee9003fdc2ede2642aebe26c9a6b2c1a2f9",
+            "0x03f89483aa36a70b8407b5fd4b8509020d9db982520894ffeeddccbbaa00000000000000000000000000008080c0848ac83386e1a001a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb580a04c7450151bca6b9731fed99fe2ef526fbee62d03cbf153ad4f8fe12ee42c5d719f6a4273bda34e0236f13ce0d516bee9003fdc2ede2642aebe26c9a6b2c1a2f9"
         );
         // https://sepolia.etherscan.io/tx/0x1d9574cc7efa12cf7d3d5a8e0ee1078902158e1aa25d079def7fe65413f51d1b
         let op_tx = parse_tx_from_hex(
-            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac",
+            "0x03f89683aa36a7820c99843b9aca0084ba3580c682520894ffeeddccbbaa00000000000000000000000000008080c0843b9aca00e1a001a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc101a02b985d5ff8834908927adeddeecf37332312e92e25ad913a0fb7aa235b68b49da02c2fd63671226bdf1a6edfc622ef1b5c2587e988cd12a8c44cd6c1fad1ed46ac"
         );
 
         let batcher_address = address!("0xFFEEDDCcBbAA0000000000000000000000000000");
@@ -670,16 +666,14 @@ mod tests {
         source.batcher_address = batcher_address;
 
         // Load blobs and verify their encoding format
-        let mantle_blob_hash =
-            b256!("0x01a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb5");
+        let mantle_blob_hash = b256!("0x01a5e6832cc5b2d89a9dd8ca09ccbdfa9f41a83f8ee4c0a8ca6b63ee693f9fb5");
         let mantle_blob_bytes = load_blob_from_hex(
             include_str!("testdata/mantle_sepolia_mantle_blob.hex"),
             mantle_blob_hash,
             &mut source.blob_fetcher,
         );
 
-        let op_blob_hash =
-            b256!("0x01a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc1");
+        let op_blob_hash = b256!("0x01a1de70ef5f8e5f451d2b054df35767bcfe7c1a5d58616ce58742ee9f968dc1");
         load_blob_from_hex(
             include_str!("testdata/mantle_sepolia_blob.hex"),
             op_blob_hash,
