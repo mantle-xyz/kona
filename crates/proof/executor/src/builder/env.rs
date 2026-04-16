@@ -113,8 +113,7 @@ where
             .or_else(|| spec_id.is_enabled_in(OpSpecId::ECOTONE).then_some(0))
             .map(|excess| BlobExcessGasAndPrice::new(excess, fraction));
 
-        let next_block_base_fee = if !self.config.is_mantle_arsia_active(parent_header.timestamp())
-        {
+        let next_block_base_fee = if !self.config.is_mantle_arsia_active(parent_header.timestamp()) {
             parent_header.base_fee_per_gas.unwrap_or_default()
         } else {
             self.next_block_base_fee(*base_fee_params, parent_header, min_base_fee)
