@@ -7,7 +7,7 @@ use core::{fmt::Display, ops::Deref};
 use kona_genesis::L1ChainConfig;
 
 use alloy_chains::NamedChain;
-use alloy_primitives::{Address, U256, address, map::HashMap};
+use alloy_primitives::{Address, U256, address, hex::NIL, map::HashMap};
 
 /// L1 chain configuration.
 /// Simple wrapper around the [`L1ChainConfig`] type from the `alloy-genesis` crate.
@@ -117,6 +117,12 @@ impl L1Config {
                 .mainnet_activation_timestamp(),
             cancun_time: alloy_hardforks::EthereumHardfork::Cancun.mainnet_activation_timestamp(),
             prague_time: alloy_hardforks::EthereumHardfork::Prague.mainnet_activation_timestamp(),
+            osaka_time: None,
+            bpo1_time: None,
+            bpo2_time: None,
+            bpo3_time: None,
+            bpo4_time: None,
+            bpo5_time: None,
             // osaka_time: alloy_hardforks::EthereumHardfork::Osaka.mainnet_activation_timestamp(),
             // bpo1_time: alloy_hardforks::EthereumHardfork::Bpo1.mainnet_activation_timestamp(),
             // bpo2_time: alloy_hardforks::EthereumHardfork::Bpo2.mainnet_activation_timestamp(),
