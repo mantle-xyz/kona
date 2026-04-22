@@ -70,18 +70,18 @@ impl L1Config {
                 alloy_hardforks::EthereumHardfork::Prague.name().to_string().to_lowercase(),
                 BlobParams::prague(),
             ),
-            (
-                alloy_hardforks::EthereumHardfork::Osaka.name().to_string().to_lowercase(),
-                BlobParams::osaka(),
-            ),
-            (
-                alloy_hardforks::EthereumHardfork::Bpo1.name().to_string().to_lowercase(),
-                BlobParams::bpo1(),
-            ),
-            (
-                alloy_hardforks::EthereumHardfork::Bpo2.name().to_string().to_lowercase(),
-                BlobParams::bpo2(),
-            ),
+            // (
+            //     alloy_hardforks::EthereumHardfork::Osaka.name().to_string().to_lowercase(),
+            //     BlobParams::osaka(),
+            // ),
+            // (
+            //     alloy_hardforks::EthereumHardfork::Bpo1.name().to_string().to_lowercase(),
+            //     BlobParams::bpo1(),
+            // ),
+            // (
+            //     alloy_hardforks::EthereumHardfork::Bpo2.name().to_string().to_lowercase(),
+            //     BlobParams::bpo2(),
+            // ),
         ])
     }
 
@@ -117,12 +117,12 @@ impl L1Config {
                 .mainnet_activation_timestamp(),
             cancun_time: alloy_hardforks::EthereumHardfork::Cancun.mainnet_activation_timestamp(),
             prague_time: alloy_hardforks::EthereumHardfork::Prague.mainnet_activation_timestamp(),
-            osaka_time: alloy_hardforks::EthereumHardfork::Osaka.mainnet_activation_timestamp(),
-            bpo1_time: alloy_hardforks::EthereumHardfork::Bpo1.mainnet_activation_timestamp(),
-            bpo2_time: alloy_hardforks::EthereumHardfork::Bpo2.mainnet_activation_timestamp(),
-            bpo3_time: alloy_hardforks::EthereumHardfork::Bpo3.mainnet_activation_timestamp(),
-            bpo4_time: alloy_hardforks::EthereumHardfork::Bpo4.mainnet_activation_timestamp(),
-            bpo5_time: alloy_hardforks::EthereumHardfork::Bpo5.mainnet_activation_timestamp(),
+            // osaka_time: alloy_hardforks::EthereumHardfork::Osaka.mainnet_activation_timestamp(),
+            // bpo1_time: alloy_hardforks::EthereumHardfork::Bpo1.mainnet_activation_timestamp(),
+            // bpo2_time: alloy_hardforks::EthereumHardfork::Bpo2.mainnet_activation_timestamp(),
+            // bpo3_time: alloy_hardforks::EthereumHardfork::Bpo3.mainnet_activation_timestamp(),
+            // bpo4_time: alloy_hardforks::EthereumHardfork::Bpo4.mainnet_activation_timestamp(),
+            // bpo5_time: alloy_hardforks::EthereumHardfork::Bpo5.mainnet_activation_timestamp(),
 
             ethash: Some(EthashConfig {}),
 
