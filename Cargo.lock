@@ -249,7 +249,7 @@ dependencies = [
 [[package]]
 name = "alloy-evm"
 version = "0.25.2"
-source = "git+https://github.com/mantle-xyz/evm?tag=v0.25.2-mantle-arsia.1#93126ead860af9d73ba032fef11fa88845f8623d"
+source = "git+https://github.com/mantle-xyz/evm?tag=v0.25.2-mantle-arsia.2#00211cd21e42109167cf7a728bbae8c13a0d8e2b"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -365,7 +365,7 @@ dependencies = [
 [[package]]
 name = "alloy-op-evm"
 version = "0.25.2"
-source = "git+https://github.com/mantle-xyz/evm?tag=v0.25.2-mantle-arsia.1#93126ead860af9d73ba032fef11fa88845f8623d"
+source = "git+https://github.com/mantle-xyz/evm?tag=v0.25.2-mantle-arsia.2#00211cd21e42109167cf7a728bbae8c13a0d8e2b"
 dependencies = [
  "alloy-consensus",
  "alloy-eips",
@@ -2410,7 +2410,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ab67060fc6b8ef687992d439ca0fa36e7ed17e9a0b16b25b601e8757df720de"
 dependencies = [
  "data-encoding",
- "syn 1.0.109",
+ "syn 2.0.114",
 ]
 
 [[package]]
@@ -3676,7 +3676,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "system-configuration 0.7.0",
  "tokio",
  "tower-layer",
@@ -3697,7 +3697,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.57.0",
+ "windows-core 0.62.2",
 ]
 
 [[package]]
@@ -6794,7 +6794,7 @@ dependencies = [
 [[package]]
 name = "op-revm"
 version = "12.0.2"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "alloy-sol-types",
  "auto_impl",
@@ -7526,7 +7526,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash 2.1.1",
  "rustls",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -7563,7 +7563,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.5.10",
+ "socket2 0.6.2",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -8172,7 +8172,7 @@ dependencies = [
 [[package]]
 name = "revm"
 version = "31.0.2"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "revm-bytecode 7.1.1",
  "revm-context",
@@ -8202,7 +8202,7 @@ dependencies = [
 [[package]]
 name = "revm-bytecode"
 version = "7.1.1"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "bitvec",
  "phf 0.13.1",
@@ -8213,7 +8213,7 @@ dependencies = [
 [[package]]
 name = "revm-context"
 version = "11.0.2"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "bitvec",
  "cfg-if",
@@ -8229,7 +8229,7 @@ dependencies = [
 [[package]]
 name = "revm-context-interface"
 version = "12.0.1"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "alloy-eip2930",
  "alloy-eip7702",
@@ -8258,7 +8258,7 @@ dependencies = [
 [[package]]
 name = "revm-database"
 version = "9.0.5"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "alloy-eips",
  "revm-bytecode 7.1.1",
@@ -8284,7 +8284,7 @@ dependencies = [
 [[package]]
 name = "revm-database-interface"
 version = "8.0.5"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "auto_impl",
  "either",
@@ -8296,7 +8296,7 @@ dependencies = [
 [[package]]
 name = "revm-handler"
 version = "12.0.2"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "auto_impl",
  "derive-where",
@@ -8314,7 +8314,7 @@ dependencies = [
 [[package]]
 name = "revm-inspector"
 version = "12.0.2"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "auto_impl",
  "either",
@@ -8331,7 +8331,7 @@ dependencies = [
 [[package]]
 name = "revm-interpreter"
 version = "29.0.1"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "revm-bytecode 7.1.1",
  "revm-context-interface",
@@ -8343,7 +8343,7 @@ dependencies = [
 [[package]]
 name = "revm-precompile"
 version = "29.0.1"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "ark-bls12-381",
  "ark-bn254",
@@ -8379,7 +8379,7 @@ dependencies = [
 [[package]]
 name = "revm-primitives"
 version = "21.0.2"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "alloy-primitives",
  "num_enum",
@@ -8402,7 +8402,7 @@ dependencies = [
 [[package]]
 name = "revm-state"
 version = "8.1.1"
-source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.1#c4a5004b898b04c999c242381f05b0e32ff18648"
+source = "git+https://github.com/mantle-xyz/revm?tag=v98-mantle-arsia.2#c13503ef692229168892b5a4ff021b72d5d95a5a"
 dependencies = [
  "bitflags 2.10.0",
  "revm-bytecode 7.1.1",
@@ -10523,7 +10523,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
