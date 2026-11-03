@@ -18,5 +18,27 @@
     "@types/react": "latest",
     "tailwindcss": "^4.1.11",
     "typescript": "latest"
+  },
+  "overrides": {
+    "@babel/core": "^7.29.6",
+    "@hono/node-server": "^1.19.15",
+    "baseline-browser-mapping": "^2.11.0",
+    "browserslist": "^4.28.7",
+    "compression": "^1.8.2",
+    "dompurify": "^3.4.17",
+    "hono": "^4.13.7",
+    "lodash-es": "^4.18.0",
+    "mdast-util-to-hast": "^13.2.1",
+    "mermaid": "^11.16.1",
+    "nanoid": "^3.3.18",
+    "picomatch": "^4.0.4",
+    "postcss": "^8.5.23",
+    "react-router": "^7.18.0",
+    "rollup": "^4.59.0",
+    "source-map-js": "^1.2.2",
+    "toml": "^5.0.1",
+    "uuid": "^11.1.1",
+    "vite": "^7.3.7",
+    "yaml": "^2.8.3"
   }
 }
